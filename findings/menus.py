@@ -1,0 +1,23 @@
+# vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
+
+from django.urls import reverse
+from menu import Menu, MenuItem
+
+
+def top_assets(request):
+    return '<span class="glyphicon glyphicon-tasks" aria-hidden="true"></span> Assets'
+
+sharing_children = (
+    MenuItem("Assets", reverse("findings:assets"), weight=10),
+    MenuItem("Recent Findings", reverse("findings:recent_findings"), weight=15),
+    MenuItem("Ignored Assets", reverse("findings:ignored_assets"), weight=20),
+)
+
+
+Menu.add_item("findings", MenuItem(top_assets,
+    reverse("findings:assets"),
+    weight=10,
+    children=sharing_children
+    )
+)
+

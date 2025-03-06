@@ -1,0 +1,128 @@
+{% extends "base2.html" %}
+{% load static %}
+
+{% block header %}
+<style>
+#table_list_projects tbody tr.selected td {background-color:#B0BED9}
+#table_list_projects tbody tr.odd.selected td {background-color:#acbad4}
+</style>
+{% endblock %}
+
+{% block content %}
+{% spaceless %}
+<div class="page-header">
+    <div class="media">
+        <div class="media-left">
+        </div>
+        <div class="media-body">
+            <h2 class="media-heading">Projects</h2>all projects ...
+        </div>
+    </div>
+</div>
+{% if messages %}{% for message in messages %}<div {% if message.tags %} class="alert alert-{{ message.tags }}"{% endif %}>{{ message }}</div>{% endfor %}{% endif %}
+
+<div class="panel panel-default">
+    <div class="panel-heading">
+      <h3 class="panel-title" style="font-size: 0.9em;">// Basic Selected Project: {{ project_name }}</h3>
+    </div>
+    <div class="panel-body">
+        <table class ="table table-condensed" style="font-size: 0.9em;">
+            <tr>
+                <td>Domains:<br/> {{ num_total_domains }}</td>
+                <td>SubDomains:<br/> {{ num_total_subdomains }}</td>
+                <td>IP Addresses:<br/> {{ num_total_ipaddresses }}</td>
+                <td>Total Assets:<br/> {{ num_total_total }}</td>
+            </tr>
+            <tr>
+                <td>Ignored Domains:<br/> {{ num_ignored_domains }}</td>
+                <td>Ignored SubDomains:<br/> {{ num_ignored_subdomains }}</td>
+                <td>Ignored IP Addresses:<br/>  {{ num_ignored_ipaddresses }}</td>
+                <td>Ignored Total:<br/> {{ num_ignored_total }}</td>
+            </tr>
+        </table>
+    </div>
+</div>
+
+<div class="container-fluid" style="padding-left:0; padding-right:0;">
+  <div class="row">
+    <div class="col-md-6">
+      <div class="panel panel-default">
+        <div class="panel-heading">// General Actions</div>
+        <div class="panel-body">
+       	  <button type="button" class="btn btn-primary btn-xs" data-toggle="modal" data-target="#ProjectModal">Add Project</button><br/><br/>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="panel panel-default">
+  <div class="panel-heading">
+    // Projects
+  </div>
+  <div class="panel-body">
+    <table id="table_list_projects" class="table table-condensed table-striped table-bordered" style="font-size: 0.9em;">
+    <thead>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Description</th>
+        <th>Created</th>
+    </thead>
+    </table>
+  </div>
+</div>
+
+
+<!-- Add Project Modal -->
+<div class="modal fade bs-example-modal-sm" id="ProjectModal" tabindex="-1" role="dialog" aria-labelledby="addProjectModal">
+  <div class="modal-dialog modal-sm" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h4> New Project </h4>
+        </div>
+        <div class="modal-body">
+           <form action="{% url 'projects:add_project' %}" method="post" class="ProjectAdd">
+                {% csrf_token %}
+                {{ projectform }}
+                <br/>
+                <input type="submit" class="btn btn-primary" value="Add Project" />
+            </form>
+        </div>
+    </div>
+  </div>
+</div>
+{% endspaceless%}
+{% endblock%}
+
+{% block javascript %}
+<script type="text/javascript" language="javascript" class="init">
+$(document).ready( function () {
+    var pTable = $('#table_list_projects').DataTable({
+        processing: true, serverSide: true, pageLength: 25, select: true,
+        oLanguage: { sProcessing: "<img src='{% static 'img/loading.gif' %}'>", },
+        order: [[ 0, "asc" ]],
+        ajax: {
+            processing: true,
+            url: "/api/v1/projects/",
+            dataSrc: "results",
+            type: "GET",
+            dataType: "json"
+        },
+        columns: [
+            {'data': 'id', 'sName': 'ID', 'aTargets': [ 0 ]},
+            {'data': 'projectname', 'sName': 'Name', 'aTargets': [ 1 ],
+                "mRender": function (data, type, full) {
+                    var select_url = "{% url 'projects:select_project' projectid=0 %}".replace(0, full.id);
+                    return '<div rel="tooltip" data-placement="left" data-original-title="Select Project"><a href="'+select_url+'">'+data+'</a></div>';
+                },
+                "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
+                    $("div", nTd).tooltip();
+                },
+            },
+            {'data': 'description', 'sName': 'Description', 'aTargets': [ 2 ]},
+            {'data': 'creation_time', 'sName': 'Created', 'aTargets': [ 6 ]},
+        ]
+    });
+});
+</script>
+{% endblock%}

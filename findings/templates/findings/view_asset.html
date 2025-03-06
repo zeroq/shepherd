@@ -1,0 +1,241 @@
+{% extends "base2.html" %}
+{% load static %}
+
+{% block header %}
+<style>
+#table_list_projects tbody tr.selected td {background-color:#B0BED9}
+#table_list_projects tbody tr.odd.selected td {background-color:#acbad4}
+</style>
+{% endblock %}
+
+{% block content %}
+{% spaceless %}
+<div class="page-header">
+    <div class="media">
+        <div class="media-left">
+        </div>
+        <div class="media-body">
+            <h2 class="media-heading">Asset</h2>UUID: {{ assetid }}
+        </div>
+    </div>
+</div>
+{% if messages %}{% for message in messages %}<div {% if message.tags %} class="alert alert-{{ message.tags }}"{% endif %}>{{ message }}</div>{% endfor %}{% endif %}
+<div>
+    <h4>Details</h4>
+    <table id="klammer" class="table table-condensed">
+        <tbody>
+            <tr>
+                <td>
+        <table id="asset_details" class="table table-condensed table-bordered" style="font-size: 0.9em;">
+        <tbody>
+            <tr>
+                <td>Name:</td><td>{{ asset.value }}</td>
+            </tr>
+            <tr>
+                <td>UUID:</td><td>{{ asset.uuid }}</td>
+            </tr>
+            <tr>
+                <td>Source:</td><td>{{ asset.source }}</td>
+            </tr>
+            <tr>
+                <td>Created:</td><td>{{ asset.creation_time }}</td>
+            </tr>
+            <tr>
+                <td>Last Scan:</td><td>{{ asset.lastscan_time }}</td>
+            </tr>
+        </tbody>
+        </table>
+                </td>
+                <td>
+        <table id="port_details" class="table table-condensed table-bordered" style="font-size: 0.9em;">
+            <tbody>
+            {% for port in asset.port_set.all %}
+            <tr>
+                <td>Port</td><td>{{ port.port }}</td>
+                <td>Banner</td><td>{{ port.banner }}</td>
+                <td>Product</td><td>{{ port.product }}</td>
+                <td>Last Scan</td><td>{{ port.scan_date }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+<div>
+    <div>
+        <button type="button" class="btn btn-primary btn-xs" onclick="location.href='{% url 'findings:view_asset_reported' uuid=asset.uuid %}'">Show reported entries</button><br/><br/>
+    </div>
+</div>
+<div>
+{% if critical_findings|length > 0 %}
+    <h4>Critical Findings</h4>
+        <table class="table table-condensed table-striped table-bordered" style="font-size: 0.8em;">
+        <thead>
+            <th>Vulnerability</th>
+            <th>Severity</th>
+            <th>Scan Date</th>
+            <th>Vulnerable at</th>
+            <th>Description</th>
+            <th>Details</th>
+            <th>Ops</th>
+        </thead>
+        <tbody>
+            {% for entry in critical_findings %}
+            <tr>
+                <td>{{ entry.vulnname }}</td>
+                <td>{{ entry.severity }}</td>
+                <td>{{ entry.scan_date }}</td>
+                <td>{{ entry.vulnerableAt }}</td>
+                <td>{{ entry.description }}</td>
+                <td>{{ entry.raw.vulnerabilityDetail }}</td>
+                <td>
+                    <button type="button" class="btn btn-primary btn-xs" onclick="location.href='{% url 'findings:send_nucleus' uuid=asset.uuid findingid=entry.id %}'">To Nucleus</button>&nbsp;<br/>
+                    <a class="btn btn-xs" rel="tooltip" data-placement="right" data-original-title="Delete Entry" onclick="location.href='{% url 'findings:delete_finding' uuid=asset.uuid findingid=entry.id reported='false' %}'">
+                        <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        </table>
+{% endif %}
+{% if high_findings|length > 0 %}
+    <h4>High Findings</h4>
+        <table class="table table-condensed table-striped table-bordered" style="font-size: 0.8em;">
+        <thead>
+            <th>Vulnerability</th>
+            <th>Severity</th>
+            <th>Scan Date</th>
+            <th>Vulnerable at</th>
+            <th>Description</th>
+            <th>Details</th>
+            <th>Ops</th>
+        </thead>
+        <tbody>
+            {% for entry in high_findings %}
+            <tr>
+                <td>{{ entry.vulnname }}</td>
+                <td>{{ entry.severity }}</td>
+                <td>{{ entry.scan_date }}</td>
+                <td>{{ entry.vulnerableAt }}</td>
+                <td>{{ entry.description }}</td>
+                <td>{{ entry.raw.vulnerabilityDetail }}</td>
+                <td>
+                    <button type="button" class="btn btn-primary btn-xs" onclick="location.href='{% url 'findings:send_nucleus' uuid=asset.uuid findingid=entry.id %}'">To Nucleus</button>&nbsp;<br/>
+                    <a class="btn btn-xs" rel="tooltip" data-placement="right" data-original-title="Delete Entry" onclick="location.href='{% url 'findings:delete_finding' uuid=asset.uuid findingid=entry.id reported='false' %}'">
+                        <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        </table>
+{% endif %}
+{% if medium_findings|length > 0 %}
+    <h4>Medium Findings</h4>
+        <table class="table table-condensed table-striped table-bordered" style="font-size: 0.8em;">
+        <thead>
+            <th>Vulnerability</th>
+            <th>Severity</th>
+            <th>Scan Date</th>
+            <th>Vulnerable at</th>
+            <th>Description</th>
+            <th>Details</th>
+            <th>Ops</th>
+        </thead>
+        <tbody>
+            {% for entry in medium_findings %}
+            <tr>
+                <td>{{ entry.vulnname }}</td>
+                <td>{{ entry.severity }}</td>
+                <td>{{ entry.scan_date }}</td>
+                <td>{{ entry.vulnerableAt }}</td>
+                <td>{{ entry.description }}</td>
+                <td>{{ entry.raw.vulnerabilityDetail }}</td>
+                <td>
+                    <button type="button" class="btn btn-primary btn-xs" onclick="location.href='{% url 'findings:send_nucleus' uuid=asset.uuid findingid=entry.id %}'">To Nucleus</button>&nbsp;<br/>
+                    <a class="btn btn-xs" rel="tooltip" data-placement="right" data-original-title="Delete Entry" onclick="location.href='{% url 'findings:delete_finding' uuid=asset.uuid findingid=entry.id reported='false' %}'">
+                        <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        </table>
+{% endif %}
+{% if low_findings|length > 0 %}
+    <h4>Low Findings</h4>
+        <table class="table table-condensed table-striped table-bordered" style="font-size: 0.8em;">
+        <thead>
+            <th>Vulnerability</th>
+            <th>Severity</th>
+            <th>Scan Date</th>
+            <th>Vulnerable at</th>
+            <th>Description</th>
+            <th>Details</th>
+            <th>Ops</th>
+        </thead>
+        <tbody>
+            {% for entry in low_findings %}
+            <tr>
+                <td>{{ entry.vulnname }}</td>
+                <td>{{ entry.severity }}</td>
+                <td>{{ entry.scan_date }}</td>
+                <td>{{ entry.vulnerableAt }}</td>
+                <td>{{ entry.description }}</td>
+                <td>{{ entry.raw.vulnerabilityDetail }}</td>
+                <td>
+                    <button type="button" class="btn btn-primary btn-xs" onclick="location.href='{% url 'findings:send_nucleus' uuid=asset.uuid findingid=entry.id %}'">To Nucleus</button>&nbsp;<br/>
+                    <a class="btn btn-xs" rel="tooltip" data-placement="right" data-original-title="Delete Entry" onclick="location.href='{% url 'findings:delete_finding' uuid=asset.uuid findingid=entry.id reported='false' %}'">
+                        <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        </table>
+{% endif %}
+{% if info_findings|length > 0 %}
+    <h4>Informative Findings</h4>
+        <table class="table table-condensed table-striped table-bordered" style="font-size: 0.8em;">
+        <thead>
+            <th>ID</th>
+            <th>Vulnerability</th>
+            <th>Severity</th>
+            <th>Scan Date</th>
+            <th>Vulnerable at</th>
+            <th>Description</th>
+            <th>Details</th>
+            <th>Ops</th>
+        </thead>
+        <tbody>
+            {% for entry in info_findings %}
+            <tr>
+                <td>{{ entry.id }}</td>
+                <td>{{ entry.vulnname }}</td>
+                <td>{{ entry.severity }}</td>
+                <td>{{ entry.scan_date }}</td>
+                <td>{{ entry.vulnerableAt }}</td>
+                <td>{{ entry.description }}</td>
+                <td>{{ entry.raw.vulnerabilityDetail }}</td>
+                <td>
+                    <button type="button" class="btn btn-primary btn-xs" onclick="location.href='{% url 'findings:send_nucleus' uuid=asset.uuid findingid=entry.id %}'">To Nucleus</button>&nbsp;<br/>
+                    <a class="btn btn-xs" rel="tooltip" data-placement="right" data-original-title="Delete Entry" onclick="location.href='{% url 'findings:delete_finding' uuid=asset.uuid findingid=entry.id reported='false'%}'">
+                        <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        </table>
+{% endif %}
+</div>
+{% endspaceless%}
+{% endblock%}
+
+{% block javascript %}
+<script src="{% static 'js/bootbox.min.js' %}"></script>
+{% endblock%}
