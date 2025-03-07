@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.utils.timezone import make_aware
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
+from django.conf import settings
 
 import uuid as imported_uuid
 
@@ -227,6 +228,19 @@ def reactivate_suggestion(request, uuid):
     s_obj.ignore = False
     s_obj.save()
     return redirect(reverse('suggestions:ignored_suggestions'))
+
+@login_required
+def recent_suggestions(request):
+    """list recent suggestions
+    """
+    context = {'projectid': request.session['current_project']['prj_id']}
+    try:
+        prj_obj = Project.objects.get(id=context['projectid'])
+    except Exception as error:
+        messages.error(request, 'Unknown Project: %s' % error)
+        return redirect(reverse('projects:projects'))
+    context['past_days'] = settings.RECENT_DAYS
+    return render(request, 'suggestions/list_recent_suggestions.html', context)
 
 @login_required
 def delete_all_suggestions(request):

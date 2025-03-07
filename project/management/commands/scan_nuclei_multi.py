@@ -19,12 +19,15 @@ from django.contrib.auth.models import User
 from django.conf import settings
 from django.utils.timezone import make_aware, now
 
+## All Templates
+## ['cnvd', 'cves', 'default-logins', 'exposed-panels', 'exposures', 'file', 'misconfiguration', 'miscellaneous', 'takeovers', 'technologies', 'token-spray', 'vulnerabilities', 'network', 'dns', 'iot', 'ssl']
+
 def run_nuclei(domain_tuple):
     webaddress = domain_tuple[0]
     nucleiScanner = Nuclei() # init scanner
     scanResult = nucleiScanner.scan(
         webaddress,
-        templates=["cves", "vulnerabilities", "xss", "misconfiguration", "exposed-panels", "detection", "ssl", "network"], # misconfiguration, default-logins, exposed-panels, xss
+        templates=["cves", "vulnerabilities", "xss", "misconfiguration", "exposed-panels", "default-logins", "ssl", "network"], # misconfiguration, default-logins, exposed-panels, xss
         rateLimit=50,
         verbose=False,
         metrics=False,

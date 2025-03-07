@@ -48,6 +48,27 @@ def select_project(request, projectid):
     return redirect(reverse('projects:projects'))
 
 @login_required
+def delete_project(request, projectid):
+    """delete given project
+    """
+    context = {}
+    try:
+        prj_obj = Project.objects.get(id=projectid)
+        prj_obj.delete()
+    except Project.DoesNotExist:
+        print('ERROR: project not existing')
+    request.session['current_project'] = None
+    return redirect(reverse('projects:projects'))
+
+@login_required
+def unselect_project(request):
+    """unselect current project
+    """
+    context = {}
+    request.session['current_project'] = None
+    return redirect(reverse('projects:projects'))
+
+@login_required
 def add_project(request):
     if request.method == 'POST':
         form = AddProjectForm(request.POST)

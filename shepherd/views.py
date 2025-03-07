@@ -14,6 +14,7 @@ def home(request):
     # number of keywords
     kw = Keyword.objects.all().count()
     context['keywords'] = kw
+    #request.session['current_project'] = None
     return render(request, 'shepherd/index.html', context)
 
 

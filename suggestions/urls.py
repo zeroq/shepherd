@@ -6,6 +6,7 @@ urlpatterns = [
     path('ignored/', views.ignored_suggestions, name='ignored_suggestions'),
     path('manual/add/', views.manual_add_suggestion, name='manual_add_suggestion'),
     path('update/', views.update_suggestions, name='update_suggestions'),
+    path('recent/', views.recent_suggestions, name='recent_suggestions'),
     path('ignore/star/', views.ignore_star_suggestions, name='ignore_star_suggestions'),
     path('ignore/<str:uuid>/', views.ignore_suggestion, name='ignore_suggestion'),
     path('monitor/<str:uuid>/', views.monitor_suggestion, name='monitor_suggestion'),
