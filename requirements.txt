@@ -1,0 +1,12 @@
+django
+menu
+djangorestframework
+dateparser
+tld
+django_ratelimit
+pymemcache
+inflection
+uritemplate
+pyyaml
+django-simple-menu
+tldextract

@@ -5,6 +5,10 @@
 <style>
 #table_list_projects tbody tr.selected td {background-color:#B0BED9}
 #table_list_projects tbody tr.odd.selected td {background-color:#acbad4}
+.scrollable-panel {
+    max-height: 300px; /* Adjust the height as needed */
+    overflow-y: auto;
+}
 </style>
 {% endblock %}
 
@@ -28,7 +32,7 @@
       <div class="panel panel-default">
         <div class="panel-heading">// General Actions</div>
         <div class="panel-body">
-        	<button type="button" class="btn btn-primary btn-xs" data-toggle="modal" data-target="#KeywordModal">Add Keyword</button><br/><br/>
+            <button type="button" class="btn btn-primary btn-xs" data-toggle="modal" data-target="#KeywordModal">Add Keyword</button><br/><br/>
         </div>
       </div>
     </div>
@@ -45,13 +49,14 @@
     <thead>
         <th>ID</th>
         <th>Keyword</th>
+        <th>Type</th>
         <th>Enabled</th>
         <th>Description</th>
         <th>Created</th>
         <th>Operations</th>
     </thead>
     </table>
-	</div>
+    </div>
 </div>
 
 <div class="panel panel-default">
@@ -63,12 +68,27 @@
     <thead>
         <th>ID</th>
         <th>Keyword</th>
+        <th>Type</th>
         <th>Enabled</th>
         <th>Description</th>
         <th>Created</th>
         <th>Operations</th>
     </thead>
     </table>
+  </div>
+</div>
+
+<!-- New Panel for Interesting Keywords -->
+<div class="panel panel-default">
+  <div class="panel-heading">
+    // Interesting Keywords
+  </div>
+  <div class="panel-body scrollable-panel">
+    <ul id="interesting-keywords-list">
+      {% for description in descriptions %}
+        <li>{{ description }}</li>
+      {% endfor %}
+    </ul>
   </div>
 </div>
 
@@ -115,6 +135,7 @@ $(document).ready( function () {
                     $("div", nTd).tooltip();
                 },
             },
+            {'data': 'ktype', 'sName': 'Type', 'aTargets': [ 4 ]},
             {'data': 'enabled', 'sName': 'Enabled', 'aTargets': [ 2 ],
                 "mRender": function (data, type, full) {
                     var toggle_url = "{% url 'keywords:toggle_keyword' keywordid=0 %}".replace(0, full.id);
@@ -128,7 +149,7 @@ $(document).ready( function () {
                 "mRender": function (data, type, full) {
                     var delete_url = "{% url 'keywords:delete_keyword' keywordid=0 %}".replace(0, full.id);
                     return '<div class="btn-group1">' +
-                        '<a class="btn btn-xs confirm" rel="tooltip" data-placement="right" data-original-title="Delete Keyword" data-display="'+full.value+'" data-href="'+delete_url+'" href="#">' +
+                        '<a class="btn btn-xs confirm" rel="tooltip" data-placement="right" data-original-title="Delete Keyword" data-display="'+full.keyword+'" data-href="'+delete_url+'" href="#">' +
                         '<span class="glyphicon glyphicon-trash" aria-hidden="true"></span>' +
                         '</a> ' +
                         '</div>';
@@ -157,6 +178,7 @@ $(document).ready( function () {
                     $("div", nTd).tooltip();
                 },
             },
+            {'data': 'ktype', 'sName': 'Type', 'aTargets': [ 4 ]},
             {'data': 'enabled', 'sName': 'Enabled', 'aTargets': [ 2 ],
                 "mRender": function (data, type, full) {
                     var toggle_url = "{% url 'keywords:toggle_keyword' keywordid=0 %}".replace(0, full.id);
@@ -170,7 +192,7 @@ $(document).ready( function () {
                 "mRender": function (data, type, full) {
                     var delete_url = "{% url 'keywords:delete_keyword' keywordid=0 %}".replace(0, full.id);
                     return '<div class="btn-group1">' +
-                        '<a class="btn btn-xs confirm" rel="tooltip" data-placement="right" data-original-title="Delete Keyword" data-display="'+full.value+'" data-href="'+delete_url+'" href="#">' +
+                        '<a class="btn btn-xs confirm" rel="tooltip" data-placement="right" data-original-title="Delete Keyword" data-display="'+full.keyword+'" data-href="'+delete_url+'" href="#">' +
                         '<span class="glyphicon glyphicon-trash" aria-hidden="true"></span>' +
                         '</a> ' +
                         '</div>';
@@ -181,17 +203,35 @@ $(document).ready( function () {
             },
         ]
     });
+
+    // Limit the number of keywords displayed initially
+    var $interestingKeywordsList = $('#interesting-keywords-list');
+    var $keywords = $interestingKeywordsList.children('li');
+    var initialDisplayCount = 20;
+
+    $keywords.slice(initialDisplayCount).hide();
+
+    // Add a "Show More" button if there are more than initialDisplayCount keywords
+    if ($keywords.length > initialDisplayCount) {
+        $interestingKeywordsList.after('<button id="show-more-keywords" class="btn btn-primary btn-xs">Show More</button>');
+    }
+
+    // Show more keywords when the "Show More" button is clicked
+    $('#show-more-keywords').on('click', function() {
+        $keywords.show();
+        $(this).remove();
+    });
 });
 $(document).on("click", ".confirm", function(e) {
-        e.preventDefault();
-        var title = $(this).attr('data-display');
-        var location = $(this).attr('data-href');
-        bootbox.confirm('Are you sure?<br/>(Delete Entry: '+title+')', function(confirmed) {
-            if(confirmed)
-            {
-                window.location.replace(location);
-            }
-        });
+    e.preventDefault();
+    var title = $(this).attr('data-display');
+    var location = $(this).attr('data-href');
+    bootbox.confirm('Are you sure?<br/>(Delete Entry: ' + title + ')', function(confirmed) {
+        if(confirmed)
+        {
+            window.location.replace(location);
+        }
+    });
 });
 </script>
-{% endblock%}
+{% endblock %}

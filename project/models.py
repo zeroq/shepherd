@@ -22,7 +22,7 @@ class Keyword(models.Model):
     enabled = models.BooleanField(default=True)  # disable keywords that should not be used
     creation_time = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
-    ktype = models.CharField(max_length=1024, default='name')  # what type of keyword, e.g. name, domain, ...
+    ktype = models.CharField(max_length=1024, default='registrant_org')  # what type of keyword, e.g. name, domain, ...
 
     def __str__(self):
         return "%s" % (self.keyword)

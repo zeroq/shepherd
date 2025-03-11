@@ -7,10 +7,19 @@ from django.contrib import messages
 
 from project.models import Project, Keyword
 from keywords.forms import AddKeywordForm
+from project.models import Suggestion
+
 
 @login_required
 def keywords(request):
-    context = {'projectid': request.session['current_project']['prj_id'], 'keywordform': AddKeywordForm()}
+    project_id = request.session['current_project']['prj_id']
+    keyword_form = AddKeywordForm()
+    descriptions = Suggestion.objects.values_list('description', flat=True).distinct()
+    context = {
+        'projectid': project_id,
+        'keywordform': keyword_form,
+        'descriptions': descriptions
+    }
     return render(request, 'keywords/list_keywords.html', context)
 
 @login_required
@@ -45,6 +54,7 @@ def add_keyword(request):
                 return redirect(reverse('keywords:keywords'))
             data = {
                 'keyword': form.cleaned_data['keyword'],
+                'ktype': form.cleaned_data['ktype'],
                 'description': form.cleaned_data['description'],
                 'related_project': prj_obj
             }

@@ -25,8 +25,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = '<KEY HERE>'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
-
+ADMIN_ENABLED = True
+DEBUG = True
 ALLOWED_HOSTS = ['127.0.0.1']
 
 
@@ -167,8 +167,10 @@ RECENT_DAYS = 5
 # Cache
 CACHES = {
     "default": {
-        "BACKEND": "django.core.cache.backends.memcached.PyMemcacheCache",
-        "LOCATION": "127.0.0.1:11211",
+        'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
+        # If you want to use caching uncomment the following and install: apt install memcached
+        # "BACKEND": "django.core.cache.backends.memcached.PyMemcacheCache",
+        # "LOCATION": "127.0.0.1:11211",
     }
 }
 
