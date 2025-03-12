@@ -89,7 +89,7 @@ class Command(BaseCommand):
                 else:
                     continue
 
-        print("[+] total domaintools suggestions populated: {}".format(total_suggestion_count))
+        print("[+] total domaintools suggestions populated or updated: {}".format(total_suggestion_count))
 
 
     def domaintools_suggestion_population(self, host, uri, params_get, kw, prj):
@@ -104,9 +104,9 @@ class Command(BaseCommand):
         # Debug
         proxies = {}
         verify = True
-        if settings.DEBUG:
-            proxies["https"] = "http://127.0.0.1:8080"
-            verify = False
+        # if settings.DEBUG:
+        #     proxies["https"] = "http://127.0.0.1:8080"
+        #     verify = False
 
         # Error count
         err_cnt = 0
@@ -144,23 +144,10 @@ class Command(BaseCommand):
         
         # Process the results and add them to the database        
         for item in items:
-            #print(item)
-            domain = item['domain']
-            # tld
-            parsed_obj = tldextract.extract(domain)
-            tld = parsed_obj.domain+"."+parsed_obj.suffix
+            
             # get unique identifier
-            item_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, "%s" % item['domain'])
-            # check if item already exists
-            try:
-                sobj = Suggestion.objects.get(uuid=item_uuid)
-                new_object = False
-            except Suggestion.DoesNotExist:
-                new_object = True
-            # ignore existing suggestions
-            if not new_object:
-                continue
-            # prepare suggestion object
+            domain = item['domain']
+            item_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, str(domain))
             description_list = []
             if item['registrant_org']['value']:
                 description_list.append("Registrant Org: {}".format(item['registrant_org']['value']))
@@ -169,12 +156,13 @@ class Command(BaseCommand):
                 for email in item['registrant_contact']['email']:
                     emails.append(email['value'])
                 description_list.append("Registrant Emails: {}".format(", ".join(emails)))
-            description = ",".join(description_list)
+            description = ", ".join(description_list)
             sugg = {
                 'related_keyword': kw,
                 'related_project': prj,
                 'finding_type': 'domain',
-                'value': item['domain'],
+                'value': domain,
+                'active': str(item['active']),
                 'uuid': item_uuid,
                 'source': 'domaintools',
                 'description': description,
@@ -186,50 +174,33 @@ class Command(BaseCommand):
             except:
                 sugg['creation_time'] = make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds")))
             # check if domain or subdomain
+            parsed_obj = tldextract.extract(domain)
             if len(parsed_obj.subdomain) == 0:
                 sugg['finding_subtype'] = 'domain'
             else:
                 sugg['finding_subtype'] = 'subdomain'
             # create suggestion entry
-            sobj = Suggestion.objects.create(**sugg)
+            sobj, created = Suggestion.objects.update_or_create(uuid=item_uuid, defaults=sugg)
             suggestion_count += 1
 
             # check if TLD is already in our database
+            # tld
+            tld = parsed_obj.domain+"."+parsed_obj.suffix
             if len(parsed_obj.subdomain) > 0:
                 tld_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, tld)
-                try:
-                    sobj = Suggestion.objects.get(uuid=tld_uuid)
-                    new_object = False
-                except Suggestion.DoesNotExist:
-                    new_object = True
-                if new_object is True:
-                    description_list = []
-                    if item['registrant_org']['value']:
-                        description_list.append("Registrant Org: {}".format(item['registrant_org']['value']))
-                    if item['registrant_contact']['email']:
-                        emails = []
-                        for email in item['registrant_contact']['email']:
-                            emails.append(email['value'])
-                        description_list.append("Registrant Emails: {}".format(", ".join(emails)))
-                    description = ",".join(description_list)
-                    sugg = {
-                        'related_keyword': kw,
-                        'related_project': prj,
-                        'finding_type': 'domain',
-                        'finding_subtype': 'domain',
-                        'value': tld,
-                        'uuid': tld_uuid,
-                        'source': 'domaintools',
-                        'description': description,
-                        'link': '',
-                        'raw': item,
-                    }
-                    try:
-                        sugg['creation_time'] = make_aware(dateparser.parse(item['first_seen']['value']))
-                    except:
-                        sugg['creation_time'] = make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds")))
-                    sobj = Suggestion.objects.create(**sugg)
-                    suggestion_count += 1
+
+                # Modify suggestion object
+                sugg['uuid'] = tld_uuid
+                sugg['value'] = tld
+                sugg['finding_subtype'] = 'domain'
+
+                # Add active status
+                if item['active']:
+                    sugg['active'] = 'True'
+
+                # create suggestion entry
+                sobj, created = Suggestion.objects.update_or_create(uuid=tld_uuid, defaults=sugg)
+                suggestion_count += 1
 
         return suggestion_count
     

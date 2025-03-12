@@ -85,38 +85,63 @@ def list_suggestions(request, projectid, selection, vtype, format=None):
     ### check if project exists
     try:
         prj = Project.objects.get(id=projectid)
-    except project.DoesNotExist:
+    except Project.DoesNotExist:
         return JsonResponse({"status": True, "code": 200, "next": None, "previous": None, "count": 0, "iTotalRecords": 0, "iTotalDisplayRecords": 0, "results": []})
+
     ### get search parameters
-    if request.query_params:
-        if 'search[value]' in request.query_params:
-            search_value = request.query_params['search[value]']
-        else:
-            search_value = None
-    else:
-        search_value = None
+    search_value = request.query_params.get('columns[1][search][value]', None)
+    search_source = request.query_params.get('columns[2][search][value]', None)
+    search_description = request.query_params.get('columns[3][search][value]', None)
+    search_creation_date = request.query_params.get('columns[4][search][value]', None)
+    search_active = request.query_params.get('columns[5][search][value]', None)
+    print(f"Search: {search_value}, {search_source}, {search_description}, {search_creation_date}, {search_active}")  # Debugging statement
+
     ### create queryset
     if selection in ['ignored']:
-        queryset = prj.suggestion_set.all().filter(ignore=True).filter(is_monitored=False)
+        queryset = prj.suggestion_set.filter(ignore=True, is_monitored=False)
     else:
-        queryset = prj.suggestion_set.all().filter(ignore=False).filter(is_monitored=False) # Do not display ignored suggestions
+        queryset = prj.suggestion_set.filter(ignore=False, is_monitored=False)  # Do not display ignored suggestions
+
     if vtype in ['domain', 'subdomain', 'ipaddress']:
         queryset = queryset.filter(finding_subtype=vtype)
-    else:
-        pass
+
     ### filter by search value
-    if search_value and len(search_value)>1:
+    if search_value and len(search_value) > 1:
         queryset = queryset.filter(
-            Q(value__icontains=search_value)|
-            Q(description__icontains=search_value)
+            Q(value__icontains=search_value)
         )
+
+    if search_source and len(search_source) > 1:
+        queryset = queryset.filter(
+            Q(source__icontains=search_source)
+        )
+
+    if search_description and len(search_description) > 1:
+        queryset = queryset.filter(
+            Q(description__icontains=search_description)
+        )
+
+    if search_creation_date and len(search_creation_date) > 1:
+        queryset = queryset.filter(
+            Q(creation_time__icontains=search_creation_date)
+        )
+
+    if search_active and len(search_active) > 1:
+        queryset = queryset.filter(
+            Q(active__icontains=search_active)
+        )
+
+    print(f"Filtered queryset count: {queryset.count()}")  # Debugging statement
+
     ### get variables
     order_by_column, order_direction = get_ordering_vars(request.query_params,
                                                          default_column='creation_time',
                                                          default_direction='-')
+
     ### order queryset
     if order_by_column:
-        queryset = queryset.order_by('%s%s' % (order_direction, order_by_column))
+        queryset = queryset.order_by(f'{order_direction}{order_by_column}')
+
     kwrds = paginator.paginate_queryset(queryset, request)
     serializer = SuggestionSerializer(instance=kwrds, many=True)
     return paginator.get_paginated_response(serializer.data)
