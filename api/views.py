@@ -14,11 +14,11 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 
 from api.pagination import CustomPaginator
-from api.serializer import ProjectSerializer, KeywordSerializer, SuggestionSerializer, ActiveDomainSerializer, FindingSerializer
+from api.serializer import ProjectSerializer, KeywordSerializer, SuggestionSerializer, ActiveDomainSerializer, FindingSerializer, PortSerializer
 from api.utils import get_ordering_vars
 
 from project.models import Project, Keyword, Suggestion, ActiveDomain
-from findings.models import Finding
+from findings.models import Finding, Port
 
 # Create your views here.
 
@@ -159,7 +159,7 @@ def list_assets(request, projectid, selection, format=None):
     ### check if project exists
     try:
         prj = Project.objects.get(id=projectid)
-    except project.DoesNotExist:
+    except Project.DoesNotExist:
         return JsonResponse({"status": True, "code": 200, "next": None, "previous": None, "count": 0, "iTotalRecords": 0, "iTotalDisplayRecords": 0, "results": []})
     ### get search parameters
     if request.query_params:
@@ -212,7 +212,7 @@ def list_recent_findings(request, projectid, severity, format=None):
     ### check if project exists
     try:
         prj = Project.objects.get(id=projectid)
-    except project.DoesNotExist:
+    except Project.DoesNotExist:
         return JsonResponse({"status": True, "code": 200, "next": None, "previous": None, "count": 0, "iTotalRecords": 0, "iTotalDisplayRecords": 0, "results": []})
     ### get search parameters
     if request.query_params:
@@ -259,7 +259,7 @@ def list_keywords(request, projectid, selection, format=None):
     ### check if project exists
     try:
         prj = Project.objects.get(id=projectid)
-    except project.DoesNotExist:
+    except Project.DoesNotExist:
         return JsonResponse({"status": True, "code": 200, "next": None, "previous": None, "count": 0, "iTotalRecords": 0, "iTotalDisplayRecords": 0, "results": []})
     ### get search parameters
     if request.query_params:
@@ -305,7 +305,7 @@ def add_keyword(request, format=None):
     if prjname is not None:
         try:
             prj_obj = Project.objects.get(projectname=prjname)
-        except project.DoesNotExist:
+        except Project.DoesNotExist:
             result = {'message': 'Given project does not exist', 'status': 'failure'}
             return JsonResponse(result)
     if keywords is None:
@@ -327,3 +327,77 @@ def add_keyword(request, format=None):
 
 
 ##### END KEYWORDS ###############
+
+##### PORTS ###############
+@api_view(['GET'])
+@authentication_classes((SessionAuthentication, ))
+@permission_classes((IsAuthenticated,))
+def list_ports(request, projectid, format=None):
+    paginator = CustomPaginator()
+    try:
+        prj = Project.objects.get(id=projectid)
+    except Project.DoesNotExist:
+        return JsonResponse({"status": True, "code": 200, "next": None, "previous": None, "count": 0, "iTotalRecords": 0, "iTotalDisplayRecords": 0, "results": []})
+
+    # Fetch all active domains associated with the project
+    active_domains = ActiveDomain.objects.filter(related_project=prj)
+
+    # Define queryset to filter ports by active domains
+    queryset = Port.objects.filter(domain__in=active_domains)
+
+    # Get search parameters
+    search_value = request.query_params.get('search[value]', None)
+    if search_value and len(search_value) > 1:
+        queryset = queryset.filter(
+            Q(port__icontains=search_value) |
+            Q(banner__icontains=search_value) |
+            Q(status__icontains=search_value) |
+            Q(product__icontains=search_value) |
+            Q(cpe__icontains=search_value)
+        )
+
+    search_domain_name = request.query_params.get('columns[1][search][value]', None)
+    search_port = request.query_params.get('columns[2][search][value]', None)
+    search_banner = request.query_params.get('columns[3][search][value]', None)
+    search_cpe = request.query_params.get('columns[4][search][value]', None)
+    search_last_scan = request.query_params.get('columns[5][search][value]', None)
+    # print(f"Search: {search_domain_name}, {search_port}, {search_banner}, {search_cpe}, {search_last_scan}")  # Debugging statement
+
+    ### filter by search value
+    if search_domain_name and len(search_domain_name) > 1:
+        queryset = queryset.filter(
+            Q(domain_name__icontains=search_domain_name)
+        )
+
+    if search_port and len(search_port) > 1:
+        queryset = queryset.filter(
+            Q(port__icontains=search_port)
+        )
+
+    if search_banner and len(search_banner) > 1:
+        queryset = queryset.filter(
+            Q(banner__icontains=search_banner)
+        )
+
+    if search_cpe and len(search_cpe) > 1:
+        queryset = queryset.filter(
+            Q(cpe__icontains=search_cpe)
+        )
+
+    if search_last_scan and len(search_last_scan) > 1:
+        queryset = queryset.filter(
+            Q(scan_date__icontains=search_last_scan)
+        )
+
+    # Get ordering variables
+    order_by_column, order_direction = get_ordering_vars(request.query_params, default_column='scan_date', default_direction='-')
+
+    # Order queryset
+    if order_by_column:
+        queryset = queryset.order_by(f'{order_direction}{order_by_column}')
+
+    # Paginate queryset
+    ports = paginator.paginate_queryset(queryset, request)
+    serializer = PortSerializer(instance=ports, many=True)
+
+    return paginator.get_paginated_response(serializer.data)

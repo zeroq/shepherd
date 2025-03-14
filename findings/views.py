@@ -12,7 +12,7 @@ from django.utils import timezone
 from django.utils.timezone import make_aware
 
 from project.models import Project, Suggestion, ActiveDomain
-from findings.models import Finding
+from findings.models import Finding, Port
 from findings.utils import asset_get_or_create, asset_finding_get_or_create
 
 # Create your views here.
@@ -287,3 +287,43 @@ def send_nucleus(request, uuid, findingid):
     f_obj.reported = True
     f_obj.save()
     return redirect(reverse('findings:view_asset', args=(uuid,)))
+
+### Nmap stuffs
+
+@login_required
+def nmap_results(request):
+    context = {'projectid': request.session['current_project']['prj_id']}
+    if request.method == 'POST':
+        if 'btndelete' in request.POST:
+            port_ids = request.POST.getlist('id[]')
+            port_objs = Port.objects.filter(id__in=port_ids)
+            for port_obj in port_objs:
+                port_obj.delete()
+            messages.info(request, 'Deleted selected ports')
+        # elif 'btnscan' in request.POST:
+        #     prj_obj = Project.objects.get(id=context['projectid'])
+        #     # get all active domains
+        #     active_domains = prj_obj.activedomain_set.all().filter(monitor=True)
+        #     # run nmap scan
+        #     for ad in active_domains:
+        #         # run nmap scan
+        #         print('Running Nmap scan for: %s' % ad.value)
+        #         nmap_results = nmap_scan(ad.value)
+        #         for result in nmap_results:
+        #             content = {
+        #                 'domain': ad,
+        #                 'port': result['port'],
+        #             }
+        #             port_obj, _ = Port.objects.get_or_create(**content)
+        #             port_obj.domain_name = ad.value
+        #             port_obj.scan_date = make_aware(datetime.now())
+        #             port_obj.banner = result['banner']
+        #             port_obj.status = result['status']
+        #             port_obj.product = result['product']
+        #             port_obj.cpe = result['cpe']
+        #             port_obj.save()
+        #     messages.info(request, 'Nmap scan completed')
+        else:
+            messages.error(request, 'Unknown action received!')
+        print(request.POST)
+    return render(request, 'findings/list_nmap_results.html', context)

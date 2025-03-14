@@ -1,0 +1,206 @@
+{% extends "base2.html" %}
+{% load static %}
+
+{% block header %}
+<style>
+#table_list_projects tbody tr.selected td {background-color:#B0BED9}
+#table_list_projects tbody tr.odd.selected td {background-color:#acbad4}
+</style>
+{% endblock %}
+
+{% block content %}
+{% spaceless %}
+<div class="page-header">
+    <div class="media">
+        <div class="media-left">
+        </div>
+        <div class="media-body">
+            <h2 class="media-heading">Nmap Results</h2>ports information...
+        </div>
+    </div>
+</div>
+{% if messages %}{% for message in messages %}<div {% if message.tags %} class="alert alert-{{ message.tags }}"{% endif %}>{{ message }}</div>{% endfor %}{% endif %}
+
+<form id="form-selected" action="" method="POST">
+  {% csrf_token %}
+
+<div class="container-fluid" style="padding-left:0; padding-right:0;">
+    <div class="row">
+        <div class="col-md-6">
+            <div class="panel panel-default">
+                <div class="panel-heading">// Selected Actions</div>
+                <div class="panel-body">
+                    <button type="submit" name="btndelete" id="ignore-selected" class="btn btn-primary btn-xs confirm">Delete selected</button>&nbsp;
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="panel panel-default">
+                <div class="panel-heading">// General Actions</div>
+                <div class="panel-body">
+                    <button type="button" class="btn btn-primary btn-xs" data-toggle="modal" data-target="#SuggestionModal">Scan Assets (coming soon)</button>&nbsp;
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Asset List Tabs -->
+<div class="panel panel-default">
+  <div class="panel-heading">
+    // Open ports
+  </div>
+  <div class="panel-body">
+    <table id="table_list_ports" class="table table-condensed table-striped table-bordered" style="font-size: 0.9em;">
+        <thead>
+            <tr>
+                <th><input type="checkbox" name="select_all" value="1" id="select-all-items-dom">&nbsp; Operations</th>
+                <th>Domain</th>
+                <th>Port</th>
+                <th>Banner</th>
+                <th>CPE</th>
+                <th>Last Scan</th>
+            </tr>
+            <tr>
+                <th></th>
+                <th><input type="text" placeholder="Search Domain" class="column-search-input"></th>
+                <th><input type="text" placeholder="Search Port" class="column-search-input"></th>
+                <th><input type="text" placeholder="Search Banner" class="column-search-input"></th>
+                <th><input type="text" placeholder="Search CPE" class="column-search-input"></th>
+                <th><input type="text" placeholder="Search Last Scan" class="column-search-input"></th>
+            </tr>
+        </thead>
+  </table>
+  <div id="selected-count">0 row(s) selected</div>
+  </div>
+</div>
+
+</form> <!-- close selection form -->
+
+{% endspaceless%}
+{% endblock%}
+
+{% block javascript %}
+<script src="{% static 'js/bootbox.min.js' %}"></script>
+<script type="text/javascript" language="javascript" class="init">
+$(document).ready(function () {
+    var portTable = $('#table_list_ports').DataTable({
+        processing: true,
+        serverSide: true,
+        pageLength: 25,
+        orderCellsTop: true,  // Enable orderCellsTop
+        oLanguage: { sProcessing: "<img src='{% static 'img/loading.gif' %}'>" },
+        order: [[1, "asc"]],
+        ajax: {
+            url: "/api/v1/project/{{ projectid }}/ports/",
+            dataSrc: "results",
+            type: "GET",
+            dataType: "json"
+        },
+        columns: [
+            {
+                'data': 'id', 'sName': 'Operations', 'aTargets': [0],
+                'bSortable': false,
+                "mRender": function (data, type, full) {
+                    var delete_url = "{% url 'api:delete_port' projectid=projectid %}".replace('projectid', '{{ projectid }}');
+                    return '<div class="btn-group1">' +
+                        '<input type="checkbox" name="id[]" value="' + $('<div/>').text(data).html() + '">&nbsp;&nbsp;' +
+                        '</div>';
+                },
+                "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
+                    $("a", nTd).tooltip();
+                }
+            },
+            { 'data': 'domain_name', 'sName': 'Domain', 'aTargets': [1] },
+            { 'data': 'port', 'sName': 'Port', 'aTargets': [2] },
+            { 'data': 'banner', 'sName': 'Banner', 'aTargets': [3] },
+            { 'data': 'cpe', 'sName': 'CPE', 'aTargets': [4] },
+            { 'data': 'scan_date', 'sName': 'Last Scan', 'aTargets': [5] },
+        ]
+    });
+
+    // Apply the search
+    portTable.columns().every(function () {
+        var that = this;
+        $('input.column-search-input').on('keyup change', function () {
+            let columnIndex = $(this).parent().index();
+            portTable.column(columnIndex).search(this.value).draw();
+        });
+    });
+
+    // Handle click on "Select all" control
+    $('#select-all-items-dom').on('click', function () {
+        // Get all rows with search applied
+        var rows = portTable.rows({ 'search': 'applied' }).nodes();
+        // Check/uncheck checkboxes for all rows in the table
+        $('input[type="checkbox"]', rows).prop('checked', this.checked);
+        updateSelectedCount();
+    });
+
+    // Handle click on checkbox to set state of "Select all" control
+    $('#table_list_ports tbody').on('change', 'input[type="checkbox"]', function () {
+        // If checkbox is not checked
+        if (!this.checked) {
+            var el = $('#select-all-items-dom').get(0);
+            // If "Select all" control is checked and has 'indeterminate' property
+            if (el && el.checked && ('indeterminate' in el)) {
+                // Set visual state of "Select all" control
+                // as 'indeterminate'
+                el.indeterminate = true;
+            }
+        }
+        updateSelectedCount();
+    });
+
+    // Update the count of selected rows
+    function updateSelectedCount() {
+        var count = $('#table_list_ports tbody input[type="checkbox"]:checked').length;
+        $('#selected-count').text(count + " row(s) selected");
+    }
+
+    // Update the count of selected rows after the table is drawn
+    portTable.on('draw', function () {
+        updateSelectedCount();
+    });
+
+    // submit
+    $('#form-selected').on('submit', function (e) {
+        var form = this;
+        // Iterate over all checkboxes in the table
+        portTable.$('input[type="checkbox"]').each(function () {
+            // If checkbox doesn't exist in DOM
+            if (!$.contains(document, this)) {
+                // If checkbox is checked
+                if (this.checked) {
+                    // Create a hidden element 
+                    $(form).append(
+                        $('<input>')
+                            .attr('type', 'hidden')
+                            .attr('name', this.name)
+                            .val(this.value)
+                    );
+                }
+            }
+        });
+    }); // end form-selected function
+
+    // confirm button
+    $(document).on("click", ".confirm", function (e) {
+        e.preventDefault();
+        var form = $('#form-selected');
+        var buttonName = $(this).attr('name');
+        var buttonValue = $(this).val();
+        bootbox.confirm('Are you sure you want to delete the selected items?', function (confirmed) {
+            if (confirmed) {
+                $('<input>').attr({
+                    type: 'hidden',
+                    name: buttonName,
+                    value: buttonValue
+                }).appendTo(form);
+                form.submit();
+            }
+        });
+    });
+});
+</script>
+{% endblock%}

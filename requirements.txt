@@ -10,3 +10,4 @@ uritemplate
 pyyaml
 django-simple-menu
 tldextract
+python-nmap

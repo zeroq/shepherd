@@ -7,6 +7,7 @@ class Port(models.Model):
     """class to describe open ports
     """
     domain = models.ForeignKey(ActiveDomain, on_delete=models.CASCADE)
+    domain_name = models.CharField(max_length=2048, default='')
     scan_date = models.DateTimeField(null=True)
     first_seen = models.DateTimeField(auto_now_add=True)
     severity = models.CharField(max_length=50, default='info')

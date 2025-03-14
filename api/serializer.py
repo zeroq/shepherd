@@ -2,7 +2,7 @@
 from rest_framework import serializers
 
 from project.models import Project, Keyword, Suggestion, ActiveDomain
-from findings.models import Finding
+from findings.models import Finding, Port
 
 class ProjectSerializer(serializers.ModelSerializer):
     class Meta:
@@ -17,6 +17,11 @@ class KeywordSerializer(serializers.ModelSerializer):
 class SuggestionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Suggestion
+        fields = '__all__'
+
+class PortSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Port
         fields = '__all__'
 
 class ActiveDomainSerializer(serializers.ModelSerializer):

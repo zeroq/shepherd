@@ -15,5 +15,8 @@ urlpatterns = [
     #path('delete/<str:uuid>/ignored/', views.delete_suggestion_ignored, name='delete_suggestion_ignored'),
     path('recent/findings/', views.recent_findings, name='recent_findings'),
     path('all/unignore/', views.unignore_all_assets, name='unignore_all_assets'),
+
+    # Nmap stuffs
+    path('nmap/results/', views.nmap_results, name='nmap_results'),
 ]
 

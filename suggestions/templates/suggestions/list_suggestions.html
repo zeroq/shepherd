@@ -32,7 +32,7 @@
                 <div class="panel-body">
                     <button type="submit" name="btnmonitor" id="monitor-selected" class="btn btn-primary btn-xs">Monitor selected</button>&nbsp;
                     <button type="submit" name="btnignore" id="ignore-selected" class="btn btn-primary btn-xs">Ignore selected</button>&nbsp;
-                    <button type="submit" name="btndelete" id="delete-selected" class="btn btn-primary btn-xs">Delete selected</button>
+                    <button type="submit" name="btndelete" id="delete-selected" class="btn btn-primary btn-xs confirm">Delete selected</button>
                 </div>
             </div>
         </div>
@@ -88,9 +88,7 @@
                         <th>Created</th>
                         <th>Active</th>
                     </tr>
-                </thead>
-                <thead>
-                    <tr></tr>
+                    <tr>
                         <th></th>
                         <th><input type="text" placeholder="Search Value" class="column-search-input" data-column="1"></th>
                         <th><input type="text" placeholder="Search Source" class="column-search-input" data-column="2"></th>
@@ -104,15 +102,15 @@
         <div role="tabpanel" class="tab-pane fade {% if activetab == 'subdomain' %}in active{% endif %}" id="ssubdomain">
             <table id="table_list_subdomain_suggestions" class="table table-condensed table-striped table-bordered" style="font-size: 0.9em;" width="100%">
                 <thead>
-                    <th><input type="checkbox" name="select_all" value="1" id="select-all-items-sub">&nbsp; Operations</th>
-                    <th>Value</th>
-                    <th>Source</th>
-                    <th>Description</th>
-                    <th>Created</th>
-                    <th>Active</th>
-                </thead>
-                <thead>
-                    <tr></tr>
+                    <tr>
+                        <th><input type="checkbox" name="select_all" value="1" id="select-all-items-sub">&nbsp; Operations</th>
+                        <th>Value</th>
+                        <th>Source</th>
+                        <th>Description</th>
+                        <th>Created</th>
+                        <th>Active</th>
+                    </tr>
+                    <tr>
                         <th></th>
                         <th><input type="text" placeholder="Search Value" class="column-search-input" data-column="1"></th>
                         <th><input type="text" placeholder="Search Source" class="column-search-input" data-column="2"></th>
@@ -169,8 +167,6 @@ $(document).ready(function () {
         processing: true,
         serverSide: true,
         pageLength: 25,
-        select: true,
-        // searching: false,
         orderCellsTop: true,  // Enable orderCellsTop
         oLanguage: { sProcessing: "<img src='{% static 'img/loading.gif' %}'>", },
         order: [[1, "asc"]],
@@ -212,18 +208,8 @@ $(document).ready(function () {
         ]
     });
 
-    // Apply the search
-    domTable.columns().every(function () {
-        var that = this;
-
-        $('input').on('keyup change', function () {
-            let columnIndex = $(this).parent().index();
-            domTable.column(columnIndex).search(this.value).draw();
-        });
-    });
-
     var subTable = $('#table_list_subdomain_suggestions').DataTable({
-        processing: true, serverSide: true, pageLength: 25, select: true,
+        processing: true, serverSide: true, pageLength: 25,
         oLanguage: { sProcessing: "<img src='{% static 'img/loading.gif' %}'>", },
         order: [[ 4, "desc" ]],
         ajax: {
@@ -268,6 +254,27 @@ $(document).ready(function () {
             {'data': 'active', 'sName': 'Active', 'aTargets': [ 5 ]}
         ]
     });
+
+    // Apply the search
+    domTable.columns().every(function () {
+        var that = this;
+
+        $('input.column-search-input').on('keyup change', function () {
+            let columnIndex = $(this).parent().index();
+            domTable.column(columnIndex).search(this.value).draw();
+        });
+    });
+
+    // Apply the search
+    subTable.columns().every(function () {
+        var that = this;
+
+        $('input.column-search-input').on('keyup change', function () {
+            let columnIndex = $(this).parent().index();
+            subTable.column(columnIndex).search(this.value).draw();
+        });
+    });
+
     // checkbox stuff
     // Handle click on "Select all" control
     $('#select-all-items-dom').on('click', function(){
@@ -388,7 +395,7 @@ $(document).on("click", ".confirm", function(e) {
         e.preventDefault();
         var title = $(this).attr('data-display');
         var location = $(this).attr('data-href');
-        bootbox.confirm('Are you sure?<br/>(Ignore Entry: '+title+')', function(confirmed) {
+        bootbox.confirm('Are you sure?', function(confirmed) {
             if(confirmed)
             {
                 window.location.replace(location);

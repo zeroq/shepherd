@@ -19,6 +19,10 @@ urlpatterns = [
     # keyword APIs
     path('v1/keyword/add/', views.add_keyword, name='add_keyword'),
 
+    # ports APIs
+    path('v1/project/<str:projectid>/ports/', views.list_ports, name='list_ports'),
+    path('v1/project/<str:projectid>/ports/delete/', views.list_ports, name='delete_port'),
+
 ]
 
 urlpatterns = format_suffix_patterns(urlpatterns)
