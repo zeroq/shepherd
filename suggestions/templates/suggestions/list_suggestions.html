@@ -162,236 +162,119 @@
 {% block javascript %}
 <script src="{% static 'js/bootbox.min.js' %}"></script>
 <script type="text/javascript" language="javascript" class="init">
+
 $(document).ready(function () {
-    var domTable = $('#table_list_suggestions').DataTable({
-        processing: true,
-        serverSide: true,
-        pageLength: 25,
-        orderCellsTop: true,  // Enable orderCellsTop
-        oLanguage: { sProcessing: "<img src='{% static 'img/loading.gif' %}'>", },
-        order: [[1, "asc"]],
-        ajax: {
-            url: "/api/v1/project/{{ projectid }}/suggestions/visible/domain/",
-            dataSrc: "results",
-            type: "GET",
-            dataType: "json"
-        },
-        columns: [
-            {'data': 'uuid', 'sName': 'Operations', 'aTargets': [0],
-                'bSortable': false,
-                "mRender": function (data, type, full) {
-                    var monitor_url = "{% url 'suggestions:monitor_suggestion' uuid=0 %}".replace(0, full.uuid);
-                    var ignore_url = "{% url 'suggestions:ignore_suggestion' uuid=0 %}".replace(0, full.uuid);
-                    var delete_url = "{% url 'suggestions:delete_suggestion' uuid=0 %}".replace(0, full.uuid);
-                    return '<div class="btn-group1">' +
-                        '<input type="checkbox" name="id[]" value="' + $('<div/>').text(data).html() + '">&nbsp;&nbsp;' +
-                        '<a class="btn btn-xs" rel="tooltip" data-placement="right" data-original-title="Monitor Entry" data-href="#" href="' + monitor_url + '">' +
-                        '<span class="glyphicon glyphicon-eye-open" aria-hidden="true"></span>' +
-                        '</a> ' +
-                        '<a class="btn btn-xs confirm" rel="tooltip" data-placement="right" data-original-title="Ignore Entry" data-display="' + full.value + '" data-href="' + ignore_url + '" href="#">' +
-                        '<span class="glyphicon glyphicon-eye-close" aria-hidden="true"></span>' +
-                        '</a> ' +
-                        '<a class="btn btn-xs confirm" rel="tooltip" data-placement="right" data-original-title="Delete Entry" data-display="' + full.value + '" data-href="' + delete_url + '" href="#">' +
-                        '<span class="glyphicon glyphicon-trash" aria-hidden="true"></span>' +
-                        '</a> ' +
-                        '</div>';
-                },
-                "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
-                    $("a", nTd).tooltip();
-                }
-            },
-            {'data': 'value', 'sName': 'Value', 'aTargets': [1]},
-            {'data': 'source', 'sName': 'Source', 'aTargets': [2]},
-            {'data': 'description', 'sName': 'Description', 'aTargets': [3]},
-            {'data': 'creation_time', 'sName': 'Created', 'aTargets': [4]},
-            {'data': 'active', 'sName': 'Active', 'aTargets': [5]}
-        ]
-    });
-
-    var subTable = $('#table_list_subdomain_suggestions').DataTable({
-        processing: true, serverSide: true, pageLength: 25,
-        oLanguage: { sProcessing: "<img src='{% static 'img/loading.gif' %}'>", },
-        order: [[ 4, "desc" ]],
-        ajax: {
+    function initializeDataTable(tableId, ajaxUrl) {
+        return $(tableId).DataTable({
             processing: true,
-            url: "/api/v1/project/{{ projectid }}/suggestions/visible/subdomain/",
-            dataSrc: "results",
-            type: "GET",
-            dataType: "json"
-        },
-        columns: [
-            {'data': 'uuid', 'sName': 'Operations', 'aTargets': [ 0 ],
-                'bSortable': false,
-                "mRender": function (data, type, full) {
-                    var monitor_url = "{% url 'suggestions:monitor_suggestion' uuid=0 %}".replace(0, full.uuid);
-                    var ignore_url = "{% url 'suggestions:ignore_suggestion' uuid=0 %}".replace(0, full.uuid);
-                    var delete_url = "{% url 'suggestions:delete_suggestion' uuid=0 %}".replace(0, full.uuid);
-                    return '<div class="btn-group1">' +
-                        '<input type="checkbox" name="id[]" value="' + $('<div/>').text(data).html() + '">&nbsp;&nbsp;' +
-                        '<a class="btn btn-xs" rel="tooltip" data-placement="right" data-original-title="Monitor Entry" data-href="#" href="'+monitor_url+'">' +
-                        '<span class="glyphicon glyphicon-eye-open" aria-hidden="true"></span>' +
-                        '</a> ' +
-                        '<a class="btn btn-xs confirm" rel="tooltip" data-placement="right" data-original-title="Ignore Entry" data-display="'+full.value+'" data-href="'+ignore_url+'" href="#">' +
-                        '<span class="glyphicon glyphicon-eye-close" aria-hidden="true"></span>' +
-                        '</a> ' +
-                        '<a class="btn btn-xs confirm" rel="tooltip" data-placement="right" data-original-title="Delete Entry" data-display="'+full.value+'" data-href="'+delete_url+'" href="#">' +
-                        '<span class="glyphicon glyphicon-trash" aria-hidden="true"></span>' +
-                        '</a> ' +
-                        '</div>';
+            serverSide: true,
+            pageLength: 25,
+            orderCellsTop: true,
+            oLanguage: { sProcessing: "<img src='{% static 'img/loading.gif' %}'>", },
+            order: [[1, "asc"]],
+            ajax: {
+                url: ajaxUrl,
+                dataSrc: "results",
+                type: "GET",
+                dataType: "json"
+            },
+            columns: [
+                {'data': 'uuid', 'sName': 'Operations', 'aTargets': [0],
+                    'bSortable': false,
+                    "mRender": function (data, type, full) {
+                        var monitor_url = "{% url 'suggestions:monitor_suggestion' uuid=0 %}".replace(0, full.uuid);
+                        var ignore_url = "{% url 'suggestions:ignore_suggestion' uuid=0 %}".replace(0, full.uuid);
+                        var delete_url = "{% url 'suggestions:delete_suggestion' uuid=0 %}".replace(0, full.uuid);
+                        return '<div class="btn-group1">' +
+                            '<input type="checkbox" name="id[]" value="' + $('<div/>').text(data).html() + '">&nbsp;&nbsp;' +
+                            '<a class="btn btn-xs" rel="tooltip" data-placement="right" data-original-title="Monitor Entry" data-href="#" href="' + monitor_url + '">' +
+                            '<span class="glyphicon glyphicon-eye-open" aria-hidden="true"></span>' +
+                            '</a> ' +
+                            '<a class="btn btn-xs confirm" rel="tooltip" data-placement="right" data-original-title="Ignore Entry" data-display="' + full.value + '" data-href="' + ignore_url + '" href="#">' +
+                            '<span class="glyphicon glyphicon-eye-close" aria-hidden="true"></span>' +
+                            '</a> ' +
+                            '<a class="btn btn-xs confirm" rel="tooltip" data-placement="right" data-original-title="Delete Entry" data-display="' + full.value + '" data-href="' + delete_url + '" href="#">' +
+                            '<span class="glyphicon glyphicon-trash" aria-hidden="true"></span>' +
+                            '</a> ' +
+                            '</div>';
+                    },
+                    "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
+                        $("a", nTd).tooltip();
+                    }
                 },
-                "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
-                    $("a", nTd).tooltip();
+                {'data': 'value', 'sName': 'Value', 'aTargets': [1]},
+                {'data': 'source', 'sName': 'Source', 'aTargets': [2]},
+                {'data': 'description', 'sName': 'Description', 'aTargets': [3]},
+                {'data': 'creation_time', 'sName': 'Created', 'aTargets': [4]},
+                {'data': 'active', 'sName': 'Active', 'aTargets': [5]}
+            ]
+        });
+    }
+
+    var domTable = initializeDataTable('#table_list_suggestions', "/api/v1/project/{{ projectid }}/suggestions/visible/domain/");
+    var subTable = initializeDataTable('#table_list_subdomain_suggestions', "/api/v1/project/{{ projectid }}/suggestions/visible/subdomain/");
+
+    function applySearch(table) {
+        table.columns().every(function () {
+            var that = this;
+            $('input.column-search-input').on('keyup change', function () {
+                let columnIndex = $(this).parent().index();
+                table.column(columnIndex).search(this.value).draw();
+            });
+        });
+    }
+
+    applySearch(domTable);
+    applySearch(subTable);
+
+    function handleSelectAll(selectAllId, table) {
+        $(selectAllId).on('click', function(){
+            var rows = table.rows({ 'search': 'applied' }).nodes();
+            $('input[type="checkbox"]', rows).prop('checked', this.checked);
+        });
+
+        $(table.table().body()).on('change', 'input[type="checkbox"]', function(){
+            if(!this.checked){
+                var el = $(selectAllId).get(0);
+                if(el && el.checked && ('indeterminate' in el)){
+                    el.indeterminate = true;
                 }
-            },
-            {'data': 'value', 'sName': 'Value', 'aTargets': [ 1 ],
-                "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
-                    $("div", nTd).tooltip();
-                },
-            },
-            {'data': 'source', 'sName': 'Source', 'aTargets': [ 2 ]},
-            {'data': 'description', 'sName': 'Description', 'aTargets': [ 3 ]},
-            {'data': 'creation_time', 'sName': 'Created', 'aTargets': [ 4 ]},
-            {'data': 'active', 'sName': 'Active', 'aTargets': [ 5 ]}
-        ]
-    });
-
-    // Apply the search
-    domTable.columns().every(function () {
-        var that = this;
-
-        $('input.column-search-input').on('keyup change', function () {
-            let columnIndex = $(this).parent().index();
-            domTable.column(columnIndex).search(this.value).draw();
+            }
         });
-    });
+    }
 
-    // Apply the search
-    subTable.columns().every(function () {
-        var that = this;
+    handleSelectAll('#select-all-items-dom', domTable);
+    handleSelectAll('#select-all-items-sub', subTable);
 
-        $('input.column-search-input').on('keyup change', function () {
-            let columnIndex = $(this).parent().index();
-            subTable.column(columnIndex).search(this.value).draw();
-        });
-    });
-
-    // checkbox stuff
-    // Handle click on "Select all" control
-    $('#select-all-items-dom').on('click', function(){
-        // Get all rows with search applied
-        var rows = domTable.rows({ 'search': 'applied' }).nodes();
-        // Check/uncheck checkboxes for all rows in the table
-        $('input[type="checkbox"]', rows).prop('checked', this.checked);
-    });
-    // Handle click on "Select all" control
-    $('#select-all-items-sub').on('click', function(){
-        // Get all rows with search applied
-        var rows = subTable.rows({ 'search': 'applied' }).nodes();
-        // Check/uncheck checkboxes for all rows in the table
-        $('input[type="checkbox"]', rows).prop('checked', this.checked);
-    });
-    // Handle click on "Select all" control
-    $('#select-all-items-ip').on('click', function(){
-        // Get all rows with search applied
-        var rows = ipTable.rows({ 'search': 'applied' }).nodes();
-        // Check/uncheck checkboxes for all rows in the table
-        $('input[type="checkbox"]', rows).prop('checked', this.checked);
-    });
-    // Handle click on checkbox to set state of "Select all" control
-    $('#table_list_suggestions tbody').on('change', 'input[type="checkbox"]', function(){
-      // If checkbox is not checked
-      if(!this.checked){
-         var el = $('#select-all-items-dom').get(0);
-         // If "Select all" control is checked and has 'indeterminate' property
-         if(el && el.checked && ('indeterminate' in el)){
-            // Set visual state of "Select all" control
-            // as 'indeterminate'
-            el.indeterminate = true;
-         }
-      }
-    });
-    // Handle click on checkbox to set state of "Select all" control
-    $('#table_list_subdomain_suggestions tbody').on('change', 'input[type="checkbox"]', function(){
-      // If checkbox is not checked
-      if(!this.checked){
-         var el = $('#select-all-items-sub').get(0);
-         // If "Select all" control is checked and has 'indeterminate' property
-         if(el && el.checked && ('indeterminate' in el)){
-            // Set visual state of "Select all" control
-            // as 'indeterminate'
-            el.indeterminate = true;
-         }
-      }
-    });
-    // Handle click on checkbox to set state of "Select all" control
-    $('#table_list_ips_suggestions tbody').on('change', 'input[type="checkbox"]', function(){
-      // If checkbox is not checked
-      if(!this.checked){
-         var el = $('#select-all-items-ip').get(0);
-         // If "Select all" control is checked and has 'indeterminate' property
-         if(el && el.checked && ('indeterminate' in el)){
-            // Set visual state of "Select all" control
-            // as 'indeterminate'
-            el.indeterminate = true;
-         }
-      }
-    });
-    // submit
     $('#form-selected').on('submit', function(e){
-      var form = this;
-      // Iterate over all checkboxes in the table
-      domTable.$('input[type="checkbox"]').each(function(){
-         // If checkbox doesn't exist in DOM
-         if(!$.contains(document, this)){
-            // If checkbox is checked
-            if(this.checked){
-               // Create a hidden element 
-               $(form).append(
-                  $('<input>')
-                     .attr('type', 'hidden')
-                     .attr('name', this.name)
-                     .val(this.value)
-               );
-            }
-         } 
-      });
-      // Iterate over all checkboxes in the table subTable
-      subTable.$('input[type="checkbox"]').each(function(){
-         // If checkbox doesn't exist in DOM
-         if(!$.contains(document, this)){
-            // If checkbox is checked
-            if(this.checked){
-               // Create a hidden element 
-               $(form).append(
-                  $('<input>')
-                     .attr('type', 'hidden')
-                     .attr('name', this.name)
-                     .val(this.value)
-               );
-            }
-         } 
-      });
-      // Iterate over all checkboxes in the table subTable
-      ipTable.$('input[type="checkbox"]').each(function(){
-         // If checkbox doesn't exist in DOM
-         if(!$.contains(document, this)){
-            // If checkbox is checked
-            if(this.checked){
-               // Create a hidden element 
-               $(form).append(
-                  $('<input>')
-                     .attr('type', 'hidden')
-                     .attr('name', this.name)
-                     .val(this.value)
-               );
-            }
-         } 
-      });
-   }); // end form-selected function
+        var form = this;
+        domTable.$('input[type="checkbox"]').each(function(){
+            if(!$.contains(document, this)){
+                if(this.checked){
+                    $(form).append(
+                        $('<input>')
+                        .attr('type', 'hidden')
+                        .attr('name', this.name)
+                        .val(this.value)
+                    );
+                }
+            } 
+        });
+        subTable.$('input[type="checkbox"]').each(function(){
+            if(!$.contains(document, this)){
+                if(this.checked){
+                    $(form).append(
+                        $('<input>')
+                        .attr('type', 'hidden')
+                        .attr('name', this.name)
+                        .val(this.value)
+                    );
+                }
+            } 
+        });
+    });
 
-});
-// confirm button
-$(document).on("click", ".confirm", function(e) {
+    $(document).on("click", ".confirm", function(e) {
         e.preventDefault();
         var title = $(this).attr('data-display');
         var location = $(this).attr('data-href');
@@ -401,7 +284,7 @@ $(document).on("click", ".confirm", function(e) {
                 window.location.replace(location);
             }
         });
+    });
 });
-
 </script>
-{% endblock%}
+{% endblock %}

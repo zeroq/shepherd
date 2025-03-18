@@ -13,10 +13,13 @@ urlpatterns = [
     path('asset/<str:uuid>/finding/<str:findingid>/delete/<str:reported>/', views.delete_finding, name='delete_finding'),
     path('send/<str:uuid>/finding/<str:findingid>/nucleus/', views.send_nucleus, name='send_nucleus'),
     #path('delete/<str:uuid>/ignored/', views.delete_suggestion_ignored, name='delete_suggestion_ignored'),
-    path('recent/findings/', views.recent_findings, name='recent_findings'),
     path('all/unignore/', views.unignore_all_assets, name='unignore_all_assets'),
 
     # Nmap stuffs
     path('nmap/results/', views.nmap_results, name='nmap_results'),
+
+    # Scanner stuffs
+    path('scanners/results', views.all_findings, name='all_findings'),
+    # path('view/finding', views.all_findings, name='view_finding'),
 ]
 

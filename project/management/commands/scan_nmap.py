@@ -1,8 +1,4 @@
-"""check open ports """
-
-
 from multiprocessing.pool import ThreadPool
-import json
 import nmap
 import csv
 from io import StringIO

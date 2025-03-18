@@ -46,7 +46,7 @@
     </div>
     <div class="panel-body">
 
-    <table id="table_list_suggestions" class="table table-condensed table-striped table-bordered" style="font-size: 0.9em;">
+    <table id="table_list_ignored_suggestions" class="table table-condensed table-striped table-bordered" style="font-size: 0.9em;">
         <thead>
         <th><input type="checkbox" name="select_all" value="1" id="select-all-items">&nbsp; Operations</th>
         <th>Value</th>
@@ -67,7 +67,7 @@
 <script src="{% static 'js/bootbox.min.js' %}"></script>
 <script type="text/javascript" language="javascript" class="init">
 $(document).ready( function () {
-    var pTable = $('#table_list_suggestions').DataTable({
+    var pTable = $('#table_list_ignored_suggestions').DataTable({
         processing: true, serverSide: true, pageLength: 25, select: true,
         oLanguage: { sProcessing: "<img src='{% static 'img/loading.gif' %}'>", },
         order: [[ 4, "desc" ]],

@@ -12,7 +12,6 @@ urlpatterns = [
     path('v1/project/<str:projectid>/keywords/<str:selection>/', views.list_keywords, name='list_keywords'),
     path('v1/project/<str:projectid>/suggestions/<str:selection>/<str:vtype>/', views.list_suggestions, name='list_suggestions'),
     path('v1/project/<str:projectid>/assets/<str:selection>/', views.list_assets, name='list_assets'),
-    path('v1/project/<str:projectid>/recent/<str:severity>/', views.list_recent_findings, name='list_recent_findings'),
     #path('v1/project/<str:projectid>/modify/', views.modify_project, name='modify_project'),
     #path('v1/project/<str:projectid>/delete/', views.delete_project, name='delete_project'),
 
@@ -23,6 +22,9 @@ urlpatterns = [
     path('v1/project/<str:projectid>/ports/', views.list_ports, name='list_ports'),
     path('v1/project/<str:projectid>/ports/delete/', views.list_ports, name='delete_port'),
 
+    # Findings APIs
+    path('v1/project/<str:projectid>/findings/all/', views.list_all_findings, name='list_all_findings'),
+    path('v1/project/<str:projectid>/recent/<str:severity>/', views.list_recent_findings, name='list_recent_findings'),
 ]
 
 urlpatterns = format_suffix_patterns(urlpatterns)

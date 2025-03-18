@@ -79,18 +79,16 @@
             <th>Scan Date</th>
             <th>Vulnerable at</th>
             <th>Description</th>
-            <th>Details</th>
             <th>Ops</th>
         </thead>
         <tbody>
             {% for entry in critical_findings %}
             <tr>
-                <td>{{ entry.vulnname }}</td>
+                <td>{{ entry.name }}</td>
                 <td>{{ entry.severity }}</td>
                 <td>{{ entry.scan_date }}</td>
                 <td>{{ entry.vulnerableAt }}</td>
                 <td>{{ entry.description }}</td>
-                <td>{{ entry.raw.vulnerabilityDetail }}</td>
                 <td>
                     <button type="button" class="btn btn-primary btn-xs" onclick="location.href='{% url 'findings:send_nucleus' uuid=asset.uuid findingid=entry.id %}'">To Nucleus</button>&nbsp;<br/>
                     <a class="btn btn-xs" rel="tooltip" data-placement="right" data-original-title="Delete Entry" onclick="location.href='{% url 'findings:delete_finding' uuid=asset.uuid findingid=entry.id reported='false' %}'">
@@ -111,18 +109,16 @@
             <th>Scan Date</th>
             <th>Vulnerable at</th>
             <th>Description</th>
-            <th>Details</th>
             <th>Ops</th>
         </thead>
         <tbody>
             {% for entry in high_findings %}
             <tr>
-                <td>{{ entry.vulnname }}</td>
+                <td>{{ entry.name }}</td>
                 <td>{{ entry.severity }}</td>
                 <td>{{ entry.scan_date }}</td>
                 <td>{{ entry.vulnerableAt }}</td>
                 <td>{{ entry.description }}</td>
-                <td>{{ entry.raw.vulnerabilityDetail }}</td>
                 <td>
                     <button type="button" class="btn btn-primary btn-xs" onclick="location.href='{% url 'findings:send_nucleus' uuid=asset.uuid findingid=entry.id %}'">To Nucleus</button>&nbsp;<br/>
                     <a class="btn btn-xs" rel="tooltip" data-placement="right" data-original-title="Delete Entry" onclick="location.href='{% url 'findings:delete_finding' uuid=asset.uuid findingid=entry.id reported='false' %}'">
@@ -143,18 +139,16 @@
             <th>Scan Date</th>
             <th>Vulnerable at</th>
             <th>Description</th>
-            <th>Details</th>
             <th>Ops</th>
         </thead>
         <tbody>
             {% for entry in medium_findings %}
             <tr>
-                <td>{{ entry.vulnname }}</td>
+                <td>{{ entry.name }}</td>
                 <td>{{ entry.severity }}</td>
                 <td>{{ entry.scan_date }}</td>
                 <td>{{ entry.vulnerableAt }}</td>
                 <td>{{ entry.description }}</td>
-                <td>{{ entry.raw.vulnerabilityDetail }}</td>
                 <td>
                     <button type="button" class="btn btn-primary btn-xs" onclick="location.href='{% url 'findings:send_nucleus' uuid=asset.uuid findingid=entry.id %}'">To Nucleus</button>&nbsp;<br/>
                     <a class="btn btn-xs" rel="tooltip" data-placement="right" data-original-title="Delete Entry" onclick="location.href='{% url 'findings:delete_finding' uuid=asset.uuid findingid=entry.id reported='false' %}'">
@@ -175,18 +169,16 @@
             <th>Scan Date</th>
             <th>Vulnerable at</th>
             <th>Description</th>
-            <th>Details</th>
             <th>Ops</th>
         </thead>
         <tbody>
             {% for entry in low_findings %}
             <tr>
-                <td>{{ entry.vulnname }}</td>
+                <td>{{ entry.name }}</td>
                 <td>{{ entry.severity }}</td>
                 <td>{{ entry.scan_date }}</td>
                 <td>{{ entry.vulnerableAt }}</td>
                 <td>{{ entry.description }}</td>
-                <td>{{ entry.raw.vulnerabilityDetail }}</td>
                 <td>
                     <button type="button" class="btn btn-primary btn-xs" onclick="location.href='{% url 'findings:send_nucleus' uuid=asset.uuid findingid=entry.id %}'">To Nucleus</button>&nbsp;<br/>
                     <a class="btn btn-xs" rel="tooltip" data-placement="right" data-original-title="Delete Entry" onclick="location.href='{% url 'findings:delete_finding' uuid=asset.uuid findingid=entry.id reported='false' %}'">
@@ -208,19 +200,17 @@
             <th>Scan Date</th>
             <th>Vulnerable at</th>
             <th>Description</th>
-            <th>Details</th>
             <th>Ops</th>
         </thead>
         <tbody>
             {% for entry in info_findings %}
             <tr>
                 <td>{{ entry.id }}</td>
-                <td>{{ entry.vulnname }}</td>
+                <td>{{ entry.name }}</td>
                 <td>{{ entry.severity }}</td>
                 <td>{{ entry.scan_date }}</td>
                 <td>{{ entry.vulnerableAt }}</td>
                 <td>{{ entry.description }}</td>
-                <td>{{ entry.raw.vulnerabilityDetail }}</td>
                 <td>
                     <button type="button" class="btn btn-primary btn-xs" onclick="location.href='{% url 'findings:send_nucleus' uuid=asset.uuid findingid=entry.id %}'">To Nucleus</button>&nbsp;<br/>
                     <a class="btn btn-xs" rel="tooltip" data-placement="right" data-original-title="Delete Entry" onclick="location.href='{% url 'findings:delete_finding' uuid=asset.uuid findingid=entry.id reported='false'%}'">

@@ -76,7 +76,7 @@ def suggestions(request):
                         m_obj.link = s_obj.link
                         m_obj.save()
                     # hide from suggestions
-                    s_obj.is_monitored = True
+                    s_obj.monitor = True
                     s_obj.save()
                     messages.info(request, 'Added %s to the monitoring' % s_obj.value)
                 else:
@@ -86,8 +86,8 @@ def suggestions(request):
         return redirect(reverse('suggestions:suggestions'))
     else:
         prj = Project.objects.get(id=request.session['current_project']['prj_id'])
-        context['domain_count'] = prj.suggestion_set.filter(finding_type='domain', finding_subtype='domain', ignore=False, is_monitored=False).count()
-        context['subdomain_count'] = prj.suggestion_set.filter(finding_type='domain', finding_subtype='subdomain', ignore=False, is_monitored=False).count()
+        context['domain_count'] = prj.suggestion_set.filter(finding_type='domain', finding_subtype='domain', ignore=False, monitor=False).count()
+        context['subdomain_count'] = prj.suggestion_set.filter(finding_type='domain', finding_subtype='subdomain', ignore=False, monitor=False).count()
         context['ip_count'] = 0 # TODO: fix this
         context['activetab'] = 'domain'
     return render(request, 'suggestions/list_suggestions.html', context)
@@ -103,12 +103,15 @@ def manual_add_suggestion(request):
             record.uuid = imported_uuid.uuid5(imported_uuid.NAMESPACE_DNS, "%s" % record.value)
             record.creation_time = timezone.now()
             record.save()
+            content = {
+                #TODO
+            }
             messages.info(request, "Suggestion successfully added")
         else:
-            messages.error(request, "Suggestion failed: %s", form.errors.as_json(escape_html=False))
+            # Print form errors to the console for debugging
+            print(form.errors)
+            messages.error(request, "Suggestion failed: %s" % form.errors.as_json(escape_html=False))
     return redirect(reverse('suggestions:suggestions'))
-    #context = {'projectid': request.session['current_project']['prj_id'], 'suggestionform': AddSuggestionForm()}
-    #return render(request, 'suggestions/list_suggestions.html', context)
 
 
 @login_required
@@ -195,7 +198,7 @@ def monitor_suggestion(request, uuid):
             m_obj.link = s_obj.link
             m_obj.save()
         # hide from suggestions
-        s_obj.is_monitored = True
+        s_obj.monitor = True
         s_obj.save()
         messages.info(request, 'Added %s to the monitoring' % s_obj.value)
         return redirect(reverse('suggestions:suggestions'))

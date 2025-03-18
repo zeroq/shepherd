@@ -44,7 +44,7 @@ class Suggestion(models.Model):
     cert_valid = models.BooleanField(default=True)
     cert_wildcard = models.BooleanField(default=False)
     ignore = models.BooleanField(default=False) # ignore these findings in the future (set to invisible and ignore if it shows up again)
-    is_monitored = models.BooleanField(default=False) # ignore these findings as they are already on the monitoring list
+    monitor = models.BooleanField(default=False) # ignore these findings as they are already on the monitoring list
     raw = models.JSONField(null=True, default=None)
     
     def __str__(self):

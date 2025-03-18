@@ -15,28 +15,8 @@ from project.models import Project, Suggestion, ActiveDomain
 from findings.models import Finding, Port
 from findings.utils import asset_get_or_create, asset_finding_get_or_create
 
-# Create your views here.
 
-@login_required
-def recent_findings(request):
-    context = {'projectid': request.session['current_project']['prj_id']}
-    try:
-        prj_obj = Project.objects.get(id=context['projectid'])
-    except Exception as error:
-        messages.error(request, 'Unknown Project: %s' % error)
-        return redirect(reverse('projects:projects'))
-    # count severity findings
-    five_days = datetime.now() - timedelta(days=settings.RECENT_DAYS) # X days ago
-    recent_active_domains = prj_obj.activedomain_set.all().filter(monitor=True, lastscan_time__gte=make_aware(five_days))
-    context['num_info'] = Finding.objects.filter(last_seen__gte=make_aware(five_days), domain__in=recent_active_domains, severity='info').count()
-    context['num_low'] = Finding.objects.filter(last_seen__gte=make_aware(five_days), domain__in=recent_active_domains, severity='low').count()
-    context['num_medium'] = Finding.objects.filter(last_seen__gte=make_aware(five_days), domain__in=recent_active_domains, severity='medium').count()
-    context['num_high'] = Finding.objects.filter(last_seen__gte=make_aware(five_days), domain__in=recent_active_domains, severity='high').count()
-    context['num_critical'] = Finding.objects.filter(last_seen__gte=make_aware(five_days), domain__in=recent_active_domains, severity='critical').count()
-    context['past_days'] = settings.RECENT_DAYS
-    context['activetab'] = 'critical'
-    return render(request, 'findings/list_recent_findings.html', context)
-
+### Assets stuffs
 @login_required
 def assets(request):
     context = {'projectid': request.session['current_project']['prj_id']}
@@ -67,7 +47,7 @@ def assets(request):
                     s_obj = Suggestion.objects.get(uuid=item)
                     a_obj = ActiveDomain.objects.get(uuid=item)
                     # disable monitoring
-                    s_obj.is_monitored = False
+                    s_obj.monitor = False
                     s_obj.save()
                     # delete active entry
                     a_obj.delete()
@@ -103,7 +83,7 @@ def ignored_assets(request):
                     s_obj = Suggestion.objects.get(uuid=uuid)
                     a_obj = ActiveDomain.objects.get(uuid=uuid)
                     # disable monitoring
-                    s_obj.is_monitored = False
+                    s_obj.monitor = False
                     s_obj.save()
                     # delete active entry
                     a_obj.delete()
@@ -138,7 +118,7 @@ def move_asset(request, uuid):
         messages.error(request, 'Unknown: %s' % error)
         return redirect(reverse('findings:assets'))
     # disable monitoring
-    s_obj.is_monitored = False
+    s_obj.monitor = False
     s_obj.save()
     # delete active entry
     a_obj.delete()
@@ -168,7 +148,7 @@ def delete_asset(request, uuid):
         messages.error(request, 'Unknown: %s' % error)
         return redirect(reverse('findings:assets'))
     # disable monitoring
-    s_obj.is_monitored = False
+    s_obj.monitor = False
     s_obj.save()
     # delete active entry
     a_obj.delete()
@@ -243,24 +223,9 @@ def view_asset_reported(request, uuid):
         'low_findings': a_obj.finding_set.filter(severity='low', reported=True)
     }
     return render(request, 'findings/view_asset_reported.html', context)
-
-@login_required
-def delete_finding(request, uuid, findingid, reported):
-    """delete a finding
-    """
-    try:
-        a_obj = ActiveDomain.objects.get(uuid=uuid)
-    except ActiveDomain.DoesNotExist:
-        messages.error(request, 'Unknown Asset: %s' % uuid)
-        return redirect(reverse('findings:assets'))
-    a_obj.finding_set.filter(id=findingid).delete() 
-    messages.info(request, 'finding deleted!')
-    if reported == 'true':
-        return redirect(reverse('findings:view_asset_reported', args=(uuid,)))
-    return redirect(reverse('findings:view_asset', args=(uuid,)))
     
 
-
+### Nucleus stuffs
 @login_required
 def send_nucleus(request, uuid, findingid):
     """ send the details of the finding to Nucleus
@@ -288,8 +253,8 @@ def send_nucleus(request, uuid, findingid):
     f_obj.save()
     return redirect(reverse('findings:view_asset', args=(uuid,)))
 
-### Nmap stuffs
 
+### Nmap stuffs
 @login_required
 def nmap_results(request):
     context = {'projectid': request.session['current_project']['prj_id']}
@@ -327,3 +292,48 @@ def nmap_results(request):
             messages.error(request, 'Unknown action received!')
         print(request.POST)
     return render(request, 'findings/list_nmap_results.html', context)
+
+### Finding scanners stuffs
+@login_required
+def recent_findings(request):
+    context = {'projectid': request.session['current_project']['prj_id']}
+    try:
+        prj_obj = Project.objects.get(id=context['projectid'])
+    except Exception as error:
+        messages.error(request, 'Unknown Project: %s' % error)
+        return redirect(reverse('projects:projects'))
+    # count severity findings
+    five_days = datetime.now() - timedelta(days=settings.RECENT_DAYS) # X days ago
+    recent_active_domains = prj_obj.activedomain_set.all().filter(monitor=True, lastscan_time__gte=make_aware(five_days))
+    context['num_info'] = Finding.objects.filter(last_seen__gte=make_aware(five_days), domain__in=recent_active_domains, severity='info').count()
+    context['num_low'] = Finding.objects.filter(last_seen__gte=make_aware(five_days), domain__in=recent_active_domains, severity='low').count()
+    context['num_medium'] = Finding.objects.filter(last_seen__gte=make_aware(five_days), domain__in=recent_active_domains, severity='medium').count()
+    context['num_high'] = Finding.objects.filter(last_seen__gte=make_aware(five_days), domain__in=recent_active_domains, severity='high').count()
+    context['num_critical'] = Finding.objects.filter(last_seen__gte=make_aware(five_days), domain__in=recent_active_domains, severity='critical').count()
+    context['past_days'] = settings.RECENT_DAYS
+    context['activetab'] = 'critical'
+    return render(request, 'findings/list_recent_findings.html', context)
+
+@login_required
+def all_findings(request):
+    context = {'projectid': request.session['current_project']['prj_id']}
+    # try:
+    #     prj_obj = Project.objects.get(id=context['projectid'])
+    # except Exception as error:
+    #     messages.error(request, 'Unknown Project: %s' % error)
+    return render(request, 'findings/list_findings.html', context)
+
+@login_required
+def delete_finding(request, uuid, findingid, reported):
+    """delete a finding
+    """
+    try:
+        a_obj = ActiveDomain.objects.get(uuid=uuid)
+    except ActiveDomain.DoesNotExist:
+        messages.error(request, 'Unknown Asset: %s' % uuid)
+        return redirect(reverse('findings:assets'))
+    a_obj.finding_set.filter(id=findingid).delete() 
+    messages.info(request, 'finding deleted!')
+    if reported == 'true':
+        return redirect(reverse('findings:view_asset_reported', args=(uuid,)))
+    return redirect(reverse('findings:view_asset', args=(uuid,)))

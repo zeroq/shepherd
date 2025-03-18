@@ -98,9 +98,9 @@ def list_suggestions(request, projectid, selection, vtype, format=None):
 
     ### create queryset
     if selection in ['ignored']:
-        queryset = prj.suggestion_set.filter(ignore=True, is_monitored=False)
+        queryset = prj.suggestion_set.filter(ignore=True, monitor=False)
     else:
-        queryset = prj.suggestion_set.filter(ignore=False, is_monitored=False)  # Do not display ignored suggestions
+        queryset = prj.suggestion_set.filter(ignore=False, monitor=False)  # Do not display ignored suggestions
 
     if vtype in ['domain', 'subdomain', 'ipaddress']:
         queryset = queryset.filter(finding_subtype=vtype)
@@ -200,51 +200,6 @@ def list_assets(request, projectid, selection, format=None):
     kwrds = paginator.paginate_queryset(queryset, request)
     serializer = ActiveDomainSerializer(instance=kwrds, many=True)
     return paginator.get_paginated_response(serializer.data)
-
-@api_view(['GET'])
-@authentication_classes((SessionAuthentication, ))
-@permission_classes((IsAuthenticated,))
-def list_recent_findings(request, projectid, severity, format=None):
-    paginator = CustomPaginator()
-    if severity not in ['info', 'low', 'medium', 'high', 'critical']:
-        print("ERROR: wrong severity: %s" % severity)
-        severity = 'info'
-    ### check if project exists
-    try:
-        prj = Project.objects.get(id=projectid)
-    except Project.DoesNotExist:
-        return JsonResponse({"status": True, "code": 200, "next": None, "previous": None, "count": 0, "iTotalRecords": 0, "iTotalDisplayRecords": 0, "results": []})
-    ### get search parameters
-    if request.query_params:
-        if 'search[value]' in request.query_params:
-            search_value = request.query_params['search[value]']
-        else:
-            search_value = None
-    else:
-        search_value = None
-    ### create queryset
-    five_days = datetime.now() - timedelta(days=settings.RECENT_DAYS) # X days ago
-    recent_active_domains = prj.activedomain_set.all().filter(monitor=True, lastscan_time__gte=make_aware(five_days))
-    queryset = Finding.objects.filter(last_seen__gte=make_aware(five_days), domain__in=recent_active_domains, severity=severity)
-    ### filter by search value
-    if search_value and len(search_value)>1:
-        queryset = queryset.filter(
-            Q(vulnname__icontains=search_value)|
-            Q(description__icontains=search_value)
-        )
-    ### get variables
-    order_by_column, order_direction = get_ordering_vars(request.query_params,
-                                                         default_column='last_seen',
-                                                         default_direction='-')
-    ### order queryset
-    if order_by_column:
-        queryset = queryset.order_by('%s%s' % (order_direction, order_by_column))
-    kwrds = paginator.paginate_queryset(queryset, request)
-    serializer = FindingSerializer(instance=kwrds, many=True)
-    return paginator.get_paginated_response(serializer.data)
-
-
-
 
 
 ##### END ASSETS ###########
@@ -401,3 +356,135 @@ def list_ports(request, projectid, format=None):
     serializer = PortSerializer(instance=ports, many=True)
 
     return paginator.get_paginated_response(serializer.data)
+
+##### END PORTS ###############
+
+
+##### FINDINGS ###############
+
+@api_view(['GET'])
+@authentication_classes((SessionAuthentication, ))
+@permission_classes((IsAuthenticated,))
+def list_recent_findings(request, projectid, severity, format=None):
+    paginator = CustomPaginator()
+    if severity not in ['info', 'low', 'medium', 'high', 'critical']:
+        print("ERROR: wrong severity: %s" % severity)
+        severity = 'info'
+    ### check if project exists
+    try:
+        prj = Project.objects.get(id=projectid)
+    except Project.DoesNotExist:
+        return JsonResponse({"status": True, "code": 200, "next": None, "previous": None, "count": 0, "iTotalRecords": 0, "iTotalDisplayRecords": 0, "results": []})
+    ### get search parameters
+    if request.query_params:
+        if 'search[value]' in request.query_params:
+            search_value = request.query_params['search[value]']
+        else:
+            search_value = None
+    else:
+        search_value = None
+    ### create queryset
+    five_days = datetime.now() - timedelta(days=settings.RECENT_DAYS) # X days ago
+    recent_active_domains = prj.activedomain_set.all().filter(monitor=True, lastscan_time__gte=make_aware(five_days))
+    queryset = Finding.objects.filter(last_seen__gte=make_aware(five_days), domain__in=recent_active_domains, severity=severity)
+    ### filter by search value
+    if search_value and len(search_value)>1:
+        queryset = queryset.filter(
+            Q(vulnname__icontains=search_value)|
+            Q(description__icontains=search_value)
+        )
+    ### get variables
+    order_by_column, order_direction = get_ordering_vars(request.query_params,
+                                                         default_column='last_seen',
+                                                         default_direction='-')
+    ### order queryset
+    if order_by_column:
+        queryset = queryset.order_by('%s%s' % (order_direction, order_by_column))
+    kwrds = paginator.paginate_queryset(queryset, request)
+    serializer = FindingSerializer(instance=kwrds, many=True)
+    return paginator.get_paginated_response(serializer.data)
+
+
+@api_view(['GET'])
+@authentication_classes((SessionAuthentication, ))
+@permission_classes((IsAuthenticated,))
+def list_all_findings(request, projectid, format=None):
+    paginator = CustomPaginator()
+
+    ### check if project exists
+    try:
+        prj = Project.objects.get(id=projectid)
+    except Project.DoesNotExist:
+        return JsonResponse({"status": True, "code": 200, "next": None, "previous": None, "count": 0, "iTotalRecords": 0, "iTotalDisplayRecords": 0, "results": []})
+
+    ### create queryset
+    active_domains = prj.activedomain_set.all().filter(monitor=True)
+    queryset = Finding.objects.filter(domain__in=active_domains)
+
+    # Get search parameters
+    search_value = request.query_params.get('search[value]', None)
+    if search_value and len(search_value) > 1:
+        queryset = queryset.filter(
+            Q(name__icontains=search_value)|
+            Q(description__icontains=search_value)
+        )
+
+    search_domain_name = request.query_params.get('columns[1][search][value]', None)
+    search_name = request.query_params.get('columns[2][search][value]', None)
+    search_type = request.query_params.get('columns[3][search][value]', None)
+    search_description = request.query_params.get('columns[4][search][value]', None)
+    search_cve = request.query_params.get('columns[5][search][value]', None)
+    search_severity = request.query_params.get('columns[6][search][value]', None)
+    search_scan_date = request.query_params.get('columns[7][search][value]', None)
+    # print(f"Search: {search_domain_name}, {search_port}, {search_banner}, {search_cpe}, {search_last_scan}")  # Debugging statement
+
+    ### filter by search value
+    if search_domain_name and len(search_domain_name) > 1:
+        queryset = queryset.filter(
+            Q(domain_name__icontains=search_domain_name)
+        )
+
+    if search_name and len(search_name) > 1:
+        queryset = queryset.filter(
+            Q(name__icontains=search_name)
+        )
+
+    if search_type and len(search_type) > 1:
+        queryset = queryset.filter(
+            Q(type__icontains=search_type)
+        )
+
+    if search_description and len(search_description) > 1:
+        queryset = queryset.filter(
+            Q(description__icontains=search_description)
+        )
+
+    if search_cve and len(search_cve) > 1:
+        queryset = queryset.filter(
+            Q(cve__icontains=search_cve)
+        )
+
+    if search_severity and len(search_severity) > 1:
+        queryset = queryset.filter(
+            Q(severity__icontains=search_severity)
+        )
+
+    if search_scan_date and len(search_scan_date) > 1:
+        queryset = queryset.filter(
+            Q(scan_date__icontains=search_scan_date)
+        )
+
+    ### get variables
+    order_by_column, order_direction = get_ordering_vars(request.query_params,
+                                                         default_column='last_seen',
+                                                         default_direction='-')
+    
+    ### order queryset
+    if order_by_column:
+        queryset = queryset.order_by('%s%s' % (order_direction, order_by_column))
+    kwrds = paginator.paginate_queryset(queryset, request)
+    serializer = FindingSerializer(instance=kwrds, many=True)
+    return paginator.get_paginated_response(serializer.data)
+
+
+##### END FINDINGS ###########
