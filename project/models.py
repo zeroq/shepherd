@@ -30,10 +30,10 @@ class Keyword(models.Model):
 class Suggestion(models.Model):
     """Potentially fitting domains for project
     """
-    related_keyword = models.ForeignKey("Keyword", on_delete=models.CASCADE)
+    related_keyword = models.ForeignKey("Keyword", on_delete=models.CASCADE, null=True, blank=True)
     related_project = models.ForeignKey("Project", on_delete=models.CASCADE)  # relation to the project
     finding_type = models.CharField(max_length=100, default='domain')  # can be: domain, ip, url, certificate
-    finding_subtype = models.CharField(max_length=100, default='subdomain')  # can be: domain, subdomain
+    finding_subtype = models.CharField(max_length=100, default='domain')  # can be: domain, subdomain
     value = models.CharField(max_length=2048, default='')
     uuid = models.CharField(max_length=36, primary_key=True)
     source = models.CharField(max_length=200, default='')  # can be cert.sh for example
@@ -45,6 +45,10 @@ class Suggestion(models.Model):
     cert_wildcard = models.BooleanField(default=False)
     ignore = models.BooleanField(default=False) # ignore these findings in the future (set to invisible and ignore if it shows up again)
     monitor = models.BooleanField(default=False) # ignore these findings as they are already on the monitoring list
+
+    # Redirect fields
+    redirect_to = models.ForeignKey("Suggestion", on_delete=models.SET_NULL, null=True, blank=True)
+
     raw = models.JSONField(null=True, default=None)
     
     def __str__(self):
@@ -53,7 +57,7 @@ class Suggestion(models.Model):
 class ActiveDomain(models.Model):
     """Active Domains for monitoring
     """
-    related_keyword = models.ForeignKey("Keyword", on_delete=models.CASCADE)
+    related_keyword = models.ForeignKey("Keyword", on_delete=models.CASCADE, null=True, blank=True)
     related_project = models.ForeignKey("Project", on_delete=models.CASCADE)  # relation to the project
     finding_subtype = models.CharField(max_length=100, default='domain')  # can be: domain, subdomain
     value = models.CharField(max_length=2048, default='')

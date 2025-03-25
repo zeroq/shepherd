@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 
 from django.shortcuts import render
 from django.http import JsonResponse, HttpResponse, HttpResponseRedirect
-from django.db.models import Q, Prefetch, Count
+from django.db.models import Q, Prefetch, Count, F
 from django.conf import settings
 from django.utils.timezone import make_aware
 
@@ -92,8 +92,9 @@ def list_suggestions(request, projectid, selection, vtype, format=None):
     search_value = request.query_params.get('columns[1][search][value]', None)
     search_source = request.query_params.get('columns[2][search][value]', None)
     search_description = request.query_params.get('columns[3][search][value]', None)
-    search_creation_date = request.query_params.get('columns[4][search][value]', None)
-    search_active = request.query_params.get('columns[5][search][value]', None)
+    search_redirect_to = request.query_params.get('columns[4][search][value]', None)
+    search_creation_date = request.query_params.get('columns[5][search][value]', None)
+    search_active = request.query_params.get('columns[6][search][value]', None)
     print(f"Search: {search_value}, {search_source}, {search_description}, {search_creation_date}, {search_active}")  # Debugging statement
 
     ### create queryset
@@ -121,6 +122,14 @@ def list_suggestions(request, projectid, selection, vtype, format=None):
             Q(description__icontains=search_description)
         )
 
+    ### Annotate the queryset with redirect_to.value
+    queryset = queryset.annotate(redirect_to_value=F('redirect_to__value'))
+
+    if search_redirect_to and len(search_redirect_to) > 1:
+        queryset = queryset.filter(
+            Q(redirect_to_value__icontains=search_redirect_to)
+        )
+
     if search_creation_date and len(search_creation_date) > 1:
         queryset = queryset.filter(
             Q(creation_time__icontains=search_creation_date)
@@ -142,9 +151,21 @@ def list_suggestions(request, projectid, selection, vtype, format=None):
     if order_by_column:
         queryset = queryset.order_by(f'{order_direction}{order_by_column}')
 
-    kwrds = paginator.paginate_queryset(queryset, request)
-    serializer = SuggestionSerializer(instance=kwrds, many=True)
-    return paginator.get_paginated_response(serializer.data)
+    suggestions = paginator.paginate_queryset(queryset, request)
+
+    # for suggestion in suggestions:
+    #     suggestion.redirect_to_value = (
+    #         suggestion.redirect_to.value if suggestion.redirect_to else None
+    #     )
+
+    serializer = SuggestionSerializer(instance=suggestions, many=True)
+
+    # Modify the serialized data to include the redirect_to_value
+    serialized_data = serializer.data
+    for item, suggestion in zip(serialized_data, suggestions):
+        item['redirect_to'] = suggestion.redirect_to_value
+
+    return paginator.get_paginated_response(serialized_data)
 
 
 ##### END SUGGESTIONS ###########
@@ -152,7 +173,7 @@ def list_suggestions(request, projectid, selection, vtype, format=None):
 
 ##### ASSETS ###############
 @api_view(['GET'])
-@authentication_classes((SessionAuthentication, ))
+@authentication_classes((SessionAuthentication,))
 @permission_classes((IsAuthenticated,))
 def list_assets(request, projectid, selection, format=None):
     paginator = CustomPaginator()
@@ -160,45 +181,90 @@ def list_assets(request, projectid, selection, format=None):
     try:
         prj = Project.objects.get(id=projectid)
     except Project.DoesNotExist:
-        return JsonResponse({"status": True, "code": 200, "next": None, "previous": None, "count": 0, "iTotalRecords": 0, "iTotalDisplayRecords": 0, "results": []})
+        return JsonResponse({
+            "status": True,
+            "code": 200,
+            "next": None,
+            "previous": None,
+            "count": 0,
+            "iTotalRecords": 0,
+            "iTotalDisplayRecords": 0,
+            "results": []
+        })
+
     ### get search parameters
-    if request.query_params:
-        if 'search[value]' in request.query_params:
-            search_value = request.query_params['search[value]']
-        else:
-            search_value = None
-    else:
-        search_value = None
+    search_value = request.query_params.get('search[value]', None)
+    search_columns = {
+        'value': request.query_params.get('columns[1][search][value]', None),
+        'vulns': request.query_params.get('columns[2][search][value]', None),
+        'source': request.query_params.get('columns[3][search][value]', None),
+        'description': request.query_params.get('columns[4][search][value]', None),
+        'lastscan_time': request.query_params.get('columns[5][search][value]', None),
+        'creation_time': request.query_params.get('columns[6][search][value]', None),
+    }
+
     ### create queryset
     if selection in ['monitored']:
-        queryset = prj.activedomain_set.all().filter(monitor=True)
-        queryset = queryset.annotate(vuln_info=Count('finding', filter=Q(finding__severity='info')))
-        queryset = queryset.annotate(vuln_critical=Count('finding', filter=Q(finding__severity='critical')))
-        queryset = queryset.annotate(vuln_high=Count('finding', filter=Q(finding__severity='high')))
-        queryset = queryset.annotate(vuln_medium=Count('finding', filter=Q(finding__severity='medium')))
-        queryset = queryset.annotate(vuln_low=Count('finding', filter=Q(finding__severity='low')))
+        queryset = prj.activedomain_set.filter(monitor=True)
     else:
-        queryset = prj.activedomain_set.all().filter(monitor=False) # Do not display ignored assets
-        queryset = queryset.annotate(vuln_info=Count('finding', filter=Q(finding__severity='info')))
-        queryset = queryset.annotate(vuln_critical=Count('finding', filter=Q(finding__severity='critical')))
-        queryset = queryset.annotate(vuln_high=Count('finding', filter=Q(finding__severity='high')))
-        queryset = queryset.annotate(vuln_medium=Count('finding', filter=Q(finding__severity='medium')))
-        queryset = queryset.annotate(vuln_low=Count('finding', filter=Q(finding__severity='low')))
-    ### filter by search value
-    if search_value and len(search_value)>1:
+        queryset = prj.activedomain_set.filter(monitor=False)
+
+    # Annotate vulnerabilities
+    queryset = queryset.annotate(
+        vuln_info=Count('finding', filter=Q(finding__severity='info')),
+        vuln_critical=Count('finding', filter=Q(finding__severity='critical')),
+        vuln_high=Count('finding', filter=Q(finding__severity='high')),
+        vuln_medium=Count('finding', filter=Q(finding__severity='medium')),
+        vuln_low=Count('finding', filter=Q(finding__severity='low'))
+    )
+
+    ### filter by global search value
+    if search_value and len(search_value) > 1:
         queryset = queryset.filter(
-            Q(value__icontains=search_value)|
-            Q(description__icontains=search_value)
+            Q(value__icontains=search_value) |
+            Q(description__icontains=search_value) |
+            Q(source__icontains=search_value)
         )
+
+    ### filter by column-specific search values
+    if search_columns['value']:
+        queryset = queryset.filter(value__icontains=search_columns['value'])
+
+    if search_columns['vulns']:
+        queryset = queryset.filter(
+            Q(vuln_info__icontains=search_columns['vulns']) |
+            Q(vuln_critical__icontains=search_columns['vulns']) |
+            Q(vuln_high__icontains=search_columns['vulns']) |
+            Q(vuln_medium__icontains=search_columns['vulns']) |
+            Q(vuln_low__icontains=search_columns['vulns'])
+        )
+
+    if search_columns['source']:
+        queryset = queryset.filter(source__icontains=search_columns['source'])
+
+    if search_columns['description']:
+        queryset = queryset.filter(description__icontains=search_columns['description'])
+
+    if search_columns['lastscan_time']:
+        queryset = queryset.filter(lastscan_time__icontains=search_columns['lastscan_time'])
+
+    if search_columns['creation_time']:
+        queryset = queryset.filter(creation_time__icontains=search_columns['creation_time'])
+
     ### get variables
-    order_by_column, order_direction = get_ordering_vars(request.query_params,
-                                                         default_column='creation_time',
-                                                         default_direction='-')
+    order_by_column, order_direction = get_ordering_vars(
+        request.query_params,
+        default_column='creation_time',
+        default_direction='-'
+    )
+
     ### order queryset
     if order_by_column:
-        queryset = queryset.order_by('%s%s' % (order_direction, order_by_column))
-    kwrds = paginator.paginate_queryset(queryset, request)
-    serializer = ActiveDomainSerializer(instance=kwrds, many=True)
+        queryset = queryset.order_by(f'{order_direction}{order_by_column}')
+
+    ### paginate queryset
+    assets = paginator.paginate_queryset(queryset, request)
+    serializer = ActiveDomainSerializer(instance=assets, many=True)
     return paginator.get_paginated_response(serializer.data)
 
 

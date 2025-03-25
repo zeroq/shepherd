@@ -1,4 +1,11 @@
+# Settings and customization
 settings.py
+custom-navbar.css
+custom-logo-standalone.svg
+
+# Ignore Django migration files
+*/migrations/*.py
+!*/migrations/__init__.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

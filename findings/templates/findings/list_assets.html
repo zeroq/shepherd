@@ -21,6 +21,15 @@
 </div>
 {% if messages %}{% for message in messages %}<div {% if message.tags %} class="alert alert-{{ message.tags }}"{% endif %}>{{ message }}</div>{% endfor %}{% endif %}
 
+<div class="col-md-6">
+  <div class="panel panel-default">
+    <div class="panel-heading">// General Actions</div>
+    <div class="panel-body">
+      <button type="button" class="btn btn-primary btn-xs" onclick="location.href='{% url 'findings:move_all_assets' %}'">Move all assets back to suggestions</button>
+    </div>
+  </div>
+</div>
+
 <form id="form-selected" action="" method="POST">
   {% csrf_token %}
 
@@ -54,12 +63,34 @@
         <th>Last Scan</th>
         <th>Created</th>
       </thead>
+      <thead>
+          <tr>
+              <th></th>
+              <th><input type="text" placeholder="Search Value" class="column-search-input"></th>
+              <th><input type="text" placeholder="Search Vulnerabilities" class="column-search-input"></th>
+              <th><input type="text" placeholder="Search Source" class="column-search-input"></th>
+              <th><input type="text" placeholder="Search Description" class="column-search-input"></th>
+              <th><input type="text" placeholder="Search Last Scan" class="column-search-input"></th>
+              <th><input type="text" placeholder="Search Created" class="column-search-input"></th>
+          </tr>
+      </thead>
   </table>
   </div>
 </div>
 
 </form> <!-- close selection form -->
 
+
+<div class="col-md-6">
+  <div class="panel panel-default">
+    <div class="panel-heading">// General Actions</div>
+    <div class="panel-body">
+      <button type="button" class="btn btn-primary btn-xs" onclick="location.href='{% url 'findings:activate_all_assets' %}'">
+        Reactivate all entries
+      </button>
+    </div>
+  </div>
+</div>
 
 <form id="form-selected-ignore" action="" method="POST">
     {% csrf_token %}
@@ -72,14 +103,6 @@
           <div class="panel-body">
             <button type="submit" name="btndelete" id="delete-selected" class="btn btn-primary btn-xs">Delete selected (Soon..)</button>&nbsp;
             <button type="submit" name="btnmove" id="move-selected" class="btn btn-primary btn-xs">Move back to suggestions</button>&nbsp;
-          </div>
-        </div>
-      </div>
-      <div class="col-md-6">
-        <div class="panel panel-default">
-          <div class="panel-heading">// General Actions</div>
-          <div class="panel-body">
-            <button type="button" class="btn btn-primary btn-xs" onclick="location.href='{% url 'findings:unignore_all_assets' %}'">Move all entries</button>
           </div>
         </div>
       </div>
@@ -100,6 +123,15 @@
           <th>Description</th>
           <th>Created</th>
           </thead>
+          <thead>
+              <tr>
+                  <th></th>
+                  <th><input type="text" placeholder="Search Value" class="column-search-input"></th>
+                  <th><input type="text" placeholder="Search Source" class="column-search-input"></th>
+                  <th><input type="text" placeholder="Search Description" class="column-search-input"></th>
+                  <th><input type="text" placeholder="Search Created" class="column-search-input"></th>
+              </tr>
+          </thead>
           </table>
       </div>
   </div>
@@ -113,202 +145,125 @@
 <script src="{% static 'js/bootbox.min.js' %}"></script>
 <script type="text/javascript" language="javascript" class="init">
 
-// Populate Datatables
-$(document).ready( function () {
-    // Monitored assets
-    var assetsTable = $('#table_list_assets').DataTable({
-        processing: true, serverSide: true, pageLength: 25,
-        oLanguage: { sProcessing: "<img src='{% static 'img/loading.gif' %}'>", },
-        order: [[ 1, "asc" ]],
-        ajax: {
+$(document).ready(function () {
+    // Function to initialize a DataTable with search functionality
+    function initializeDataTable(tableId, ajaxUrl, columns) {
+        return $(tableId).DataTable({
             processing: true,
-            url: "/api/v1/project/{{ projectid }}/assets/monitored/",
-            dataSrc: "results",
-            type: "GET",
-            dataType: "json"
-        },
-        columns: [
-            {'data': 'uuid', 'sName': 'Operations', 'aTargets': [ 0 ],
-                'bSortable': false,
-                "mRender": function (data, type, full) {
-                    var ignore_url = "{% url 'findings:ignore_asset' uuid=0 %}".replace(0, full.uuid);
-                    var move_url = "{% url 'findings:move_asset' uuid=0 %}".replace(0, full.uuid);
-                    return '<div class="btn-group1">' +
-                        '<input type="checkbox" name="id[]" value="' + $('<div/>').text(data).html() + '">&nbsp;&nbsp;' +
-                        '<a class="btn btn-xs confirm" rel="tooltip" data-placement="right" data-original-title="Ignore Entry" data-display="'+full.value+'" data-href="'+ignore_url+'" href="#">' +
-                        '<span class="glyphicon glyphicon-eye-close" aria-hidden="true"></span>' +
-                        '</a> ' +
-                        '<a class="btn btn-xs confirm" rel="tooltip" data-placement="right" data-original-title="Move to Suggestions" data-display="'+full.value+'" data-href="'+move_url+'" href="#">' +
-                        '<span class="glyphicon glyphicon-transfer" aria-hidden="true"></span>' +
-                        '</a> ' +
-                        '</div>';
-                },
-                "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
-                    $("a", nTd).tooltip();
-                }
+            serverSide: true,
+            pageLength: 25,
+            orderCellsTop: true,
+            oLanguage: { sProcessing: "<img src='{% static 'img/loading.gif' %}'>", },
+            order: [[1, "asc"]],
+            ajax: {
+                url: ajaxUrl,
+                dataSrc: "results",
+                type: "GET",
+                dataType: "json"
             },
-            {'data': 'value', 'sName': 'Value', 'aTargets': [ 1 ],
-                "mRender": function (data, type, full) {
-                    var select_url = "{% url 'findings:view_asset' uuid=0 %}".replace(0, full.uuid);
-                    return '<div rel="tooltip" data-placement="left" data-original-title="Show details"><a href="'+select_url+'">'+data+'</a></div>';
-                },
-                "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
-                    $("div", nTd).tooltip();
-                },
-            },
-            {'data': 'vulns', 'sName': 'Vulnerabilities', 'aTargets': [ 2 ]},
-            {'data': 'source', 'sName': 'Source', 'aTargets': [ 3 ]},
-            {'data': 'description', 'sName': 'Description', 'aTargets': [ 4 ]},
-            {'data': 'lastscan_time', 'sName': 'Last Scan', 'aTargets': [ 5 ]},
-            {'data': 'creation_time', 'sName': 'Created', 'aTargets': [ 6 ]},
-        ]
-    });
-    // checkbox stuff
-    // Handle click on "Select all" control
-    $('#select-all-items').on('click', function(){
-        // Get all rows with search applied
-        var rows = assetsTable.rows({ 'search': 'applied' }).nodes();
-        // Check/uncheck checkboxes for all rows in the table
-        $('input[type="checkbox"]', rows).prop('checked', this.checked);
-    });
-    // Handle click on checkbox to set state of "Select all" control
-    $('#table_list_assets tbody').on('change', 'input[type="checkbox"]', function(){
-        // If checkbox is not checked
-        if(!this.checked){
-            var el = $('#select-all-items').get(0);
-            // If "Select all" control is checked and has 'indeterminate' property
-            if(el && el.checked && ('indeterminate' in el)){
-                // Set visual state of "Select all" control
-                // as 'indeterminate'
-                el.indeterminate = true;
+            columns: columns
+        });
+    }
+
+    // Function to apply search functionality to a DataTable
+    function applySearch(table, searchInputsSelector) {
+        table.columns().every(function () {
+            var that = this;
+            $(searchInputsSelector).on('keyup change', function () {
+                let columnIndex = $(this).parent().index();
+                table.column(columnIndex).search(this.value).draw();
+            });
+        });
+    }
+
+    // Function to handle "Select All" functionality
+    function handleSelectAll(selectAllId, table) {
+        $(selectAllId).on('click', function () {
+            var rows = table.rows({ 'search': 'applied' }).nodes();
+            $('input[type="checkbox"]', rows).prop('checked', this.checked);
+        });
+
+        $(table.table().body()).on('change', 'input[type="checkbox"]', function () {
+            if (!this.checked) {
+                var el = $(selectAllId).get(0);
+                if (el && el.checked && ('indeterminate' in el)) {
+                    el.indeterminate = true;
                 }
             }
-    });
-    // submit
-    $('#form-selected').on('submit', function(e){
-        var form = this;
-        // Iterate over all checkboxes in the table
-        assetsTable.$('input[type="checkbox"]').each(function(){
-            // If checkbox doesn't exist in DOM
-            if(!$.contains(document, this)){
-                // If checkbox is checked
-                if(this.checked){
-                    // Create a hidden element 
-                    $(form).append(
-                        $('<input>')
-                        .attr('type', 'hidden')
-                        .attr('name', this.name)
-                        .val(this.value)
-                    );
-                }
-            } 
         });
-    });
+    }
 
-
-    // Ignored assets
-    var ignoredAssetsTable = $('#table_list_ignored_assets').DataTable({
-        processing: true, serverSide: true, pageLength: 25,
-        oLanguage: { sProcessing: "<img src='{% static 'img/loading.gif' %}'>", },
-        order: [[ 1, "asc" ]],
-        ajax: {
-            processing: true,
-            url: "/api/v1/project/{{ projectid }}/assets/ignored/",
-            dataSrc: "results",
-            type: "GET",
-            dataType: "json"
-        },
-        columns: [
-            {'data': 'uuid', 'sName': 'Operations', 'aTargets': [ 0 ],
-                'bSortable': false,
-                "mRender": function (data, type, full) {
-                    var activate_url = "{% url 'findings:activate_asset' uuid=0 %}".replace(0, full.uuid);
-                    var delete_url = "{% url 'findings:delete_asset' uuid=0 %}".replace(0, full.uuid);
-                    return '<div class="btn-group1">' +
-						'<input type="checkbox" name="id[]" value="' + $('<div/>').text(data).html() + '">&nbsp;&nbsp;' +
-                        '<a class="btn btn-xs" rel="tooltip" data-placement="right" data-original-title="Activate Entry" data-display="'+full.value+'" href="'+activate_url+'">' +
-                        '<span class="glyphicon glyphicon-eye-open" aria-hidden="true"></span>' +
-                        '</a> ' +
-                        '<a class="btn btn-xs confirm" rel="tooltip" data-placement="right" data-original-title="Delete Asset" data-display="'+full.value+'" data-href="'+delete_url+'" href="#">' +
-                        '<span class="glyphicon glyphicon-trash" aria-hidden="true"></span>' +
-                        '</a> ' +
-                        '</div>';
-                },
-                "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
-                    $("a", nTd).tooltip();
-                }
-            },
-            {'data': 'value', 'sName': 'Value', 'aTargets': [ 1 ],
-                "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
-                    $("div", nTd).tooltip();
-                },
-            },
-            {'data': 'source', 'sName': 'Source', 'aTargets': [ 3 ]},
-            {'data': 'description', 'sName': 'Description', 'aTargets': [ 4 ]},
-            {'data': 'creation_time', 'sName': 'Created', 'aTargets': [ 5 ]},
-        ]
-    });
-
-    // checkbox stuff
-    // Handle click on "Select all" control
-    $('#select-all-items-ignore').on('click', function(){
-        // Get all rows with search applied
-        var rows = ignoredAssetsTable.rows({ 'search': 'applied' }).nodes();
-        // Check/uncheck checkboxes for all rows in the table
-        $('input[type="checkbox"]', rows).prop('checked', this.checked);
-    });
-    // Handle click on checkbox to set state of "Select all" control
-    $('#table_list_ignored_assets tbody').on('change', 'input[type="checkbox"]', function(){
-        // If checkbox is not checked
-        if(!this.checked){
-            var el = $('#select-all-items-ignore').get(0);
-            // If "Select all" control is checked and has 'indeterminate' property
-            if(el && el.checked && ('indeterminate' in el)){
-                // Set visual state of "Select all" control
-                // as 'indeterminate'
-                el.indeterminate = true;
-                }
+    // Define columns for the monitored assets table
+    const monitoredColumns = [
+        {'data': 'uuid', 'sName': 'Operations', 'bSortable': false,
+            "mRender": function (data, type, full) {
+                var ignore_url = "{% url 'findings:ignore_asset' uuid=0 %}".replace(0, full.uuid);
+                var move_url = "{% url 'findings:move_asset' uuid=0 %}".replace(0, full.uuid);
+                return '<div class="btn-group1">' +
+                    '<input type="checkbox" name="id[]" value="' + $('<div/>').text(data).html() + '">&nbsp;&nbsp;' +
+                    '<a class="btn btn-xs confirm" rel="tooltip" data-placement="right" data-original-title="Ignore Entry" data-display="'+full.value+'" data-href="'+ignore_url+'" href="#">' +
+                    '<span class="glyphicon glyphicon-eye-close" aria-hidden="true"></span>' +
+                    '</a> ' +
+                    '<a class="btn btn-xs confirm" rel="tooltip" data-placement="right" data-original-title="Move to Suggestions" data-display="'+full.value+'" data-href="'+move_url+'" href="#">' +
+                    '<span class="glyphicon glyphicon-transfer" aria-hidden="true"></span>' +
+                    '</a> ' +
+                    '</div>';
             }
-    });
-    // submit
-    $('#form-selected-ignore').on('submit', function(e){
-        var form = this;
-        // Iterate over all checkboxes in the table
-        ignoredAssetsTable.$('input[type="checkbox"]').each(function(){
-            // If checkbox doesn't exist in DOM
-            if(!$.contains(document, this)){
-                // If checkbox is checked
-                if(this.checked){
-                    // Create a hidden element 
-                    $(form).append(
-                        $('<input>')
-                        .attr('type', 'hidden')
-                        .attr('name', this.name)
-                        .val(this.value)
-                    );
-                }
-            } 
-        });
-    });
+        },
+        {'data': 'value', 'sName': 'Value'},
+        {'data': 'vulns', 'sName': 'Vulnerabilities'},
+        {'data': 'source', 'sName': 'Source'},
+        {'data': 'description', 'sName': 'Description'},
+        {'data': 'lastscan_time', 'sName': 'Last Scan'},
+        {'data': 'creation_time', 'sName': 'Created'}
+    ];
 
-});
+    // Define columns for the ignored assets table
+    const ignoredColumns = [
+        {'data': 'uuid', 'sName': 'Operations', 'bSortable': false,
+            "mRender": function (data, type, full) {
+                var activate_url = "{% url 'findings:activate_asset' uuid=0 %}".replace(0, full.uuid);
+                var delete_url = "{% url 'findings:delete_asset' uuid=0 %}".replace(0, full.uuid);
+                return '<div class="btn-group1">' +
+                    '<input type="checkbox" name="id[]" value="' + $('<div/>').text(data).html() + '">&nbsp;&nbsp;' +
+                    '<a class="btn btn-xs" rel="tooltip" data-placement="right" data-original-title="Activate Entry" data-display="'+full.value+'" href="'+activate_url+'">' +
+                    '<span class="glyphicon glyphicon-eye-open" aria-hidden="true"></span>' +
+                    '</a> ' +
+                    '<a class="btn btn-xs confirm" rel="tooltip" data-placement="right" data-original-title="Delete Asset" data-display="'+full.value+'" data-href="'+delete_url+'" href="#">' +
+                    '<span class="glyphicon glyphicon-trash" aria-hidden="true"></span>' +
+                    '</a> ' +
+                    '</div>';
+            }
+        },
+        {'data': 'value', 'sName': 'Value'},
+        {'data': 'source', 'sName': 'Source'},
+        {'data': 'description', 'sName': 'Description'},
+        {'data': 'creation_time', 'sName': 'Created'}
+    ];
 
-// Ignored assets
+    // Initialize DataTables
+    var monitoredTable = initializeDataTable('#table_list_assets', "/api/v1/project/{{ projectid }}/assets/monitored/", monitoredColumns);
+    var ignoredTable = initializeDataTable('#table_list_ignored_assets', "/api/v1/project/{{ projectid }}/assets/ignored/", ignoredColumns);
 
-// $(document).ready( function () {
+    // Apply search functionality
+    applySearch(monitoredTable, '#table_list_assets thead input');
+    applySearch(ignoredTable, '#table_list_ignored_assets thead input');
 
-// });
+    // Handle "Select All" functionality
+    handleSelectAll('#select-all-items', monitoredTable);
+    handleSelectAll('#select-all-items-ignore', ignoredTable);
 
-$(document).on("click", ".confirm", function(e) {
+    // Confirmation dialog for actions
+    $(document).on("click", ".confirm", function (e) {
         e.preventDefault();
         var title = $(this).attr('data-display');
         var location = $(this).attr('data-href');
-        bootbox.confirm('Are you sure?<br/>(Ignore Entry: '+title+')', function(confirmed) {
-            if(confirmed)
-            {
+        bootbox.confirm('Are you sure?', function (confirmed) {
+            if (confirmed) {
                 window.location.replace(location);
             }
         });
+    });
 });
 </script>
-{% endblock%}
+{% endblock %}

@@ -16,7 +16,7 @@ from findings.models import Finding, Port
 from findings.utils import asset_get_or_create, asset_finding_get_or_create
 
 
-### Assets stuffs
+#### Asset stuffs 
 @login_required
 def assets(request):
     context = {'projectid': request.session['current_project']['prj_id']}
@@ -52,7 +52,7 @@ def assets(request):
                     # delete active entry
                     a_obj.delete()
                 except Exception as error:
-                    messages.error(request, 'Unknown: %s' % error)
+                    messages.error(request, 'Unknssown: %s' % error)
                     continue # take next item
                 messages.info(request, 'Moved Asset back to suggestions: %s' % s_obj.value)
         # redirect to asset list
@@ -125,6 +125,28 @@ def move_asset(request, uuid):
     return redirect(reverse('findings:assets'))
 
 @login_required
+def move_all_assets(request):
+    """move all assets back to suggestions
+    """
+    context = {'projectid': request.session['current_project']['prj_id']}
+    try:
+        prj_obj = Project.objects.get(id=context['projectid'])
+    except Exception as error:
+        messages.error(request, 'Unknown Project: %s' % error)
+        return redirect(reverse('findings:assets'))
+    # disable monitoring
+    a_objs = prj_obj.activedomain_set.all()
+    for a_obj in a_objs:
+        s_obj = Suggestion.objects.get(uuid=a_obj.uuid)
+        s_obj.monitor = False
+        s_obj.save()
+        # delete active entry
+        a_obj.delete()
+
+    messages.info(request, f'{len(a_objs)} assets moved back to suggestions')
+    return redirect(reverse('findings:assets'))
+
+@login_required
 def ignore_asset(request, uuid):
     """move asset to ignore list
     """
@@ -168,19 +190,23 @@ def activate_asset(request, uuid):
     return redirect(reverse('findings:assets'))
 
 @login_required
-def unignore_all_assets(request):
-    """move all ignored assets back to active monitoring
-    """
+def activate_all_assets(request):
+    """Move all ignored assets back to active monitoring"""
+    print("OOOOKKKKKK")
     context = {'projectid': request.session['current_project']['prj_id']}
     try:
+        # Get the current project
         prj_obj = Project.objects.get(id=context['projectid'])
-    except Exception as error:
-        messages.error(request, 'Unknown Project: %s' % error)
+    except Project.DoesNotExist:
+        messages.error(request, 'Unknown Project')
         return redirect(reverse('findings:ignored_assets'))
-    # run over ignored assets
+
+    # Update all ignored assets for the project to set monitor=True
     prj_obj.activedomain_set.filter(monitor=False).update(monitor=True)
-    messages.info(request, 'Updated successfully')
-    return redirect(reverse('findings:ignored_assets'))
+
+    messages.info(request, 'All ignored assets have been reactivated.')
+    print("OOOOKKKKKK")
+    return redirect(reverse('findings:assets'))
 
 @login_required
 def view_asset(request, uuid):

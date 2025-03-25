@@ -207,6 +207,52 @@ def monitor_suggestion(request, uuid):
     return redirect(reverse('suggestions:suggestions'))
 
 @login_required
+def monitor_all_unique_domains(request):
+    """Monitor all domains that are active and that do not redirect to another domain
+    """
+    context = {'projectid': request.session['current_project']['prj_id']}
+    s_objs = Suggestion.objects.filter(redirect_to=None).exclude(active="False")
+
+    # for s_obj in s_objs:
+    #     try:
+    #         m_obj = ActiveDomain.objects.get(uuid=s_obj.uuid)
+    #     except ActiveDomain.DoesNotExist:
+    #         # copy to activedomain table
+    #         m_obj = ActiveDomain()
+    #         m_obj.related_keyword = s_obj.related_keyword
+    #         m_obj.related_project = s_obj.related_project
+    #         m_obj.value = s_obj.value
+    #         m_obj.uuid = imported_uuid.uuid5(imported_uuid.NAMESPACE_DNS, "%s" % m_obj.value)
+    #         m_obj.source = s_obj.source
+    #         m_obj.creation_time = s_obj.creation_time
+    #         m_obj.description = s_obj.description
+    #         m_obj.link = s_obj.link
+    #         m_obj.save()
+    #     # hide from suggestions
+    #     s_obj.monitor = True
+    #     s_obj.save()
+
+    for s_obj in s_objs:
+        m_obj, _ = ActiveDomain.objects.get_or_create(uuid=s_obj.uuid,
+            defaults = {
+                "related_keyword": s_obj.related_keyword,
+                "related_project": s_obj.related_project,
+                "value": s_obj.value,
+                "source": s_obj.source,
+                "creation_time": s_obj.creation_time,
+                "description": s_obj.description,
+                "link": s_obj.link,
+                "monitor": True,
+            }
+        )
+        # hide from suggestions
+        s_obj.monitor = True
+        s_obj.save()
+
+    messages.info(request, f"Added {len(s_objs)} domains to the monitoring")
+    return redirect(reverse('suggestions:suggestions'))
+
+@login_required
 def ignore_suggestion(request, uuid):
     """move suggestion to the ignore list
     """
@@ -329,4 +375,45 @@ def update_suggestions(request):
             # create suggestion entry
             sobj = Suggestion.objects.create(**sugg)
     messages.info(request, 'Suggestions Updated successfully')
+    return redirect(reverse('suggestions:suggestions'))
+
+@login_required
+def upload_suggestions(request):
+    context = {'projectid': request.session['current_project']['prj_id']}
+    try:
+        prj_obj = Project.objects.get(id=context['projectid'])
+    except Exception as error:
+        messages.error(request, 'Unknown Project: %s' % error)
+        return redirect(reverse('suggestions:suggestions'))
+    
+    if request.method == "POST" and request.FILES.get("domain_file"):
+        domain_file = request.FILES["domain_file"]
+
+        # Loop through the file and add each domain to the database
+        try:
+            created_cnt = 0
+            updated_cnt = 0
+            for line in domain_file:
+                domain = line.decode("utf-8").strip()
+                if domain:
+                    item_uuid = imported_uuid.uuid5(imported_uuid.NAMESPACE_DNS, str(domain))
+                    sobj_defaults = {
+                        "related_project" : prj_obj,
+                        "value" : domain,
+                        "source" : "File Upload",
+                        "description" : "Uploaded via file",
+                        "creation_time" : make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds"))),
+                        "finding_subtype" : "domain",
+                        "finding_type" : "domain",
+                    }
+                    sobj, created = Suggestion.objects.update_or_create(uuid=item_uuid, defaults=sobj_defaults)
+                    if created:
+                        created_cnt += 1
+                    else:
+                        updated_cnt += 1
+            messages.success(request, f"Domains uploaded successfully. Created: {created_cnt}, Updated: {updated_cnt}")
+        except Exception as e:
+            messages.error(request, f"Error processing file: {e}")
+    else:
+        messages.error(request, "No file uploaded.")
     return redirect(reverse('suggestions:suggestions'))

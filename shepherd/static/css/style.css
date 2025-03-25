@@ -1,11 +1,9 @@
-#main
-{
+#main {
     margin-top: 40px;
 }
 
 .tooltip-inner {
     max-width: 600px !important;
-    /* If max-width does not work, try using width instead */
     width: auto; 
 }
 
@@ -41,7 +39,7 @@
 @media (min-width:992px) {
     .modal-dialog {
         width: 900px;
-        margin: 30px auto
+        margin: 30px auto;
     }
 }
 
