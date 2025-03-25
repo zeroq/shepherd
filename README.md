@@ -7,6 +7,9 @@ cp shepherd/clean_settings.py shepherd/settings.py
 pip3 install -r requirements.txt
 ./clean_all.sh
 
+# Start server
+python3 manage.py runserver 127.0.0.1:80
+
 # For additional tools
 # Install https://github.com/projectdiscovery/nuclei in the PATH
 ```
