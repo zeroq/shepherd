@@ -210,7 +210,15 @@ $(document).ready(function () {
                     '</div>';
             }
         },
-        {'data': 'value', 'sName': 'Value'},
+        {'data': 'value', 'sName': 'Value', 'aTargets': [ 1 ],
+            "mRender": function (data, type, full) {
+                var select_url = "{% url 'findings:view_asset' uuid=0 %}".replace(0, full.uuid);
+                return '<div rel="tooltip" data-placement="left" data-original-title="Show details"><a href="'+select_url+'">'+data+'</a></div>';
+            },
+            "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
+                $("div", nTd).tooltip();
+            },
+        },
         {'data': 'vulns', 'sName': 'Vulnerabilities'},
         {'data': 'source', 'sName': 'Source'},
         {'data': 'description', 'sName': 'Description'},
@@ -235,7 +243,15 @@ $(document).ready(function () {
                     '</div>';
             }
         },
-        {'data': 'value', 'sName': 'Value'},
+        {'data': 'value', 'sName': 'Value', 'aTargets': [ 1 ],
+            "mRender": function (data, type, full) {
+                var select_url = "{% url 'findings:view_asset' uuid=0 %}".replace(0, full.uuid);
+                return '<div rel="tooltip" data-placement="left" data-original-title="Show details"><a href="'+select_url+'">'+data+'</a></div>';
+            },
+            "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
+                $("div", nTd).tooltip();
+            },
+        },
         {'data': 'source', 'sName': 'Source'},
         {'data': 'description', 'sName': 'Description'},
         {'data': 'creation_time', 'sName': 'Created'}

@@ -30,7 +30,7 @@ class Command(BaseCommand):
                     return
 
                 # Read the results from the temporary file
-                print(temp_file_path)
+                # print(temp_file_path)
                 # exit(0)
                 with open(temp_file_path, 'r') as file:
                     findings = json.load(file)
