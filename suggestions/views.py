@@ -394,7 +394,7 @@ def upload_suggestions(request):
             created_cnt = 0
             updated_cnt = 0
             for line in domain_file:
-                domain = line.decode("utf-8").strip()
+                domain = line.decode("utf-8").strip().strip('.')
                 if domain:
                     item_uuid = imported_uuid.uuid5(imported_uuid.NAMESPACE_DNS, str(domain))
                     sobj_defaults = {
