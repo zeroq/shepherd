@@ -32,8 +32,6 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         total_suggestion_count = 0
-        uri = "/v1/iris-investigate/"
-        host = "api.domaintools.com"
 
         project_filter = {}
         if options['projectid']:
@@ -70,10 +68,6 @@ class Command(BaseCommand):
         #     proxies["https"] = "http://127.0.0.1:8080"
         #     verify = False
 
-        # Error count
-        err_cnt = 0
-        err_limit = 5
-
         # Suugesstion count
         suggestion_count = 0
 
@@ -86,7 +80,7 @@ class Command(BaseCommand):
             domains.append(item['common_name'].lower())
             domains += [ domain.lower() for domain in item['name_value'].split("\n")]
             domains = list(set(domains))
-            
+
             for domain in domains:
 
                 # Ignore stared domains
@@ -117,7 +111,7 @@ class Command(BaseCommand):
                 # In case of update
                 if not created:
                     # Build source:
-                    if not 'domaintools' in sobj.source:
+                    if not 'crtsh' in sobj.source:
                         sobj.source = sobj.source + ", crtsh"
                     sobj.active = "True"
                     sobj.creation_time = make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds")))
@@ -142,7 +136,7 @@ class Command(BaseCommand):
                     # In case of update
                     if not created:
                         # Build source:
-                        if not 'domaintools' in sobj.source:
+                        if not 'crtsh' in sobj.source:
                             sobj.source = sobj.source + ", crtsh"
                         sobj.active = "True"
                         sobj.creation_time = make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds")))
