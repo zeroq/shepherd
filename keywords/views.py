@@ -8,7 +8,8 @@ from django.contrib import messages
 from project.models import Project, Keyword
 from keywords.forms import AddKeywordForm
 from project.models import Suggestion
-
+from django.core.management import call_command
+import threading
 
 @login_required
 def keywords(request):
@@ -60,4 +61,52 @@ def add_keyword(request):
             }
             Keyword.objects.get_or_create(**data)
             messages.info(request, "Comment successfully added")
+    return redirect(reverse('keywords:keywords'))
+
+@login_required
+def scan_domaintools(request):
+    context = {'projectid': request.session['current_project']['prj_id']}
+    messages.info(request, 'Domaintools scan against monitored keywords has been triggered in the background.')
+
+    try:
+        # Get the project ID from the session
+        projectid = context['projectid']
+
+        # Define a function to run the command in a separate thread
+        def run_command():
+            try:
+                call_command('import_domaintools', projectid=projectid)
+            except Exception as e:
+                print(f"Error running import_domaintools: {e}")
+
+        # Start the thread
+        thread = threading.Thread(target=run_command)
+        thread.start()
+
+    except Exception as e:
+        messages.error(request, f'Error: {e}')
+    return redirect(reverse('keywords:keywords'))
+
+@login_required
+def scan_crtsh(request):
+    context = {'projectid': request.session['current_project']['prj_id']}
+    messages.info(request, 'CRTSH scan against monitored keywords has been triggered in the background.')
+
+    try:
+        # Get the project ID from the session
+        projectid = context['projectid']
+
+        # Define a function to run the command in a separate thread
+        def run_command():
+            try:
+                call_command('import_crtsh', projectid=projectid)
+            except Exception as e:
+                print(f"Error running import_crtsh: {e}")
+
+        # Start the thread
+        thread = threading.Thread(target=run_command)
+        thread.start()
+
+    except Exception as e:
+        messages.error(request, f'Error: {e}')
     return redirect(reverse('keywords:keywords'))

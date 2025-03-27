@@ -32,7 +32,9 @@
       <div class="panel panel-default">
         <div class="panel-heading">// General Actions</div>
         <div class="panel-body">
-            <button type="button" class="btn btn-primary btn-xs" data-toggle="modal" data-target="#KeywordModal">Add Keyword</button><br/><br/>
+            <button type="button" class="btn btn-primary btn-xs" data-toggle="modal" data-target="#KeywordModal">Add Keyword</button>&nbsp;
+            <button type="button" class="btn btn-primary btn-xs" onclick="location.href='{% url 'keywords:scan_domaintools' %}'">Scan keywords with domaintools</button>&nbsp;
+            <button type="button" class="btn btn-primary btn-xs" onclick="location.href='{% url 'keywords:scan_crtsh' %}'">Scan keywords with crtsh</button>&nbsp;
         </div>
       </div>
     </div>

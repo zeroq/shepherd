@@ -3,6 +3,7 @@ from suggestions import views
 
 urlpatterns = [
     path('', views.suggestions, name='suggestions'),
+    path('scan_redirects/', views.scan_redirects, name='scan_redirects'),
     path('ignored/', views.ignored_suggestions, name='ignored_suggestions'),
     path('manual/add/', views.manual_add_suggestion, name='manual_add_suggestion'),
     path('update/', views.update_suggestions, name='update_suggestions'),

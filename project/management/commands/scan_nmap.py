@@ -4,14 +4,11 @@ import csv
 from io import StringIO
 from datetime import datetime
 
-from project.models import Project, Keyword, Suggestion
+from project.models import Project
 from findings.models import Port
 
 from django.core.management.base import BaseCommand, CommandError
-from django.contrib.auth.models import User
-from django.conf import settings
 from django.utils.timezone import make_aware
-
 
 
 """
@@ -25,13 +22,30 @@ from django.utils.timezone import make_aware
 """
 
 class Command(BaseCommand):
-    def __init__(self, *args, **kwargs):
-        super(Command, self).__init__(*args, **kwargs)
+    help = 'Run Nmap scan for active domains in a specific project'
+
+    def add_arguments(self, parser):
+        # Add an optional projectid argument
+        parser.add_argument(
+            '--projectid',
+            type=int,
+            help='ID of the project to scan',
+        )
 
     def handle(self, *args, **options):
-        pool = ThreadPool(processes=10)  # increasing this number may speed things up
-        # domains that are being monitored
-        projects = Project.objects.all()
+        projectid = options.get('projectid')
+
+        # Get the projects to scan
+        if projectid:
+            try:
+                projects = [Project.objects.get(id=projectid)]
+            except Project.DoesNotExist:
+                raise CommandError(f"Project with ID {projectid} does not exist.")
+        else:
+            projects = Project.objects.all()
+
+        pool = ThreadPool(processes=10)  # Adjust the number of threads as needed
+
         for prj in projects:
             prj_items = []
             for ad in prj.activedomain_set.all():
@@ -60,7 +74,7 @@ class Command(BaseCommand):
                         port_obj.cpe = port_entry['cpe']
                         port_obj.raw = port_entry
                         port_obj.save()
-                print("[+] {} ports found for {}".format(open_ports_cnt, ad_obj.value))
+                print(f"[+] {open_ports_cnt} ports found for {ad_obj.value}")
 
     def port_lookup(self, domain_tuple):
         try:
@@ -68,32 +82,29 @@ class Command(BaseCommand):
             print(webaddress)
             port_list = []
             nm = nmap.PortScanner()
-            #nm.scan(webaddress, arguments='-F -PN --proxies socks4://127.0.0.1:9050 -sV --version-light', timeout=30)
-            # nm.scan(webaddress, arguments='-F -PN -sV --version-light', timeout=40)
-            nm.scan(webaddress, arguments='-Pn -sC -sV -T4 -p 80,443,13337 --version-light', 
-                    # timeout=40,
-                    )
+            nm.scan(
+                webaddress,
+                arguments='-F -Pn -sC -sV -T4 --version-light',
+            )
 
             f = StringIO(nm.csv())
             r = csv.reader(f, delimiter=';')
             firstRow = None
             for row in r:
-                # skip first row
+                # Skip the first row
                 if row[0] == 'host':
                     firstRow = row
                     continue
                 new_row = dict(zip(firstRow, row))
                 pdict = {
                     'port': int(new_row['port']),
-                    'banner': new_row['name']+'::'+new_row['extrainfo']+'::'+new_row['version'],
+                    'banner': new_row['name'] + '::' + new_row['extrainfo'] + '::' + new_row['version'],
                     'status': new_row['state'],
                     'product': new_row['product'],
                     'cpe': new_row['cpe']
                 }
-                #pdict = {'port': int(row[4]), 'banner': row[5], 'status': row[6], 'product': row[7], 'cpe': row[12]}
                 if pdict not in port_list:
                     port_list.append(pdict)
-            #port_list = list(dict.fromkeys(port_list))
-            return(port_list, domain_tuple[1])
+            return (port_list, domain_tuple[1])
         except Exception as error:
             print(error)

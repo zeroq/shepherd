@@ -1,4 +1,3 @@
-
 import tld
 from datetime import datetime, timedelta
 
@@ -14,6 +13,9 @@ from django.utils.timezone import make_aware
 from project.models import Project, Suggestion, ActiveDomain
 from findings.models import Finding, Port
 from findings.utils import asset_get_or_create, asset_finding_get_or_create
+from django.core.management import call_command
+from django.http import JsonResponse
+import threading
 
 
 #### Asset stuffs 
@@ -291,35 +293,35 @@ def nmap_results(request):
             for port_obj in port_objs:
                 port_obj.delete()
             messages.info(request, 'Deleted selected ports')
-        # elif 'btnscan' in request.POST:
-        #     prj_obj = Project.objects.get(id=context['projectid'])
-        #     # get all active domains
-        #     active_domains = prj_obj.activedomain_set.all().filter(monitor=True)
-        #     # run nmap scan
-        #     for ad in active_domains:
-        #         # run nmap scan
-        #         print('Running Nmap scan for: %s' % ad.value)
-        #         nmap_results = nmap_scan(ad.value)
-        #         for result in nmap_results:
-        #             content = {
-        #                 'domain': ad,
-        #                 'port': result['port'],
-        #             }
-        #             port_obj, _ = Port.objects.get_or_create(**content)
-        #             port_obj.domain_name = ad.value
-        #             port_obj.scan_date = make_aware(datetime.now())
-        #             port_obj.banner = result['banner']
-        #             port_obj.status = result['status']
-        #             port_obj.product = result['product']
-        #             port_obj.cpe = result['cpe']
-        #             port_obj.save()
-        #     messages.info(request, 'Nmap scan completed')
         else:
             messages.error(request, 'Unknown action received!')
         print(request.POST)
     return render(request, 'findings/list_nmap_results.html', context)
 
-### Finding scanners stuffs
+@login_required
+def nmap_scan(request):
+    context = {'projectid': request.session['current_project']['prj_id']}
+    messages.info(request, 'Nmap scan against monitored hosts triggered in the background.')
+    try:
+        # Get the project ID from the session
+        projectid = context['projectid']
+
+        # Define a function to run the command in a separate thread
+        def run_command():
+            try:
+                call_command('scan_nmap', projectid=projectid)
+            except Exception as e:
+                print(f"Error running scan_nmap: {e}")
+
+        # Start the thread
+        thread = threading.Thread(target=run_command)
+        thread.start()
+
+    except Exception as e:
+        messages.error(request, f'Error: {e}')
+    return render(request, 'findings/list_assets.html', context)
+
+### Scanners stuffs
 @login_required
 def recent_findings(request):
     context = {'projectid': request.session['current_project']['prj_id']}
@@ -363,3 +365,26 @@ def delete_finding(request, uuid, findingid, reported):
     if reported == 'true':
         return redirect(reverse('findings:view_asset_reported', args=(uuid,)))
     return redirect(reverse('findings:view_asset', args=(uuid,)))
+
+@login_required
+def nuclei_scan(request):
+    context = {'projectid': request.session['current_project']['prj_id']}
+    messages.info(request, 'Nuclei scan against monitored hosts triggered in the background.')
+    try:
+        # Get the project ID from the session
+        projectid = context['projectid']
+
+        # Define a function to run the command in a separate thread
+        def run_command():
+            try:
+                call_command('scan_nuclei', projectid=projectid)
+            except Exception as e:
+                print(f"Error running import_domaintools: {e}")
+
+        # Start the thread
+        thread = threading.Thread(target=run_command)
+        thread.start()
+
+    except Exception as e:
+        messages.error(request, f'Error: {e}')
+    return redirect(reverse('findings:assets'))

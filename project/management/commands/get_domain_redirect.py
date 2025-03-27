@@ -12,9 +12,21 @@ from django.utils.timezone import make_aware
 class Command(BaseCommand):
     help = "Check for domain redirections and update the redirect_to field in Suggestion objects."
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--projectid',
+            type=int,
+            help='Filter by specific project ID',
+        )
+
     def handle(self, *args, **kwargs):
+        # Filter suggestions by project ID if provided
+        project_filter = {}
+        if kwargs['projectid']:
+            project_filter['related_project__id'] = kwargs['projectid']
+
         # Filter suggestions where active is not 'False'
-        suggestions = Suggestion.objects.exclude(active="False")
+        suggestions = Suggestion.objects.exclude(active="False").filter(**project_filter)
 
         for suggestion in suggestions:
             domain = suggestion.value

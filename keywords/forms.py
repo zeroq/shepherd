@@ -9,6 +9,7 @@ class AddKeywordForm(ModelForm):
         ('registrant_org', 'Registrant Organization'),
         ('registrant_email', 'Registrant Email'),
         ('registrant_email_domain', 'Registrant Email Domain'),
+        ('crtsh_domain', 'Domain for CRTSH'),
     ]
 
     ktype = forms.ChoiceField(choices=KTYPE_CHOICES, required=True, label="Keyword type")

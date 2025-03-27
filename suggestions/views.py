@@ -16,6 +16,10 @@ import json
 import dateparser
 from datetime import datetime
 from urllib.parse import urlencode, quote_plus
+import tldextract
+
+from django.core.management import call_command
+import threading
 
 # Create your views here.
 
@@ -396,24 +400,61 @@ def upload_suggestions(request):
             for line in domain_file:
                 domain = line.decode("utf-8").strip().strip('.')
                 if domain:
-                    item_uuid = imported_uuid.uuid5(imported_uuid.NAMESPACE_DNS, str(domain))
-                    sobj_defaults = {
-                        "related_project" : prj_obj,
-                        "value" : domain,
-                        "source" : "File Upload",
-                        "description" : "Uploaded via file",
-                        "creation_time" : make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds"))),
-                        "finding_subtype" : "domain",
-                        "finding_type" : "domain",
+                    sugg_defaults = {
+                        "related_project": prj_obj,
+                        "value": domain,
+                        "source": "file_upload",
+                        "finding_subtype": "domain",
+                        "finding_type": "domain",
+                        "creation_time": make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds"))),
                     }
-                    sobj, created = Suggestion.objects.update_or_create(uuid=item_uuid, defaults=sobj_defaults)
+                    # Check if domain or subdomain
+                    parsed_obj = tldextract.extract(domain)
+                    if parsed_obj.subdomain:
+                        sugg_defaults["finding_subtype"] = 'subdomain'
+                    else:
+                        sugg_defaults["finding_subtype"] = 'domain'
+
+                    item_uuid = imported_uuid.uuid5(imported_uuid.NAMESPACE_DNS, str(domain))
+                    sobj, created = Suggestion.objects.get_or_create(uuid=item_uuid, defaults=sugg_defaults)
+
                     if created:
                         created_cnt += 1
                     else:
+                        if not "file_upload" in sobj.source:
+                            sobj.source = sobj.source + ", file_upload"
+                        sobj.creation_time = make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds")))
+                        sobj.save()
                         updated_cnt += 1
+
             messages.success(request, f"Domains uploaded successfully. Created: {created_cnt}, Updated: {updated_cnt}")
         except Exception as e:
             messages.error(request, f"Error processing file: {e}")
     else:
         messages.error(request, "No file uploaded.")
+    return redirect(reverse('suggestions:suggestions'))
+
+
+@login_required
+def scan_redirects(request):
+    context = {'projectid': request.session['current_project']['prj_id']}
+    messages.info(request, 'Domain redirection scan against monitored suggested domains has been triggered in the background.')
+
+    try:
+        # Get the project ID from the session
+        projectid = context['projectid']
+
+        # Define a function to run the command in a separate thread
+        def run_command():
+            try:
+                call_command('get_domain_redirect', projectid=projectid)
+            except Exception as e:
+                print(f"Error running get_domain_redirect: {e}")
+
+        # Start the thread
+        thread = threading.Thread(target=run_command)
+        thread.start()
+
+    except Exception as e:
+        messages.error(request, f'Error: {e}')
     return redirect(reverse('suggestions:suggestions'))

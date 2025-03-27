@@ -18,9 +18,11 @@ urlpatterns = [
     #path('delete/<str:uuid>/ignored/', views.delete_suggestion_ignored, name='delete_suggestion_ignored'),
 
     # Nmap stuffs
+    path('nmap_scan/', views.nmap_scan, name='nmap_scan'),
     path('nmap/results/', views.nmap_results, name='nmap_results'),
 
     # Scanner stuffs
+    path('nuclei_scan/', views.nuclei_scan, name='nuclei_scan'),
     path('scanners/results', views.all_findings, name='all_findings'),
     # path('view/finding', views.all_findings, name='view_finding'),
 ]

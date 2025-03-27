@@ -23,6 +23,13 @@ class Command(BaseCommand):
     def __init__(self, *args, **kwargs):
         super(Command, self).__init__(*args, **kwargs)
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--projectid',
+            type=int,
+            help='Filter by specific project ID',
+        )
+
     def timestamp(self):
         return datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -35,7 +42,11 @@ class Command(BaseCommand):
         uri = "/v1/iris-investigate/"
         host = "api.domaintools.com"
 
-        projects = Project.objects.all()
+        project_filter = {}
+        if options['projectid']:
+            project_filter['id'] = options['projectid']
+
+        projects = Project.objects.filter(**project_filter)
         for prj in projects:
             print(prj.projectname)
             for kw in prj.keyword_set.all():
@@ -145,9 +156,29 @@ class Command(BaseCommand):
         # Process the results and add them to the database        
         for item in items:
             
-            # get unique identifier
-            domain = item['domain']
-            item_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, str(domain))
+            # Create the suggestion details
+            sugg = {
+                "related_keyword": kw,
+                "related_project": prj,
+                "finding_type": 'domain',
+                "value": item['domain'],
+                "source": 'domaintools',
+                "link": '',
+                "raw": item,
+                "creation_time": make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds"))),
+            }
+            # Check if domain or subdomain
+            parsed_obj = tldextract.extract(item['domain'])
+            if parsed_obj.subdomain:
+                sugg["finding_subtype"] = 'subdomain'
+            else:
+                sugg["finding_subtype"] = 'domain'
+
+            # Create suggestion entry
+            item_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, str(item['domain']))
+            sobj, created = Suggestion.objects.get_or_create(uuid=item_uuid, defaults=sugg)
+
+            # Build description
             description_list = []
             if item['registrant_org']['value']:
                 description_list.append("Registrant Org: {}".format(item['registrant_org']['value']))
@@ -157,50 +188,43 @@ class Command(BaseCommand):
                     emails.append(email['value'])
                 description_list.append("Registrant Emails: {}".format(", ".join(emails)))
             description = ", ".join(description_list)
-            sugg = {
-                'related_keyword': kw,
-                'related_project': prj,
-                'finding_type': 'domain',
-                'value': domain,
-                'active': str(item['active']),
-                'uuid': item_uuid,
-                'source': 'domaintools',
-                'description': description,
-                'link': '',
-                'raw': item,
-            }
-            try:
-                sugg['creation_time'] = make_aware(dateparser.parse(item['first_seen']['value']))
-            except:
-                sugg['creation_time'] = make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds")))
-            # check if domain or subdomain
-            parsed_obj = tldextract.extract(domain)
-            if len(parsed_obj.subdomain) == 0:
-                sugg['finding_subtype'] = 'domain'
-            else:
-                sugg['finding_subtype'] = 'subdomain'
-            # create suggestion entry
-            sobj, created = Suggestion.objects.update_or_create(uuid=item_uuid, defaults=sugg)
+            if sobj.description and (not description in sobj.description):
+                sobj.description = ", ".join([str(sobj.description), description])
+            else: 
+                sobj.description = description
+
+            # Build source:
+            if not 'domaintools' in sobj.source:
+                sobj.source = sobj.source + ", domaintools"
+
+            # In case of update
+            if not created:
+                sobj.raw = item
+                sobj.active = str(item['active'])
+                sobj.creation_time = make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds")))
+                # Save the object
+                sobj.save()
+
             suggestion_count += 1
 
-            # check if TLD is already in our database
-            # tld
-            tld = parsed_obj.domain+"."+parsed_obj.suffix
-            if len(parsed_obj.subdomain) > 0:
-                tld_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, tld)
+            # If it's a subdomain, add the associated domain if does not exist in the DB
+            parsed_obj = tldextract.extract(item['domain'])
+            if parsed_obj.subdomain:
 
-                # Modify suggestion object
-                sugg['uuid'] = tld_uuid
-                sugg['value'] = tld
-                sugg['finding_subtype'] = 'domain'
+                # Create a new suggestion
+                domain = ".".join([parsed_obj.domain, parsed_obj.suffix])
+                sugg["finding_subtype"] = 'domain'
+                sugg["value"] = domain
+                domain_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, str(domain))
+                sobj, created = Suggestion.objects.get_or_create(uuid=domain_uuid, defaults=sugg)
 
-                # Add active status
-                if item['active']:
-                    sugg['active'] = 'True'
+                if not created:
+                    if item['active']:
+                        sobj.active = str(item['active'])
+                    sobj.creation_time = make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds")))
+                    # Save the object
+                    sobj.save()
 
-                # create suggestion entry
-                sobj, created = Suggestion.objects.update_or_create(uuid=tld_uuid, defaults=sugg)
                 suggestion_count += 1
 
         return suggestion_count
-    

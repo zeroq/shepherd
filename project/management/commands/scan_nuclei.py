@@ -2,19 +2,40 @@ import subprocess
 import json
 import tempfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from django.core.management.base import BaseCommand
-from django.utils import timezone
-from project.models import ActiveDomain
-from findings.models import Finding
+from django.core.management.base import BaseCommand, CommandError
 from django.utils.timezone import make_aware
 from datetime import datetime
+from project.models import ActiveDomain, Project
+from findings.models import Finding
+
 
 class Command(BaseCommand):
-    help = 'Trigger a Nuclei scan against all ActiveDomains domains and store the results as Findings objects'
+    help = 'Trigger a Nuclei scan against all ActiveDomains domains in a specific project and store the results as Findings objects'
+
+    def add_arguments(self, parser):
+        # Add an optional projectid argument
+        parser.add_argument(
+            '--projectid',
+            type=int,
+            help='ID of the project to scan',
+        )
 
     def handle(self, *args, **kwargs):
-        # Fetch all active domains
-        active_domains = ActiveDomain.objects.filter(monitor=True)
+        projectid = kwargs.get('projectid')
+
+        # Fetch active domains based on the project ID
+        if projectid:
+            try:
+                project = Project.objects.get(id=projectid)
+                active_domains = ActiveDomain.objects.filter(monitor=True, related_project=project)
+            except Project.DoesNotExist:
+                raise CommandError(f"Project with ID {projectid} does not exist.")
+        else:
+            active_domains = ActiveDomain.objects.filter(monitor=True)
+
+        if not active_domains.exists():
+            self.stdout.write("No active domains found to scan.")
+            return
 
         def scan_domain(domain):
             self.stdout.write(f'Scanning domain: {domain.value}')

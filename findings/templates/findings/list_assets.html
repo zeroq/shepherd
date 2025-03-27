@@ -25,7 +25,9 @@
   <div class="panel panel-default">
     <div class="panel-heading">// General Actions</div>
     <div class="panel-body">
-      <button type="button" class="btn btn-primary btn-xs" onclick="location.href='{% url 'findings:move_all_assets' %}'">Move all assets back to suggestions</button>
+      <button type="button" class="btn btn-primary btn-xs" onclick="location.href='{% url 'findings:move_all_assets' %}'">Move all assets back to suggestions</button>&nbsp;
+      <button type="button" class="btn btn-primary btn-xs" onclick="location.href='{% url 'findings:nmap_scan' %}'">Nmap scan</button>&nbsp;
+      <button type="button" class="btn btn-primary btn-xs" onclick="location.href='{% url 'findings:nuclei_scan' %}'">Nuclei scan</button>&nbsp;
     </div>
   </div>
 </div>
@@ -55,24 +57,26 @@
   <div class="panel-body">
     <table id="table_list_assets" class="table table-condensed table-striped table-bordered" style="font-size: 0.9em;">
       <thead>
-        <th><input type="checkbox" name="select_all" value="1" id="select-all-items">&nbsp; Operations</th>
-        <th>Value</th>
-        <th>Vulnerabilities</th>
-        <th>Source</th>
-        <th>Description</th>
-        <th>Last Scan</th>
-        <th>Created</th>
+        <tr>
+          <th><input type="checkbox" name="select_all" value="1" id="select-all-items">&nbsp; Operations</th>
+          <th>Value</th>
+          <th>Vulnerabilities</th>
+          <th>Source</th>
+          <th>Description</th>
+          <th>Last Scan</th>
+          <th>Created</th>
+        </tr>
       </thead>
       <thead>
-          <tr>
-              <th></th>
-              <th><input type="text" placeholder="Search Value" class="column-search-input"></th>
-              <th><input type="text" placeholder="Search Vulnerabilities" class="column-search-input"></th>
-              <th><input type="text" placeholder="Search Source" class="column-search-input"></th>
-              <th><input type="text" placeholder="Search Description" class="column-search-input"></th>
-              <th><input type="text" placeholder="Search Last Scan" class="column-search-input"></th>
-              <th><input type="text" placeholder="Search Created" class="column-search-input"></th>
-          </tr>
+        <tr>
+          <th></th>
+          <th><input type="text" placeholder="Search Value" class="column-search-input"></th>
+          <th><input type="text" placeholder="Search Vulnerabilities" class="column-search-input"></th>
+          <th><input type="text" placeholder="Search Source" class="column-search-input"></th>
+          <th><input type="text" placeholder="Search Description" class="column-search-input"></th>
+          <th><input type="text" placeholder="Search Last Scan" class="column-search-input"></th>
+          <th><input type="text" placeholder="Search Created" class="column-search-input"></th>
+        </tr>
       </thead>
   </table>
   </div>
@@ -117,20 +121,22 @@
     <div class="panel-body">
         <table id="table_list_ignored_assets" class="table table-condensed table-striped table-bordered" style="font-size: 0.9em;">
           <thead>
-          <th><input type="checkbox" name="select_all" value="1" id="select-all-items-ignore">&nbsp; Operations</th>
-          <th>Value</th>
-          <th>Source</th>
-          <th>Description</th>
-          <th>Created</th>
+            <tr>
+              <th><input type="checkbox" name="select_all" value="1" id="select-all-items-ignore">&nbsp; Operations</th>
+              <th>Value</th>
+              <th>Source</th>
+              <th>Description</th>
+              <th>Created</th>
+            </tr>
           </thead>
           <thead>
-              <tr>
-                  <th></th>
-                  <th><input type="text" placeholder="Search Value" class="column-search-input"></th>
-                  <th><input type="text" placeholder="Search Source" class="column-search-input"></th>
-                  <th><input type="text" placeholder="Search Description" class="column-search-input"></th>
-                  <th><input type="text" placeholder="Search Created" class="column-search-input"></th>
-              </tr>
+            <tr>
+              <th></th>
+              <th><input type="text" placeholder="Search Value" class="column-search-input"></th>
+              <th><input type="text" placeholder="Search Source" class="column-search-input"></th>
+              <th><input type="text" placeholder="Search Description" class="column-search-input"></th>
+              <th><input type="text" placeholder="Search Created" class="column-search-input"></th>
+            </tr>
           </thead>
           </table>
       </div>
@@ -165,34 +171,6 @@ $(document).ready(function () {
         });
     }
 
-    // Function to apply search functionality to a DataTable
-    function applySearch(table, searchInputsSelector) {
-        table.columns().every(function () {
-            var that = this;
-            $(searchInputsSelector).on('keyup change', function () {
-                let columnIndex = $(this).parent().index();
-                table.column(columnIndex).search(this.value).draw();
-            });
-        });
-    }
-
-    // Function to handle "Select All" functionality
-    function handleSelectAll(selectAllId, table) {
-        $(selectAllId).on('click', function () {
-            var rows = table.rows({ 'search': 'applied' }).nodes();
-            $('input[type="checkbox"]', rows).prop('checked', this.checked);
-        });
-
-        $(table.table().body()).on('change', 'input[type="checkbox"]', function () {
-            if (!this.checked) {
-                var el = $(selectAllId).get(0);
-                if (el && el.checked && ('indeterminate' in el)) {
-                    el.indeterminate = true;
-                }
-            }
-        });
-    }
-
     // Define columns for the monitored assets table
     const monitoredColumns = [
         {'data': 'uuid', 'sName': 'Operations', 'bSortable': false,
@@ -208,6 +186,9 @@ $(document).ready(function () {
                     '<span class="glyphicon glyphicon-transfer" aria-hidden="true"></span>' +
                     '</a> ' +
                     '</div>';
+            },
+            "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
+              $("a", nTd).tooltip();
             }
         },
         {'data': 'value', 'sName': 'Value', 'aTargets': [ 1 ],
@@ -241,6 +222,9 @@ $(document).ready(function () {
                     '<span class="glyphicon glyphicon-trash" aria-hidden="true"></span>' +
                     '</a> ' +
                     '</div>';
+            },
+            "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
+              $("a", nTd).tooltip();
             }
         },
         {'data': 'value', 'sName': 'Value', 'aTargets': [ 1 ],
@@ -261,9 +245,37 @@ $(document).ready(function () {
     var monitoredTable = initializeDataTable('#table_list_assets', "/api/v1/project/{{ projectid }}/assets/monitored/", monitoredColumns);
     var ignoredTable = initializeDataTable('#table_list_ignored_assets', "/api/v1/project/{{ projectid }}/assets/ignored/", ignoredColumns);
 
+    // Function to apply search functionality to a DataTable
+    function applySearch(table, searchInputsSelector) {
+        table.columns().every(function () {
+            var that = this;
+            $(searchInputsSelector).on('keyup change', function () {
+                let columnIndex = $(this).parent().index();
+                table.column(columnIndex).search(this.value).draw();
+            });
+        });
+    }
+
     // Apply search functionality
-    applySearch(monitoredTable, '#table_list_assets thead input');
-    applySearch(ignoredTable, '#table_list_ignored_assets thead input');
+    applySearch(monitoredTable, 'input.column-search-input');
+    applySearch(ignoredTable, 'input.column-search-input');
+
+    // Function to handle "Select All" functionality
+    function handleSelectAll(selectAllId, table) {
+      $(selectAllId).on('click', function () {
+        var rows = table.rows({ 'search': 'applied' }).nodes();
+        $('input[type="checkbox"]', rows).prop('checked', this.checked);
+      });
+
+      $(table.table().body()).on('change', 'input[type="checkbox"]', function () {
+        if (!this.checked) {
+          var el = $(selectAllId).get(0);
+          if (el && el.checked && ('indeterminate' in el)) {
+            el.indeterminate = true;
+          }
+        }
+      });
+    }
 
     // Handle "Select All" functionality
     handleSelectAll('#select-all-items', monitoredTable);
