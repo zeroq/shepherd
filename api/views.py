@@ -1,4 +1,3 @@
-
 from datetime import datetime, timedelta
 
 from django.shortcuts import render
@@ -552,5 +551,23 @@ def list_all_findings(request, projectid, format=None):
     serializer = FindingSerializer(instance=kwrds, many=True)
     return paginator.get_paginated_response(serializer.data)
 
+@api_view(['DELETE'])
+@authentication_classes((SessionAuthentication, ))
+@permission_classes((IsAuthenticated,))
+def delete_finding(request, projectid, findingid):
+    """Delete a specific finding by ID for a given project."""
+    try:
+        # Check if the project exists
+        prj = Project.objects.get(id=projectid)
+    except Project.DoesNotExist:
+        return JsonResponse({'message': 'Project does not exist', 'status': 'failure'}, status=404)
+
+    try:
+        # Check if the finding exists and belongs to the project
+        finding = Finding.objects.get(id=findingid, domain__related_project=prj)
+        finding.delete()
+        return JsonResponse({'message': 'Finding successfully deleted', 'status': 'success'}, status=200)
+    except Finding.DoesNotExist:
+        return JsonResponse({'message': 'Finding does not exist', 'status': 'failure'}, status=404)
 
 ##### END FINDINGS ###########

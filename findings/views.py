@@ -29,6 +29,8 @@ def assets(request):
             action = "ignore"
         elif "btnmove" in request.POST:
             action = "move"
+        elif "btndelete" in request.POST:
+            action = "delete"
         else:
             messages.error(request, 'Unknown action received!')
             return redirect(reverse('findings:assets'))
@@ -57,6 +59,15 @@ def assets(request):
                     messages.error(request, 'Unknssown: %s' % error)
                     continue # take next item
                 messages.info(request, 'Moved Asset back to suggestions: %s' % s_obj.value)
+            elif action == "delete":
+                try:
+                    a_obj = ActiveDomain.objects.get(uuid=item)
+                    domain_to_delete = a_obj.value
+                    a_obj.delete()
+                    messages.info(request, 'Deleted Asset: %s' % domain_to_delete)
+                except ActiveDomain.DoesNotExist:
+                    messages.error(request, 'Unknown Asset: %s' % item)
+                    continue  # take next item
         # redirect to asset list
         return redirect(reverse('findings:assets'))
     else:
@@ -345,10 +356,24 @@ def recent_findings(request):
 @login_required
 def all_findings(request):
     context = {'projectid': request.session['current_project']['prj_id']}
-    # try:
-    #     prj_obj = Project.objects.get(id=context['projectid'])
-    # except Exception as error:
-    #     messages.error(request, 'Unknown Project: %s' % error)
+    if request.method == 'POST':
+        # determine action
+        if "btndelete" in request.POST:
+            action = "delete"
+        else:
+            messages.error(request, 'Unknown action received!')
+            return redirect(reverse('findings:all_findings'))
+        # get IDs of items
+        id_lst = request.POST.getlist('id[]')
+        for item in id_lst:
+            if action == "delete":
+                try:
+                    Finding.objects.get(id=item).delete()
+                except Finding.DoesNotExist:
+                    messages.error(request, 'Unknown Finding: %s' % item)
+                    continue  # take next item
+        messages.info(request, 'Selected findings deleted successfully.')
+        return redirect(reverse('findings:all_findings'))
     return render(request, 'findings/list_findings.html', context)
 
 @login_required
@@ -369,22 +394,29 @@ def delete_finding(request, uuid, findingid, reported):
 @login_required
 def nuclei_scan(request):
     context = {'projectid': request.session['current_project']['prj_id']}
-    messages.info(request, 'Nuclei scan against monitored hosts triggered in the background.')
-    try:
+
+    if request.method == 'GET':
+        # determine action
+        nt = False
         # Get the project ID from the session
         projectid = context['projectid']
+        if "nt" in request.GET:
+            nt = True
 
-        # Define a function to run the command in a separate thread
-        def run_command():
-            try:
-                call_command('scan_nuclei', projectid=projectid)
-            except Exception as e:
-                print(f"Error running import_domaintools: {e}")
+        try:
 
-        # Start the thread
-        thread = threading.Thread(target=run_command)
-        thread.start()
+            # Define a function to run the command in a separate thread
+            def run_command():
+                try:
+                    call_command("scan_nuclei", nt=nt, projectid=projectid)
+                except Exception as e:
+                    print(f"Error running import_domaintools: {e}")
 
-    except Exception as e:
-        messages.error(request, f'Error: {e}')
+            # Start the thread
+            thread = threading.Thread(target=run_command)
+            thread.start()
+            messages.info(request, 'Nuclei scan against monitored hosts triggered in the background.')
+        except Exception as e:
+            messages.error(request, f'Error: {e}')
+        
     return redirect(reverse('findings:assets'))

@@ -33,8 +33,8 @@
       <!-- Add Suggestion Button -->
       <div class="action-section">
         <button type="button" class="btn btn-primary btn-xs" data-toggle="modal" data-target="#SuggestionModal">Add Domain</button>&nbsp;
-        <button type="button" class="btn btn-primary btn-xs" onclick="location.href='{% url 'suggestions:monitor_all_unique_domains' %}'">Monitor all valids domains not redirecting</button>&nbsp;
         <button type="button" class="btn btn-primary btn-xs" onclick="location.href='{% url 'suggestions:scan_redirects' %}'">Scan for domain redirection</button>&nbsp;
+        <button type="button" class="btn btn-primary btn-xs" onclick="location.href='{% url 'suggestions:monitor_all_unique_domains' %}'">Monitor all valids domains not redirecting</button>&nbsp;
       </div>
       <hr>
       <!-- File Upload Form -->
@@ -228,10 +228,10 @@
                 '<a class="btn btn-xs" rel="tooltip" data-placement="right" data-original-title="Monitor Entry" data-href="#" href="' + monitor_url + '">' +
                 '<span class="glyphicon glyphicon-eye-open" aria-hidden="true"></span>' +
                 '</a> ' +
-                '<a class="btn btn-xs confirm" rel="tooltip" data-placement="right" data-original-title="Ignore Entry" data-display="' + full.value + '" data-href="' + ignore_url + '" href="#">' +
+                '<a class="btn btn-xs" rel="tooltip" data-placement="right" data-original-title="Ignore Entry" data-display="' + full.value + '" href="' + ignore_url + '">' +
                 '<span class="glyphicon glyphicon-eye-close" aria-hidden="true"></span>' +
                 '</a> ' +
-                '<a class="btn btn-xs confirm" rel="tooltip" data-placement="right" data-original-title="Delete Entry" data-display="' + full.value + '" data-href="' + delete_url + '" href="#">' +
+                '<a class="btn btn-xs btn-column confirm" rel="tooltip" data-placement="right" data-original-title="Delete Entry" data-display="' + full.value + '" data-href="' + delete_url + '" href="#">' +
                 '<span class="glyphicon glyphicon-trash" aria-hidden="true"></span>' +
                 '</a> ' +
                 '</div>';
@@ -317,9 +317,40 @@
       e.preventDefault();
       var title = $(this).attr('data-display');
       var location = $(this).attr('data-href');
+      var form = $(this).closest('form'); // Find the closest form element
+      var buttonName = $(this).attr('name'); // Get the button's name attribute
+      var column_button = $(this).hasClass('btn-column')
+
       bootbox.confirm('Are you sure?', function (confirmed) {
         if (confirmed) {
-          window.location.replace(location);
+
+          if (column_button) {
+            // If the class is btn-column, directly relocate to data-href
+            window.location.replace(location);
+            return;
+          }
+
+          if (form.length) {
+            // If it's part of a form, append the action URL and button name, then submit the form
+            $('<input>')
+              .attr('type', 'hidden')
+              .attr('name', 'action_url')
+              .val(location)
+              .appendTo(form);
+            if (buttonName) {
+              $('<input>')
+                .attr('type', 'hidden')
+                .attr('name', buttonName)
+                .val('true')
+                .appendTo(form);
+            }
+            form.submit();
+          }
+          
+          else {
+            // Otherwise, redirect as before
+            window.location.replace(location);
+          }
         }
       });
     });

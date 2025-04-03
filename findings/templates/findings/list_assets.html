@@ -25,9 +25,10 @@
   <div class="panel panel-default">
     <div class="panel-heading">// General Actions</div>
     <div class="panel-body">
-      <button type="button" class="btn btn-primary btn-xs" onclick="location.href='{% url 'findings:move_all_assets' %}'">Move all assets back to suggestions</button>&nbsp;
+      <button type="button" class="btn btn-primary btn-xs confirm" onclick="location.href='{% url 'findings:move_all_assets' %}'">Move all assets back to suggestions</button>&nbsp;
       <button type="button" class="btn btn-primary btn-xs" onclick="location.href='{% url 'findings:nmap_scan' %}'">Nmap scan</button>&nbsp;
       <button type="button" class="btn btn-primary btn-xs" onclick="location.href='{% url 'findings:nuclei_scan' %}'">Nuclei scan</button>&nbsp;
+      <button type="button" class="btn btn-primary btn-xs" onclick="location.href='{% url 'findings:nuclei_scan' %}?nt=true'">Nuclei scan - New templates only</button>&nbsp;
     </div>
   </div>
 </div>
@@ -105,7 +106,7 @@
         <div class="panel panel-default">
           <div class="panel-heading">// Selected Actions</div>
           <div class="panel-body">
-            <button type="submit" name="btndelete" id="delete-selected" class="btn btn-primary btn-xs">Delete selected (Soon..)</button>&nbsp;
+            <button type="submit" name="btndelete" id="delete-selected" class="btn btn-primary btn-xs">Delete selected</button>&nbsp;
             <button type="submit" name="btnmove" id="move-selected" class="btn btn-primary btn-xs">Move back to suggestions</button>&nbsp;
           </div>
         </div>
@@ -179,7 +180,7 @@ $(document).ready(function () {
                 var move_url = "{% url 'findings:move_asset' uuid=0 %}".replace(0, full.uuid);
                 return '<div class="btn-group1">' +
                     '<input type="checkbox" name="id[]" value="' + $('<div/>').text(data).html() + '">&nbsp;&nbsp;' +
-                    '<a class="btn btn-xs confirm" rel="tooltip" data-placement="right" data-original-title="Ignore Entry" data-display="'+full.value+'" data-href="'+ignore_url+'" href="#">' +
+                    '<a class="btn btn-xs" rel="tooltip" data-placement="right" data-original-title="Ignore Entry" data-display="'+full.value+'" href="'+ignore_url+'">' +
                     '<span class="glyphicon glyphicon-eye-close" aria-hidden="true"></span>' +
                     '</a> ' +
                     '<a class="btn btn-xs confirm" rel="tooltip" data-placement="right" data-original-title="Move to Suggestions" data-display="'+full.value+'" data-href="'+move_url+'" href="#">' +

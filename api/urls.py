@@ -1,4 +1,3 @@
-
 from django.urls import path
 from rest_framework.urlpatterns import format_suffix_patterns
 
@@ -24,6 +23,7 @@ urlpatterns = [
 
     # Findings APIs
     path('v1/project/<str:projectid>/findings/all/', views.list_all_findings, name='list_all_findings'),
+    path('v1/project/<str:projectid>/findings/delete/<str:findingid>/', views.delete_finding, name='delete_finding'),
     path('v1/project/<str:projectid>/recent/<str:severity>/', views.list_recent_findings, name='list_recent_findings'),
 ]
 
