@@ -90,8 +90,8 @@ def suggestions(request):
         return redirect(reverse('suggestions:suggestions'))
     else:
         prj = Project.objects.get(id=request.session['current_project']['prj_id'])
-        context['domain_count'] = prj.suggestion_set.filter(finding_type='domain', finding_subtype='domain', ignore=False, monitor=False).count()
-        context['subdomain_count'] = prj.suggestion_set.filter(finding_type='domain', finding_subtype='subdomain', ignore=False, monitor=False).count()
+        context['domain_count'] = prj.suggestion_set.filter(finding_type='domain', finding_subtype='domain', ignore=False).count()
+        context['subdomain_count'] = prj.suggestion_set.filter(finding_type='domain', finding_subtype='subdomain', ignore=False).count()
         context['ip_count'] = 0 # TODO: fix this
         context['activetab'] = 'domain'
     return render(request, 'suggestions/list_suggestions.html', context)
