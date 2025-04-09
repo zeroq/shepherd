@@ -98,9 +98,9 @@ def list_suggestions(request, projectid, selection, vtype, format=None):
 
     ### create queryset
     if selection in ['ignored']:
-        queryset = prj.suggestion_set.filter(ignore=True, monitor=False)
+        queryset = prj.suggestion_set.filter(ignore=True)
     else:
-        queryset = prj.suggestion_set.filter(ignore=False, monitor=False)  # Do not display ignored suggestions
+        queryset = prj.suggestion_set.filter(ignore=False)  # Do not display ignored suggestions
 
     if vtype in ['domain', 'subdomain', 'ipaddress']:
         queryset = queryset.filter(finding_subtype=vtype)

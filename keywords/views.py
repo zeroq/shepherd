@@ -15,7 +15,13 @@ import threading
 def keywords(request):
     project_id = request.session['current_project']['prj_id']
     keyword_form = AddKeywordForm()
-    descriptions = Suggestion.objects.values_list('description', flat=True).distinct()
+    descriptions = (
+        Suggestion.objects.filter(related_project_id=project_id)
+        .exclude(description__isnull=True)
+        .exclude(description__exact="")
+        .values_list('description', flat=True)
+        .distinct()
+    )
     context = {
         'projectid': project_id,
         'keywordform': keyword_form,

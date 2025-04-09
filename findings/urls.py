@@ -22,6 +22,7 @@ urlpatterns = [
     path('nmap/results/', views.nmap_results, name='nmap_results'),
 
     # Scanner stuffs
+    path('gowitness_scan/', views.gowitness_scan, name='gowitness_scan'),
     path('nuclei_scan/', views.nuclei_scan, name='nuclei_scan'),
     path('scanners/results', views.all_findings, name='all_findings'),
     # path('view/finding', views.all_findings, name='view_finding'),

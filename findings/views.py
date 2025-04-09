@@ -410,12 +410,39 @@ def nuclei_scan(request):
                 try:
                     call_command("scan_nuclei", nt=nt, projectid=projectid)
                 except Exception as e:
-                    print(f"Error running import_domaintools: {e}")
+                    print(f"Error running scan_nuclei: {e}")
 
             # Start the thread
             thread = threading.Thread(target=run_command)
             thread.start()
             messages.info(request, 'Nuclei scan against monitored hosts triggered in the background.')
+        except Exception as e:
+            messages.error(request, f'Error: {e}')
+        
+    return redirect(reverse('findings:assets'))
+
+@login_required
+def gowitness_scan(request):
+    context = {'projectid': request.session['current_project']['prj_id']}
+
+    if request.method == 'GET':
+        # Get the project ID from the session
+        projectid = context['projectid']
+
+        try:
+
+            # Define a function to run the command in a separate thread
+            def run_command():
+                try:
+                    # call_command("scan_gowitness", projectid=projectid)
+                    pass
+                except Exception as e:
+                    print(f"Error running scan_gowitness: {e}")
+
+            # Start the thread
+            thread = threading.Thread(target=run_command)
+            thread.start()
+            messages.info(request, 'GoWitness scan against monitored hosts triggered in the background.')
         except Exception as e:
             messages.error(request, f'Error: {e}')
         
