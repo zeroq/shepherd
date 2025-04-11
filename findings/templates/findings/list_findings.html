@@ -42,7 +42,7 @@
   <div class="panel-heading">
     // Monitored Findings
   </div>
-  <div class="panel-body">
+  <div class="panel-body table-responsive">
     <table id="table_list_findings" class="table table-condensed table-striped table-bordered" style="font-size: 0.9em;">
       <thead>
         <tr>
@@ -54,6 +54,7 @@
           <th>CVE</th>
           <th>Severity</th>
           <th>Scan Date</th>
+          <th>Last Reported</th>
         </tr>
         <tr>
           <th></th>
@@ -64,6 +65,7 @@
           <th><input type="text" placeholder="Search CVE" class="column-search form-control input-sm"></th>
           <th><input type="text" placeholder="Search Severity" class="column-search form-control input-sm"></th>
           <th><input type="text" placeholder="Search Scan Date" class="column-search form-control input-sm"></th>
+          <th><input type="text" placeholder="Last reported" class="column-search form-control input-sm"></th>
         </tr>
       </thead>
     </table>
@@ -101,11 +103,19 @@ $(document).ready( function () {
                     var delete_url = "{% url 'api:delete_finding' projectid=0 findingid=0 %}"
                         .replace('project/0', 'project/{{ projectid }}')
                         .replace('delete/0', 'delete/' + full.id);
+                    var nucleus_url = "{% url 'findings:send_nucleus' uuid='00000000-0000-0000-0000-000000000000' findingid=0 %}"
+                        .replace('finding/0', 'finding/' + full.id)
                     return '<div class="btn-group1">' +
                         '<input type="checkbox" name="id[]" value="' + $('<div/>').text(data).html() + '">&nbsp;&nbsp;' +
+
                         '<a class="btn btn-xs confirm" rel="tooltip" data-placement="right" data-original-title="Delete Entry" data-display="' + full.name + '" data-href="' + delete_url + '" href="#" data-method="DELETE">' +
-                        '<span class="glyphicon glyphicon-trash" aria-hidden="true"></span>' +
+                            '<span class="glyphicon glyphicon-trash" aria-hidden="true"></span>' +
                         '</a>' +
+
+                        '<a class="btn btn-xs send-to-nucleus" rel="tooltip" data-placement="right" data-original-title="To Nucleus" data-display="' + full.name + '" data-url="' + nucleus_url + '" href="#">' +
+                            '<span class="glyphicon glyphicon-send" aria-hidden="true"></span>' +
+                        '</a>' +
+
                         '</div>';
                 },
                 "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
@@ -127,6 +137,7 @@ $(document).ready( function () {
             {'data': 'cve', 'sName': 'CVE', 'aTargets': [ 5 ]},
             {'data': 'severity', 'sName': 'Severity', 'aTargets': [ 6 ]},
             {'data': 'scan_date', 'sName': 'Scan Date', 'aTargets': [ 7 ]},
+            {'data': 'last_reported', 'sName': 'Last reported', 'aTargets': [ 8 ]},
         ]
     });
 
@@ -177,6 +188,7 @@ $(document).ready( function () {
         });
     });
 
+    // confirm bootbox
     $(document).on("click", ".confirm", function(e) {
         e.preventDefault();
         var title = $(this).attr('data-display');
@@ -208,6 +220,66 @@ $(document).ready( function () {
             }
         });
     });
+
+    // AJAX Send to nucleus
+    $(document).on("click", ".send-to-nucleus", function (e) {
+        e.preventDefault(); // Prevent the default link behavior
+    
+        var url = $(this).data("url"); // Get the URL from the data-url attribute
+        var title = $(this).data("display"); // Get the display name for feedback
+    
+        // Send the AJAX request
+        $.ajax({
+            url: url,
+            type: "POST",
+            headers: {
+                "X-CSRFToken": getCookie("csrftoken") // Include CSRF token
+            },
+            success: function (response) {
+                // Show success feedback
+                displayMessage("info", "Finding sent to Nucleus successfully.");
+            },
+            error: function (xhr) {
+                // Show error feedback
+                var error = JSON.parse(xhr.responseText);
+                displayMessage("danger", "Error: " + error.error);
+            }
+        });
+    });
+    
+    // Helper function to display messages dynamically
+    function displayMessage(type, message) {
+        var alertDiv = $('<div>')
+            .addClass('alert alert-' + type)
+            .text(message);
+
+        // Append the message to the top of the page or a specific container
+        $('.page-header').after(alertDiv);
+
+        // Automatically remove the message after 5 seconds
+        setTimeout(function () {
+            alertDiv.fadeOut(function () {
+                $(this).remove();
+            });
+        }, 5000);
+    }
+
+    // Helper function to get CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== "") {
+            const cookies = document.cookie.split(";");
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === name + "=") {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
 });
 
 </script>

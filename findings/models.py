@@ -49,8 +49,8 @@ class Finding(models.Model):
     first_seen = models.DateTimeField(auto_now_add=True)
     last_seen = models.DateTimeField(auto_now=True)
     last_reported = models.DateTimeField(blank=True, null=True)
-    reported = models.BooleanField(default=False)
 
+    reported = models.BooleanField(default=False)
     raw = models.JSONField(null=True)
 
     def __str__(self):

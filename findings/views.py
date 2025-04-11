@@ -56,7 +56,7 @@ def assets(request):
                     # delete active entry
                     a_obj.delete()
                 except Exception as error:
-                    messages.error(request, 'Unknssown: %s' % error)
+                    messages.error(request, 'Unknown: %s' % error)
                     continue # take next item
                 messages.info(request, 'Moved Asset back to suggestions: %s' % s_obj.value)
             elif action == "delete":
@@ -234,11 +234,26 @@ def view_asset(request, uuid):
         'projectid': request.session['current_project']['prj_id'],
         'assetid': uuid,
         'asset': a_obj,
-        'info_findings': a_obj.finding_set.filter(severity='info', reported=False),
-        'critical_findings': a_obj.finding_set.filter(severity='critical', reported=False),
-        'high_findings': a_obj.finding_set.filter(severity='high', reported=False),
-        'medium_findings': a_obj.finding_set.filter(severity='medium', reported=False),
-        'low_findings': a_obj.finding_set.filter(severity='low', reported=False)
+        'info_findings': a_obj.finding_set.filter(
+            severity='info',
+            # reported=False,
+        ),
+        'critical_findings': a_obj.finding_set.filter(
+            severity='critical',
+            # reported=False,
+        ),
+        'high_findings': a_obj.finding_set.filter(
+            severity='high',
+            # reported=False,
+        ),
+        'medium_findings': a_obj.finding_set.filter(
+            severity='medium',
+            # reported=False,
+        ),
+        'low_findings': a_obj.finding_set.filter(
+            severity='low',
+            # reported=False,
+        )
     }
     return render(request, 'findings/view_asset.html', context)
 
@@ -255,11 +270,16 @@ def view_asset_reported(request, uuid):
         'projectid': request.session['current_project']['prj_id'],
         'assetid': uuid,
         'asset': a_obj,
-        'info_findings': a_obj.finding_set.filter(severity='info', reported=True),
-        'critical_findings': a_obj.finding_set.filter(severity='critical', reported=True),
-        'high_findings': a_obj.finding_set.filter(severity='high', reported=True),
-        'medium_findings': a_obj.finding_set.filter(severity='medium', reported=True),
-        'low_findings': a_obj.finding_set.filter(severity='low', reported=True)
+        'info_findings': a_obj.finding_set.filter(
+            severity='info', reported=True),
+        'critical_findings': a_obj.finding_set.filter(
+            severity='critical', reported=True),
+        'high_findings': a_obj.finding_set.filter(
+            severity='high', reported=True),
+        'medium_findings': a_obj.finding_set.filter(
+            severity='medium', reported=True),
+        'low_findings': a_obj.finding_set.filter(
+            severity='low', reported=True)
     }
     return render(request, 'findings/view_asset_reported.html', context)
     
@@ -274,23 +294,21 @@ def send_nucleus(request, uuid, findingid):
     except Finding.DoesNotExist:
         messages.error(request, 'Unknown Finding: %s' % findingid)
         return redirect(reverse('findings:assets'))
-    try:
-        a_obj = ActiveDomain.objects.get(uuid=uuid)
-    except ActiveDomain.DoesNotExist:
-        messages.error(request, 'Unknown Asset: %s' % uuid)
-        return redirect(reverse('findings:assets'))
+
     # prepare header
     rheader = {'x-apikey': settings.NUCLEUS_KEY, 'Content-Type': 'application/json'}
-    asset = tld.get_tld(a_obj.value, fix_protocol=True, as_object=True)
-    asset_name, asset_id = asset_get_or_create(asset.fld, settings.NUCLEUS_URL, rheader)
+    asset = tld.get_tld(f_obj.domain.value, fix_protocol=True, as_object=True)
+    asset_name, asset_id = asset_get_or_create(asset.fld, settings.NUCLEUS_URL, settings.NUCLEUS_PROJECT, rheader)
     print(asset_name, asset_id)
     # add finding
-    result, msg = asset_finding_get_or_create(asset_id, f_obj, settings.NUCLEUS_URL, rheader)
+    result, msg = asset_finding_get_or_create(asset_name, asset_id, f_obj, settings.NUCLEUS_URL, settings.NUCLEUS_PROJECT, rheader)
     # update reporting time
     f_obj.last_reported = timezone.now()
     f_obj.reported = True
     f_obj.save()
-    return redirect(reverse('findings:view_asset', args=(uuid,)))
+
+    # Return success response
+    return JsonResponse({'success': True, 'message': 'Finding sent to Nucleus successfully.'})
 
 
 ### Nmap stuffs
@@ -341,14 +359,20 @@ def recent_findings(request):
     except Exception as error:
         messages.error(request, 'Unknown Project: %s' % error)
         return redirect(reverse('projects:projects'))
-    # count severity findings
+    # count 
+    # severity findings
     five_days = datetime.now() - timedelta(days=settings.RECENT_DAYS) # X days ago
     recent_active_domains = prj_obj.activedomain_set.all().filter(monitor=True, lastscan_time__gte=make_aware(five_days))
-    context['num_info'] = Finding.objects.filter(last_seen__gte=make_aware(five_days), domain__in=recent_active_domains, severity='info').count()
-    context['num_low'] = Finding.objects.filter(last_seen__gte=make_aware(five_days), domain__in=recent_active_domains, severity='low').count()
-    context['num_medium'] = Finding.objects.filter(last_seen__gte=make_aware(five_days), domain__in=recent_active_domains, severity='medium').count()
-    context['num_high'] = Finding.objects.filter(last_seen__gte=make_aware(five_days), domain__in=recent_active_domains, severity='high').count()
-    context['num_critical'] = Finding.objects.filter(last_seen__gte=make_aware(five_days), domain__in=recent_active_domains, severity='critical').count()
+    context['num_info'] = Finding.objects.filter(last_seen__gte=make_aware(five_days), domain__in=recent_active_domains, 
+    severity='info').count()
+    context['num_low'] = Finding.objects.filter(last_seen__gte=make_aware(five_days), domain__in=recent_active_domains, 
+    severity='low').count()
+    context['num_medium'] = Finding.objects.filter(last_seen__gte=make_aware(five_days), domain__in=recent_active_domains, 
+    severity='medium').count()
+    context['num_high'] = Finding.objects.filter(last_seen__gte=make_aware(five_days), domain__in=recent_active_domains, 
+    severity='high').count()
+    context['num_critical'] = Finding.objects.filter(last_seen__gte=make_aware(five_days), domain__in=recent_active_domains, 
+    severity='critical').count()
     context['past_days'] = settings.RECENT_DAYS
     context['activetab'] = 'critical'
     return render(request, 'findings/list_recent_findings.html', context)

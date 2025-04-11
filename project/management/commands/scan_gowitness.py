@@ -1,12 +1,11 @@
 import subprocess
-import json
-import tempfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from django.core.management.base import BaseCommand, CommandError
 from django.utils.timezone import make_aware
 from datetime import datetime
 from project.models import ActiveDomain, Project
 from findings.models import Finding
+from django.conf import settings
 
 
 class Command(BaseCommand):
@@ -68,8 +67,13 @@ class Command(BaseCommand):
             "--write-db"
         ]
 
+         # Use the GOWITNESS_DB_LOCATION from settings as the working directory
+        gowitness_db_location = getattr(settings, 'GOWITNESS_DB_LOCATION', None)
+        if not gowitness_db_location:
+            raise CommandError("GOWITNESS_DB_LOCATION is not set in settings.py")
+
         try:
-            result = subprocess.run(command, capture_output=True, text=True, check=True)
+            result = subprocess.run(command, cwd=gowitness_db_location, capture_output=True, text=True, check=True)
             print("GoWitness scan completed successfully.")
             print(result.stdout)
         except subprocess.CalledProcessError as e:

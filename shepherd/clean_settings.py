@@ -160,6 +160,10 @@ DOMAINTOOLS_USER = ""
 # Nucleus API
 NUCLEUS_URL = ''
 NUCLEUS_KEY = ''
+NUCLEUS_PROJECT = ''
+
+# GoWitness db path
+GOWITNESS_DB_LOCATION = '/tmp'
 
 # Recent Findings Days
 RECENT_DAYS = 5
