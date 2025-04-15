@@ -10,6 +10,25 @@ def profile_title(request):
 def top_user(request):
     return '<span class="glyphicon glyphicon-cog" aria-hidden="true"></span> Preferences'
 
+def user_management_title(request):
+    return "User Management"
+
+user_management_children = (
+    MenuItem("Manage Users",
+             reverse("admin:auth_user_changelist"),
+             weight=1),
+    MenuItem("Add User",
+             reverse("admin:auth_user_add"),
+             weight=2),
+)
+
+Menu.add_item("accounts", MenuItem(user_management_title,
+    reverse("admin:index"),
+    weight=5,
+    check=lambda request: request.user.is_superuser,
+    children=user_management_children
+))
+
 sharing_children = (
     MenuItem("Change Password",
             reverse("accounts:change_password"),

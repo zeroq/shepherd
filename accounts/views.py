@@ -1,4 +1,8 @@
 from django.shortcuts import render, redirect
+from django.conf import settings
+from django.contrib.auth.models import User
+from django.shortcuts import get_object_or_404
+from django.http import JsonResponse
 
 # Create your views here.
 
@@ -33,6 +37,53 @@ def accounts_login(request):
             messages.error(request, 'Logon failed!')
         return HttpResponseRedirect(reverse("accounts:login"))
     return render(request, 'accounts/login.html', context)
+
+@ratelimit(key='ip', method=ratelimit.ALL, rate='5/m')
+def sso_login(request):
+    """
+    Handle SSO login.
+    """
+    if request.user.is_authenticated:
+        return HttpResponseRedirect(reverse("home"))
+
+    sso_token = request.GET.get('sso_token')
+    if not sso_token:
+        messages.error(request, 'SSO token is missing.')
+        return HttpResponseRedirect(reverse("accounts:login"))
+
+    # Simulate SSO token validation and user retrieval
+    user_data = validate_sso_token(sso_token)
+    if not user_data:
+        messages.error(request, 'Invalid SSO token.')
+        return HttpResponseRedirect(reverse("accounts:login"))
+
+    user, created = User.objects.get_or_create(username=user_data['username'], defaults={
+        'email': user_data['email'],
+        'first_name': user_data['first_name'],
+        'last_name': user_data['last_name'],
+    })
+
+    if created:
+        user.set_unusable_password()  # SSO users won't have a local password
+        user.save()
+
+    login(request, user)
+    return HttpResponseRedirect(reverse("home"))
+
+def validate_sso_token(token):
+    """
+    Simulate SSO token validation. Replace this with actual SSO validation logic.
+    """
+    # Example mock data for demonstration purposes
+    mock_sso_data = {
+        "valid_token": {
+            "username": "sso_user",
+            "email": "sso_user@example.com",
+            "first_name": "SSO",
+            "last_name": "User"
+        }
+    }
+    return mock_sso_data.get(token)
 
 @login_required
 def accounts_logout(request):
