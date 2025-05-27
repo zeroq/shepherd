@@ -4,7 +4,7 @@ from django.urls import reverse
 from menu import Menu, MenuItem
 
 def top_project(request):
-    return '<span class="glyphicon glyphicon-tasks" aria-hidden="true"></span> Projects'
+    return '<span class="glyphicon" aria-hidden="true"></span> Projects'
 
 sharing_children = (
     MenuItem("Projects",

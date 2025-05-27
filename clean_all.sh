@@ -14,5 +14,8 @@ python3 manage.py migrate
 # Collect static files for production
 python3 manage.py collectstatic
 
+# Create user groups for administration
+python3 manage.py setup_user_groups
+
 # Create a superuser
 python3 manage.py createsuperuser

@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 
 from django.shortcuts import render
-from django.http import JsonResponse, HttpResponse, HttpResponseRedirect
+from django.http import HttpResponseForbidden, JsonResponse, HttpResponse, HttpResponseRedirect
 from django.db.models import Q, Prefetch, Count, F
 from django.conf import settings
 from django.utils.timezone import make_aware
@@ -13,10 +13,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 
 from api.pagination import CustomPaginator
-from api.serializer import ProjectSerializer, KeywordSerializer, SuggestionSerializer, ActiveDomainSerializer, FindingSerializer, PortSerializer
+from api.serializer import JobSerializer, ProjectSerializer, KeywordSerializer, SuggestionSerializer, ActiveDomainSerializer, FindingSerializer, PortSerializer
 from api.utils import get_ordering_vars
 
-from project.models import Project, Keyword, Suggestion, ActiveDomain
+from project.models import Project, Keyword, Suggestion, ActiveDomain, Job
 from findings.models import Finding, Port
 
 # Create your views here.
@@ -29,6 +29,9 @@ from findings.models import Finding, Port
 def list_projects(request, format=None):
     """List all projects
     """
+    if not request.user.has_perm('project.view_project'):
+        return HttpResponseForbidden("You do not have permission to view this project.")
+    
     paginator = CustomPaginator()
     if request.query_params:
         if 'search[value]' in request.query_params:
@@ -63,6 +66,9 @@ def list_projects(request, format=None):
 def create_project(request, format=None):
     """Create project via API
     """
+    if not request.user.has_perm('project.add_project'):
+        return HttpResponseForbidden("You do not have permission to view this project.")
+    
     prj_serializer = ProjectSerializer(data=request.data)
     if prj_serializer.is_valid():
         prj_serializer.save()
@@ -80,6 +86,9 @@ def create_project(request, format=None):
 @authentication_classes((SessionAuthentication, ))
 @permission_classes((IsAuthenticated,))
 def list_suggestions(request, projectid, selection, vtype, format=None):
+    if not request.user.has_perm('project.view_suggestion'):
+        return HttpResponseForbidden("You do not have permission to view this project.")
+    
     paginator = CustomPaginator()
     ### check if project exists
     try:
@@ -175,6 +184,9 @@ def list_suggestions(request, projectid, selection, vtype, format=None):
 @authentication_classes((SessionAuthentication,))
 @permission_classes((IsAuthenticated,))
 def list_assets(request, projectid, selection, format=None):
+    if not request.user.has_perm('project.view_activedomain'):
+        return HttpResponseForbidden("You do not have permission to view this project.")
+    
     paginator = CustomPaginator()
     ### check if project exists
     try:
@@ -230,13 +242,17 @@ def list_assets(request, projectid, selection, format=None):
         queryset = queryset.filter(value__icontains=search_columns['value'])
 
     if search_columns['vulns']:
-        queryset = queryset.filter(
-            Q(vuln_info__icontains=search_columns['vulns']) |
-            Q(vuln_critical__icontains=search_columns['vulns']) |
-            Q(vuln_high__icontains=search_columns['vulns']) |
-            Q(vuln_medium__icontains=search_columns['vulns']) |
-            Q(vuln_low__icontains=search_columns['vulns'])
-        )
+        # Map severity keywords to annotated fields
+        severity_map = {
+            'info': 'vuln_info',
+            'critical': 'vuln_critical',
+            'high': 'vuln_high',
+            'medium': 'vuln_medium',
+            'low': 'vuln_low',
+        }
+        severity_filter = search_columns['vulns'].lower()
+        if severity_filter in severity_map:
+            queryset = queryset.filter(**{f"{severity_map[severity_filter]}__gt": 0})
 
     if search_columns['source']:
         queryset = queryset.filter(source__icontains=search_columns['source'])
@@ -275,12 +291,16 @@ def list_assets(request, projectid, selection, format=None):
 @authentication_classes((SessionAuthentication, ))
 @permission_classes((IsAuthenticated,))
 def list_keywords(request, projectid, selection, format=None):
+    if not request.user.has_perm('project.view_keyword'):
+        return HttpResponseForbidden("You do not have permission to view this project.")
+    
     paginator = CustomPaginator()
     ### check if project exists
     try:
         prj = Project.objects.get(id=projectid)
     except Project.DoesNotExist:
         return JsonResponse({"status": True, "code": 200, "next": None, "previous": None, "count": 0, "iTotalRecords": 0, "iTotalDisplayRecords": 0, "results": []})
+
     ### get search parameters
     if request.query_params:
         if 'search[value]' in request.query_params:
@@ -320,6 +340,9 @@ def list_keywords(request, projectid, selection, format=None):
 def add_keyword(request, format=None):
     """Add keywords to a project
     """
+    if not request.user.has_perm('project.add_keyword'):
+        return HttpResponseForbidden("You do not have permission to view this project.")
+    
     prjname = request.data.get('projectname', None)
     keywords = request.data.get('keywords', None)
     if prjname is not None:
@@ -353,6 +376,9 @@ def add_keyword(request, format=None):
 @authentication_classes((SessionAuthentication, ))
 @permission_classes((IsAuthenticated,))
 def list_ports(request, projectid, format=None):
+    if not request.user.has_perm('findings.view_port'):
+        return HttpResponseForbidden("You do not have permission to view this project.")
+    
     paginator = CustomPaginator()
     try:
         prj = Project.objects.get(id=projectid)
@@ -431,6 +457,9 @@ def list_ports(request, projectid, format=None):
 @authentication_classes((SessionAuthentication, ))
 @permission_classes((IsAuthenticated,))
 def list_recent_findings(request, projectid, severity, format=None):
+    if not request.user.has_perm('findings.view_finding'):
+        return HttpResponseForbidden("You do not have permission to view this project.")
+    
     paginator = CustomPaginator()
     if severity not in ['info', 'low', 'medium', 'high', 'critical']:
         print("ERROR: wrong severity: %s" % severity)
@@ -474,6 +503,9 @@ def list_recent_findings(request, projectid, severity, format=None):
 @authentication_classes((SessionAuthentication, ))
 @permission_classes((IsAuthenticated,))
 def list_all_findings(request, projectid, format=None):
+    if not request.user.has_perm('findings.view_finding'):
+        return HttpResponseForbidden("You do not have permission to view this project.")
+    
     paginator = CustomPaginator()
 
     ### check if project exists
@@ -556,6 +588,8 @@ def list_all_findings(request, projectid, format=None):
 @permission_classes((IsAuthenticated,))
 def delete_finding(request, projectid, findingid):
     """Delete a specific finding by ID for a given project."""
+    if not request.user.has_perm('findings.delete_finding'):
+        return HttpResponseForbidden("You do not have permission to view this project.")
     try:
         # Check if the project exists
         prj = Project.objects.get(id=projectid)
@@ -571,3 +605,43 @@ def delete_finding(request, projectid, findingid):
         return JsonResponse({'message': 'Finding does not exist', 'status': 'failure'}, status=404)
 
 ##### END FINDINGS ###########
+
+##### JOBS ###############
+
+@api_view(['GET'])
+@authentication_classes((SessionAuthentication, ))
+@permission_classes((IsAuthenticated,))
+def list_jobs(request, projectid):
+    if not request.user.has_perm('jobs.view_job'):
+        return HttpResponseForbidden("You do not have permission to view this.")
+
+    # check if project exists
+    try:
+        prj = Project.objects.get(id=projectid)
+    except Project.DoesNotExist:
+        return JsonResponse({
+            "status": True,
+            "code": 200,
+            "next": None,
+            "previous": None,
+            "count": 0,
+            "iTotalRecords": 0,
+            "iTotalDisplayRecords": 0,
+            "results": []
+        })
+
+    queryset = Job.objects.filter(related_project=prj).order_by('-created_at')
+    queryset = queryset.annotate(username=F('user__username'))
+
+    paginator = CustomPaginator()
+    jobs = paginator.paginate_queryset(queryset, request)
+    serializer = JobSerializer(instance=jobs, many=True)
+    data = serializer.data
+
+    # Add username to each job in the response
+    for job_obj, job_instance in zip(data, jobs):
+        job_obj['username'] = getattr(job_instance, 'username', None)
+
+    return paginator.get_paginated_response(data)
+
+##### END JOBS ###############

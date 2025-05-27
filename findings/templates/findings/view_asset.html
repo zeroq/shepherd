@@ -1,4 +1,4 @@
-{% extends "base2.html" %}
+{% extends "base.html" %}
 {% load static %}
 
 {% block header %}
@@ -90,8 +90,11 @@
                 <td>{{ entry.vulnerableAt }}</td>
                 <td>{{ entry.description }}</td>
                 <td>
-                    <button type="button" class="btn btn-primary btn-xs" onclick="location.href='{% url 'findings:send_nucleus' uuid=asset.uuid findingid=entry.id %}'">To Nucleus</button>&nbsp;<br/>
-                    <a class="btn btn-xs" rel="tooltip" data-placement="right" data-original-title="Delete Entry" onclick="location.href='{% url 'findings:delete_finding' uuid=asset.uuid findingid=entry.id reported='false' %}'">
+                    <a class="btn btn-xs send-to-nucleus" rel="tooltip" data-placement="right" 
+                       data-original-title="To Nucleus" data-url="{% url 'findings:send_nucleus' uuid='00000000-0000-0000-0000-000000000000' findingid=entry.id %}" data-display="{{ full.name }}" href="#">
+                        <span class="glyphicon glyphicon-send" aria-hidden="true"></span>
+                    </a>
+                    <a class="btn btn-xs confirm" rel="tooltip" data-placement="right" data-original-title="Delete Entry" data-display="' + full.name + '" data-href="' + delete_url + '" href="#" data-method="DELETE">
                         <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
                     </a>
                 </td>
@@ -120,8 +123,11 @@
                 <td>{{ entry.vulnerableAt }}</td>
                 <td>{{ entry.description }}</td>
                 <td>
-                    <button type="button" class="btn btn-primary btn-xs" onclick="location.href='{% url 'findings:send_nucleus' uuid=asset.uuid findingid=entry.id %}'">To Nucleus</button>&nbsp;<br/>
-                    <a class="btn btn-xs" rel="tooltip" data-placement="right" data-original-title="Delete Entry" onclick="location.href='{% url 'findings:delete_finding' uuid=asset.uuid findingid=entry.id reported='false' %}'">
+                    <a class="btn btn-xs send-to-nucleus" rel="tooltip" data-placement="right" 
+                       data-original-title="To Nucleus" data-url="{% url 'findings:send_nucleus' uuid='00000000-0000-0000-0000-000000000000' findingid=entry.id %}" data-display="{{ full.name }}" href="#">
+                        <span class="glyphicon glyphicon-send" aria-hidden="true"></span>
+                    </a>
+                    <a class="btn btn-xs confirm" rel="tooltip" data-placement="right" data-original-title="Delete Entry" data-display="' + full.name + '" data-href="' + delete_url + '" href="#" data-method="DELETE">
                         <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
                     </a>
                 </td>
@@ -150,8 +156,11 @@
                 <td>{{ entry.vulnerableAt }}</td>
                 <td>{{ entry.description }}</td>
                 <td>
-                    <button type="button" class="btn btn-primary btn-xs" onclick="location.href='{% url 'findings:send_nucleus' uuid=asset.uuid findingid=entry.id %}'">To Nucleus</button>&nbsp;<br/>
-                    <a class="btn btn-xs" rel="tooltip" data-placement="right" data-original-title="Delete Entry" onclick="location.href='{% url 'findings:delete_finding' uuid=asset.uuid findingid=entry.id reported='false' %}'">
+                    <a class="btn btn-xs send-to-nucleus" rel="tooltip" data-placement="right" 
+                       data-original-title="To Nucleus" data-url="{% url 'findings:send_nucleus' uuid='00000000-0000-0000-0000-000000000000' findingid=entry.id %}" data-display="{{ full.name }}" href="#">
+                        <span class="glyphicon glyphicon-send" aria-hidden="true"></span>
+                    </a>
+                    <a class="btn btn-xs confirm" rel="tooltip" data-placement="right" data-original-title="Delete Entry" data-display="' + full.name + '" data-href="' + delete_url + '" href="#" data-method="DELETE">
                         <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
                     </a>
                 </td>
@@ -180,8 +189,11 @@
                 <td>{{ entry.vulnerableAt }}</td>
                 <td>{{ entry.description }}</td>
                 <td>
-                    <button type="button" class="btn btn-primary btn-xs" onclick="location.href='{% url 'findings:send_nucleus' uuid=asset.uuid findingid=entry.id %}'">To Nucleus</button>&nbsp;<br/>
-                    <a class="btn btn-xs" rel="tooltip" data-placement="right" data-original-title="Delete Entry" onclick="location.href='{% url 'findings:delete_finding' uuid=asset.uuid findingid=entry.id reported='false' %}'">
+                    <a class="btn btn-xs send-to-nucleus" rel="tooltip" data-placement="right" 
+                       data-original-title="To Nucleus" data-url="{% url 'findings:send_nucleus' uuid='00000000-0000-0000-0000-000000000000' findingid=entry.id %}" data-display="{{ full.name }}" href="#">
+                        <span class="glyphicon glyphicon-send" aria-hidden="true"></span>
+                    </a>
+                    <a class="btn btn-xs confirm" rel="tooltip" data-placement="right" data-original-title="Delete Entry" data-display="' + full.name + '" data-href="' + delete_url + '" href="#" data-method="DELETE">
                         <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
                     </a>
                 </td>
@@ -216,14 +228,9 @@
                        data-original-title="To Nucleus" data-url="{% url 'findings:send_nucleus' uuid='00000000-0000-0000-0000-000000000000' findingid=entry.id %}" data-display="{{ full.name }}" href="#">
                         <span class="glyphicon glyphicon-send" aria-hidden="true"></span>
                     </a>
-                    <a class="btn btn-xs" rel="tooltip" data-placement="right" data-original-title="Delete Entry" onclick="location.href='{% url 'findings:delete_finding' uuid=asset.uuid findingid=entry.id reported='false'%}'">
-                        <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
-                    </a>
-
                     <a class="btn btn-xs confirm" rel="tooltip" data-placement="right" data-original-title="Delete Entry" data-display="' + full.name + '" data-href="' + delete_url + '" href="#" data-method="DELETE">
                         <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
                     </a>
-
                 </td>
             </tr>
             {% endfor %}

@@ -1,5 +1,3 @@
-# vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
-
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 
@@ -16,9 +14,3 @@ def home(request):
     context['keywords'] = kw
     #request.session['current_project'] = None
     return render(request, 'shepherd/index.html', context)
-
-
-#@login_required
-#def projects(request):
-#    context = {}
-#    return render(request, 'shepherd/list_projects.html', context)

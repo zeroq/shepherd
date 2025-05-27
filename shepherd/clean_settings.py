@@ -29,10 +29,20 @@ ADMIN_ENABLED = True
 DEBUG = True
 ALLOWED_HOSTS = ['127.0.0.1']
 
+# Enforce HTTPS
+# SECURE_SSL_REDIRECT = True  # Redirect all HTTP requests to HTTPS
+# SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')  # Use when behind a proxy/load balancer
+# SESSION_COOKIE_SECURE = True  # Ensure cookies are only sent over HTTPS
+# CSRF_COOKIE_SECURE = True  # Ensure CSRF cookies are only sent over HTTPS
+# SECURE_HSTS_SECONDS = 31536000  # Enable HTTP Strict Transport Security (HSTS) for 1 year
+# SECURE_HSTS_INCLUDE_SUBDOMAINS = True  # Apply HSTS to all subdomains
+# SECURE_HSTS_PRELOAD = True  # Allow the domain to be preloaded in browsers
+# SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'  # Set a secure referrer policy
 
 # Application definition
 
 INSTALLED_APPS = [
+    'django_extensions',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',

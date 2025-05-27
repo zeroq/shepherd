@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block header %}
+<style>
+#table_list_projects tbody tr.selected td {background-color:#B0BED9}
+#table_list_projects tbody tr.odd.selected td {background-color:#acbad4}
+</style>
+{% endblock %}
+
+{% block content %}
+{% spaceless %}
+<div class="page-header">
+    <div class="media">
+        <div class="media-left">
+        </div>
+        <div class="media-body">
+            <h2 class="media-heading">Job</h2>ID: {{ j_obj.id }}
+        </div>
+    </div>
+</div>
+{% if messages %}{% for message in messages %}<div {% if message.tags %} class="alert alert-{{ message.tags }}"{% endif %}>{{ message }}</div>{% endfor %}{% endif %}
+<div>
+    <h4>Details</h4>
+    <table id="klammer" class="table table-condensed">
+        <tbody>
+            <tr>
+                <td>
+        <table id="asset_details" class="table table-condensed table-bordered" style="font-size: 0.9em;">
+        <tbody>
+            <tr>
+                <td>Command:</td><td>{{ j_obj.command }}</td>
+            </tr>
+            <tr>
+                <td>Arguments:</td><td>{{ j_obj.args }}</td>
+            </tr>
+            <tr>
+                <td>Status:</td><td>{{ j_obj.status }}</td>
+            </tr>
+            <tr>
+                <td>Created:</td><td>{{ j_obj.created_at }}</td>
+            </tr>
+            <tr>
+                <td>Finished:</td><td>{{ j_obj.finished_at }}</td>
+            </tr>
+        </tbody>
+        </table>
+                </td>
+                <td>
+        <table id="port_details" class="table table-condensed table-bordered" style="font-size: 0.9em;">
+            <tbody>
+            {% for port in asset.port_set.all %}
+            <tr>
+                <td>Port</td><td>{{ port.port }}</td>
+                <td>Banner</td><td>{{ port.banner }}</td>
+                <td>Product</td><td>{{ port.product }}</td>
+                <td>Last Scan</td><td>{{ port.scan_date }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<div>
+    <h4>Command output</h4>
+    <div style="max-height: 400px; overflow: auto; border: 1px solid #ddd; padding: 10px; background: #fafafa;">
+        {{ j_obj.output|linebreaksbr }}
+    </div>
+</div>
+{% endspaceless%}
+{% endblock%}
+
+{% block javascript %}
+<script src="{% static 'js/bootbox.min.js' %}"></script>
+{% endblock %}

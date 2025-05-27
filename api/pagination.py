@@ -1,5 +1,6 @@
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
 
+from django.db import connection
 from rest_framework import status
 from rest_framework.pagination import LimitOffsetPagination, PageNumberPagination
 from rest_framework.response import Response

@@ -12,3 +12,6 @@ django-simple-menu
 tldextract
 python-nmap
 dnspython
+django-extensions
+Werkzeug
+pyOpenSSL

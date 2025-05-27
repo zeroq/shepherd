@@ -1,3 +1,4 @@
+from project.models import Project, Suggestion, ActiveDomain
 import requests
 import json
 import html
@@ -93,3 +94,15 @@ def asset_get_or_create(asset_name, url, nucleus_project, request_header):
             print(json.dumps(rsp.json(), indent=4))
             return None, None
     return entry_name, entry_id
+
+def ignore_asset(uuid):
+    """move asset to ignore list
+    """
+    a_obj = ActiveDomain.objects.get(uuid=uuid)
+    s_obj = Suggestion.objects.get(value=a_obj.value)
+    a_obj.monitor = False
+    s_obj.ignore = True
+    a_obj.save()
+    s_obj.save()
+
+    return

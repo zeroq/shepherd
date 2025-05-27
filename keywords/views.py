@@ -1,5 +1,6 @@
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
 
+from django.http import HttpResponseForbidden
 from django.shortcuts import render, redirect
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
@@ -10,11 +11,18 @@ from keywords.forms import AddKeywordForm
 from project.models import Suggestion
 from django.core.management import call_command
 import threading
+from django.utils.html import escape
+
+from jobs.utils import run_job
 
 @login_required
 def keywords(request):
+    if not request.user.has_perm('project.view_keyword'):
+        return HttpResponseForbidden("You do not have permission.")
+    
     project_id = request.session['current_project']['prj_id']
-    keyword_form = AddKeywordForm()
+    add_keyword_form = AddKeywordForm()
+    
     descriptions = (
         Suggestion.objects.filter(related_project_id=project_id)
         .exclude(description__isnull=True)
@@ -24,13 +32,16 @@ def keywords(request):
     )
     context = {
         'projectid': project_id,
-        'keywordform': keyword_form,
+        'addkeywordform': add_keyword_form,
         'descriptions': descriptions
     }
     return render(request, 'keywords/list_keywords.html', context)
 
 @login_required
 def toggle_keyword(request, keywordid):
+    if not request.user.has_perm('project.change_keyword'):
+        return HttpResponseForbidden("You do not have permission.")
+    
     try:
         kw_obj = Keyword.objects.get(id=keywordid)
     except Keyword.DoesNotExist:
@@ -42,6 +53,9 @@ def toggle_keyword(request, keywordid):
 
 @login_required
 def delete_keyword(request, keywordid):
+    if not request.user.has_perm('project.delete_keyword'):
+        return HttpResponseForbidden("You do not have permission.")
+    
     try:
         kw_obj = Keyword.objects.get(id=keywordid).delete()
     except Keyword.DoesNotExist:
@@ -50,6 +64,9 @@ def delete_keyword(request, keywordid):
 
 @login_required
 def add_keyword(request):
+    if not request.user.has_perm('project.add_keyword'):
+        return HttpResponseForbidden("You do not have permission.")
+    
     prjid = request.session['current_project']['prj_id']
     if request.method == 'POST':
         form = AddKeywordForm(request.POST)
@@ -60,9 +77,9 @@ def add_keyword(request):
                 messages.error(request, "Project not found!")
                 return redirect(reverse('keywords:keywords'))
             data = {
-                'keyword': form.cleaned_data['keyword'],
+                'keyword': escape(form.cleaned_data['keyword']),
                 'ktype': form.cleaned_data['ktype'],
-                'description': form.cleaned_data['description'],
+                'description': escape(form.cleaned_data['description']),
                 'related_project': prj_obj
             }
             Keyword.objects.get_or_create(**data)
@@ -70,49 +87,57 @@ def add_keyword(request):
     return redirect(reverse('keywords:keywords'))
 
 @login_required
-def scan_domaintools(request):
-    context = {'projectid': request.session['current_project']['prj_id']}
-    messages.info(request, 'Domaintools scan against monitored keywords has been triggered in the background.')
+def scan_keywords(request):
+    if not request.user.has_perm('project.add_suggestion'):
+        return HttpResponseForbidden("You do not have permission.")
+    
+    if request.method == 'POST':
+        context = {'projectid': request.session['current_project']['prj_id']}
+        
+        if "crtsh" in request.POST:
+            messages.info(request, 'CRTSH scan against monitored keywords has been triggered in the background.')
 
-    try:
-        # Get the project ID from the session
-        projectid = context['projectid']
-
-        # Define a function to run the command in a separate thread
-        def run_command():
             try:
-                call_command('import_domaintools', projectid=projectid)
+                # Get the project ID from the session
+                projectid = context['projectid']
+
+                # Define a function to run the command in a separate thread
+                def run_command():
+                    try:
+                        command = 'import_crtsh'
+                        args = f'--projectid {projectid}'
+                        run_job(command, args, projectid, request.user)
+                    except Exception as e:
+                        print(f"Error running import_crtsh: {e}")
+
+                # Start the thread
+                thread = threading.Thread(target=run_command)
+                thread.start()
+
             except Exception as e:
-                print(f"Error running import_domaintools: {e}")
+                messages.error(request, f'Error: {e}')
 
-        # Start the thread
-        thread = threading.Thread(target=run_command)
-        thread.start()
+        if "domaintools" in request.POST:
+            messages.info(request, 'DomainTools scan against monitored keywords has been triggered in the background.')
 
-    except Exception as e:
-        messages.error(request, f'Error: {e}')
-    return redirect(reverse('keywords:keywords'))
-
-@login_required
-def scan_crtsh(request):
-    context = {'projectid': request.session['current_project']['prj_id']}
-    messages.info(request, 'CRTSH scan against monitored keywords has been triggered in the background.')
-
-    try:
-        # Get the project ID from the session
-        projectid = context['projectid']
-
-        # Define a function to run the command in a separate thread
-        def run_command():
             try:
-                call_command('import_crtsh', projectid=projectid)
+                # Get the project ID from the session
+                projectid = context['projectid']
+
+                # Define a function to run the command in a separate thread
+                def run_command():
+                    try:
+                        command = 'import_domaintools'
+                        args = f'--projectid {projectid}'
+                        run_job(command, args, projectid, request.user)
+                    except Exception as e:
+                        print(f"Error running import_domaintools: {e}")
+
+                # Start the thread
+                thread = threading.Thread(target=run_command)
+                thread.start()
+
             except Exception as e:
-                print(f"Error running import_crtsh: {e}")
+                messages.error(request, f'Error: {e}')
 
-        # Start the thread
-        thread = threading.Thread(target=run_command)
-        thread.start()
-
-    except Exception as e:
-        messages.error(request, f'Error: {e}')
     return redirect(reverse('keywords:keywords'))

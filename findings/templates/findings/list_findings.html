@@ -1,4 +1,4 @@
-{% extends "base2.html" %}
+{% extends "base.html" %}
 {% load static %}
 
 {% block header %}
@@ -63,7 +63,16 @@
           <th><input type="text" placeholder="Search Type" class="column-search form-control input-sm"></th>
           <th><input type="text" placeholder="Search Description" class="column-search form-control input-sm"></th>
           <th><input type="text" placeholder="Search CVE" class="column-search form-control input-sm"></th>
-          <th><input type="text" placeholder="Search Severity" class="column-search form-control input-sm"></th>
+          <th>
+            <select id="severity-filter" class="form-control input-sm">
+              <option value="">All Severities</option>
+              <option value="info">Info</option>
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+              <option value="critical">Critical</option>
+            </select>
+          </th>
           <th><input type="text" placeholder="Search Scan Date" class="column-search form-control input-sm"></th>
           <th><input type="text" placeholder="Last reported" class="column-search form-control input-sm"></th>
         </tr>
@@ -148,6 +157,11 @@ $(document).ready( function () {
             let columnIndex = $(this).parent().index();
             findingsTable.column(columnIndex).search(this.value).draw();
         });
+    });
+    // Apply the severity filter
+    $('#severity-filter').on('change', function () {
+        let selectedSeverity = $(this).val();
+        findingsTable.column(6).search(selectedSeverity).draw();
     });
 
     // checkbox stuff

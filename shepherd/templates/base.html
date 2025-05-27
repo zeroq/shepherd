@@ -18,6 +18,7 @@
     <link href="{% static 'css/dataTables.bootstrap.css' %}" rel="stylesheet" type="text/css">
     <link href="{% static 'css/query-builder.default.min.css' %}" rel="stylesheet" type="text/css">
     <link href="{% static 'css/buttons.dataTables.min.css' %}" rel="stylesheet" type="text/css">
+    <link href="{% static 'css/custom-navbar.css' %}" rel="stylesheet" type="text/css">
 
     <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
     <!--[if lt IE 9]>
@@ -30,7 +31,8 @@
   <body>
 
     <nav class="navbar navbar-inverse navbar-fixed-top">
-      <div class="container">
+      <div class="container-fluid">
+        <!-- Left Section: Logo + Shepherd -->
         <div class="navbar-header">
           <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
             <span class="sr-only">Toggle navigation</span>
@@ -38,27 +40,52 @@
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
           </button>
-          <a class="navbar-brand" href="{% url 'home' %}">Shepherd</a>
+          <a class="navbar-brand" href="{% url 'home' %}" style="display: flex; align-items: center;">
+            <img src="{% static 'img/custom-logo-standalone.svg' %}" alt="Logo" width="50" height="50" style="margin-right: 10px;" onerror="this.onerror=null; this.style.display='none';">
+            Shepherd
+          </a>
         </div>
+    
+        <!-- Middle Section: Main Menus -->
         {% if user.is_authenticated %}
-        <div id="navbar" class="collapse navbar-collapse navbar-left">
+        <div class="collapse navbar-collapse">
+          <ul class="nav navbar-nav">
             {% with menu=menus.main %}{% include "menu_main.html" %}{% endwith %}
             {% if request.session.current_project is not None %}
-                {% with menu=menus.keywords %}{% include "menu_main.html" %}{% endwith %}
-                {% with menu=menus.suggestions %}{% include "menu_main.html" %}{% endwith %}
-                {% with menu=menus.findings %}{% include "menu_main.html" %}{% endwith %}
+              {% with menu=menus.keywords %}{% include "menu_main.html" %}{% endwith %}
+              {% with menu=menus.suggestions %}{% include "menu_main.html" %}{% endwith %}
+              {% with menu=menus.findings %}{% include "menu_main.html" %}{% endwith %}
             {% endif %}
-        </div><!--/.nav-collapse -->
-        <div class="collapse navbar-collapse navbar-right">
+          </ul>
+    
+          <!-- Right Section: Preferences and Project Info -->
+          <ul class="nav navbar-nav navbar-right">
+
+            <!-- Add Jobs tab here -->
+            {% if request.session.current_project is not None %}
+              <!-- <li>
+                <a href="{% url 'jobs:jobs' %}">
+                  <span class="glyphicon glyphicon-tasks" aria-hidden="true"></span> Jobs
+                </a>
+              </li> -->
+              {% with menu=menus.jobs %}{% include "menu_main.html" %}{% endwith %}
+            {% endif %}
+
             {% if user.is_superuser %}
-                {% with menu=menus.usermgmt %}{% include "menu_main.html" %}{% endwith %}
+              {% with menu=menus.usermgmt %}{% include "menu_main.html" %}{% endwith %}
             {% endif %}
             {% with menu=menus.accounts %}{% include "menu_main.html" %}{% endwith %}
+
             {% if request.session.current_project is not None %}
-                <ul class="nav navbar-nav"><li class="nav-item"><span class="navbar-text">Project: {{ request.session.current_project.prj_name }}</span></li></ul>
+            <li class="nav-item">
+              <span class="navbar-text">Project: {{ request.session.current_project.prj_name }}</span>
+            </li>
             {% else %}
-                <ul class="nav navbar-nav"><li class="nav-item"><span class="navbar-text">Project: Not Set</span></li></ul>
+              <li class="nav-item">
+                <span class="navbar-text">Project: Not Set</span>
+              </li>
             {% endif %}
+          </ul>
         </div>
         {% endif %}
       </div>
@@ -66,11 +93,8 @@
 
     <div class="col-md-12" id="main">
         <div class="row">
-            <div class="col-sm-8">
+            <div class="col-sm-12">
                 {% block content %}{% endblock %}
-            </div>
-            <div class="col-sm-4">
-                {% block sidebar %}{% endblock %}
             </div>
         </div>
     </div>

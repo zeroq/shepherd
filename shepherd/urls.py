@@ -27,6 +27,7 @@ urlpatterns = [
     path('findings/', include(('findings.urls', 'findings'), namespace='findings')),
     path('accounts/', include(('accounts.urls', 'accounts'), namespace='accounts')),
     path('api/', include(('api.urls', 'api'), namespace='api')),
+    path('jobs/', include(('jobs.urls', 'jobs'), namespace='jobs')),
 ]
 
 if settings.ADMIN_ENABLED:

@@ -1,5 +1,4 @@
-# vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
-
+from django.http import HttpResponseForbidden
 from django.shortcuts import render, redirect
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
@@ -10,6 +9,9 @@ from .forms import AddProjectForm
 
 @login_required
 def projects(request):
+    if not request.user.has_perm('project.view_project'):
+        return HttpResponseForbidden("You do not have permission.")
+    
     context = {'projectform': AddProjectForm(), 'num_total_domains': 0, 'num_total_subdomains': 0, 'num_total_ipaddresses': 0, 'num_ignored_domains': 0, 'num_ignored_subdomains': 0, 'num_ignored_ipaddresses': 0}
     if 'current_project' in request.session and request.session['current_project'] is not None:
         # load project
@@ -30,6 +32,9 @@ def projects(request):
 
 @login_required
 def select_project(request, projectid):
+    if not request.user.has_perm('project.view_project'):
+        return HttpResponseForbidden("You do not have permission.")
+    
     context = {}
     try:
         prj_obj = Project.objects.get(id=projectid)
@@ -51,6 +56,9 @@ def select_project(request, projectid):
 def delete_project(request, projectid):
     """delete given project
     """
+    if not request.user.has_perm('project.delete_project'):
+        return HttpResponseForbidden("You do not have permission.")
+    
     context = {}
     try:
         prj_obj = Project.objects.get(id=projectid)
@@ -64,12 +72,18 @@ def delete_project(request, projectid):
 def unselect_project(request):
     """unselect current project
     """
+    if not request.user.has_perm('project.view_project'):
+        return HttpResponseForbidden("You do not have permission.")
+    
     context = {}
     request.session['current_project'] = None
     return redirect(reverse('projects:projects'))
 
 @login_required
 def add_project(request):
+    if not request.user.has_perm('project.add_project'):
+        return HttpResponseForbidden("You do not have permission.")
+    
     if request.method == 'POST':
         form = AddProjectForm(request.POST)
         if form.is_valid():

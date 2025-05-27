@@ -1,7 +1,7 @@
 
 from rest_framework import serializers
 
-from project.models import Project, Keyword, Suggestion, ActiveDomain
+from project.models import Job, Project, Keyword, Suggestion, ActiveDomain
 from findings.models import Finding, Port
 
 class ProjectSerializer(serializers.ModelSerializer):
@@ -48,3 +48,8 @@ class FindingSerializer(serializers.ModelSerializer):
 
     def get_asset(self, obj):
         return obj.domain.value
+
+class JobSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Job
+        fields = '__all__'

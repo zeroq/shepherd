@@ -29,16 +29,13 @@ class Command(BaseCommand):
         parser.add_argument(
             '--nt',
             action='store_true',
-            help='Trigger the Nuclei scan with the "-nt" option',
+            help='Trigger the Nuclei scan with the "--nt" option',
         )
 
     def handle(self, *args, **kwargs):
         projectid = kwargs.get('projectid')
         update = kwargs.get('update')
         nt_option = kwargs.get('nt')
-
-        # print(projectid, update, nt_option)
-        # return
 
         # Handle the update argument
         if True: #update:

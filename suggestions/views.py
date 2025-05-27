@@ -1,3 +1,4 @@
+from django.http import HttpResponseForbidden
 from django.shortcuts import render, redirect
 from django.urls import reverse
 from django.contrib import messages
@@ -5,37 +6,43 @@ from django.utils.timezone import make_aware
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from django.conf import settings
-
+from django.utils.html import escape
 import uuid as imported_uuid
-
 from project.models import Suggestion, ActiveDomain, Project
+from jobs.utils import run_job
 from suggestions.forms import AddSuggestionForm
-
 import requests
 import json
 import dateparser
 from datetime import datetime
-from urllib.parse import urlencode, quote_plus
 import tldextract
-
-from django.core.management import call_command
 import threading
+import csv
+from django.http import HttpResponse
 
-# Create your views here.
 
 @login_required
 def suggestions(request):
     """view all new and open suggestions
     """
+    if not request.user.has_perm('project.view_suggestion'):
+        return HttpResponseForbidden("You do not have permission.")
+    
     context = {'projectid': request.session['current_project']['prj_id'], 'suggestionform': AddSuggestionForm()}
     # check for POST request
     if request.method == 'POST':
         # determine action
         if "btnmonitor" in request.POST:
+            if not request.user.has_perm('project.change_suggestion'):
+                return HttpResponseForbidden("You do not have permission.")
             action = "monitor"
         elif "btnignore" in request.POST:
+            if not request.user.has_perm('project.change_suggestion'):
+                return HttpResponseForbidden("You do not have permission.")
             action = "ignore"
         elif "btndelete" in request.POST:
+            if not request.user.has_perm('project.delete_suggestion'):
+                return HttpResponseForbidden("You do not have permission.")
             action = "delete"
         else:
             messages.error(request, 'Unknown action received!')
@@ -96,20 +103,29 @@ def suggestions(request):
         context['activetab'] = 'domain'
     return render(request, 'suggestions/list_suggestions.html', context)
 
+
 @login_required
 def manual_add_suggestion(request):
-    """manually add a suggestion
-    """
+    """Manually add a suggestion with XSS prevention"""
+    if not request.user.has_perm('project.add_suggestion'):
+        return HttpResponseForbidden("You do not have permission.")
+    
     if request.method == 'POST':
         form = AddSuggestionForm(request.POST)
         if form.is_valid():
             record = form.save(commit=False)
+
+            # Sanitize all fields to prevent XSS
+            record.value = escape(record.value)
+            record.description = escape(record.description) if record.description else None
+            record.source = escape(record.source) if record.source else None
+            record.link = escape(record.link) if record.link else None
+
+            # Generate UUID and save the record
             record.uuid = imported_uuid.uuid5(imported_uuid.NAMESPACE_DNS, "%s" % record.value)
             record.creation_time = timezone.now()
             record.save()
-            content = {
-                #TODO
-            }
+
             messages.info(request, "Suggestion successfully added")
         else:
             # Print form errors to the console for debugging
@@ -122,13 +138,20 @@ def manual_add_suggestion(request):
 def ignored_suggestions(request):
     """view all ignored suggestions
     """
+    if not request.user.has_perm('project.view_suggestion'):
+        return HttpResponseForbidden("You do not have permission.")
+    
     context = {'projectid': request.session['current_project']['prj_id']}
     # check for POST request
     if request.method == 'POST':
         # determine action "move" or "delete"
         if "btnmove" in request.POST:
+            if not request.user.has_perm('project.change_suggestion'):
+                return HttpResponseForbidden("You do not have permission.")
             action = 'move'
         elif "btndelete" in request.POST:
+            if not request.user.has_perm('project.delete_suggestion'):
+                return HttpResponseForbidden("You do not have permission.")
             action = 'delete'
         else:
             messages.error(request, 'Unknown action received!')
@@ -158,6 +181,9 @@ def ignored_suggestions(request):
 def delete_suggestion(request, uuid):
     """remove a suggestion
     """
+    if not request.user.has_perm('project.delete_suggestion'):
+        return HttpResponseForbidden("You do not have permission.")
+    
     try:
         s_obj = Suggestion.objects.get(uuid=uuid).delete()
     except Suggestion.DoesNotExist:
@@ -169,6 +195,9 @@ def delete_suggestion(request, uuid):
 def delete_suggestion_ignored(request, uuid):
     """remove a suggestion from ignored view
     """
+    if not request.user.has_perm('project.delete_suggestion'):
+        return HttpResponseForbidden("You do not have permission.")
+    
     try:
         s_obj = Suggestion.objects.get(uuid=uuid).delete()
     except Suggestion.DoesNotExist:
@@ -180,6 +209,9 @@ def delete_suggestion_ignored(request, uuid):
 def monitor_suggestion(request, uuid):
     """move a suggestion to the monitored asset list
     """
+    if not request.user.has_perm('project.add_activedomain'):
+        return HttpResponseForbidden("You do not have permission.")
+    
     try:
         s_obj = Suggestion.objects.get(uuid=uuid)
     except Suggestion.DoesNotExist:
@@ -214,27 +246,11 @@ def monitor_suggestion(request, uuid):
 def monitor_all_unique_domains(request):
     """Monitor all domains that are active and that do not redirect to another domain
     """
+    if not request.user.has_perm('project.add_activedomain'):
+        return HttpResponseForbidden("You do not have permission.")
+    
     context = {'projectid': request.session['current_project']['prj_id']}
     s_objs = Suggestion.objects.filter(redirect_to=None).exclude(active="False")
-
-    # for s_obj in s_objs:
-    #     try:
-    #         m_obj = ActiveDomain.objects.get(uuid=s_obj.uuid)
-    #     except ActiveDomain.DoesNotExist:
-    #         # copy to activedomain table
-    #         m_obj = ActiveDomain()
-    #         m_obj.related_keyword = s_obj.related_keyword
-    #         m_obj.related_project = s_obj.related_project
-    #         m_obj.value = s_obj.value
-    #         m_obj.uuid = imported_uuid.uuid5(imported_uuid.NAMESPACE_DNS, "%s" % m_obj.value)
-    #         m_obj.source = s_obj.source
-    #         m_obj.creation_time = s_obj.creation_time
-    #         m_obj.description = s_obj.description
-    #         m_obj.link = s_obj.link
-    #         m_obj.save()
-    #     # hide from suggestions
-    #     s_obj.monitor = True
-    #     s_obj.save()
 
     for s_obj in s_objs:
         m_obj, _ = ActiveDomain.objects.get_or_create(uuid=s_obj.uuid,
@@ -260,6 +276,9 @@ def monitor_all_unique_domains(request):
 def ignore_suggestion(request, uuid):
     """move suggestion to the ignore list
     """
+    if not request.user.has_perm('project.change_suggestion'):
+        return HttpResponseForbidden("You do not have permission.")
+    
     try:
         s_obj = Suggestion.objects.get(uuid=uuid)
     except Suggestion.DoesNotExist:
@@ -273,6 +292,9 @@ def ignore_suggestion(request, uuid):
 def reactivate_suggestion(request, uuid):
     """reactivate an ignored suggestion
     """
+    if not request.user.has_perm('project.change_suggestion'):
+        return HttpResponseForbidden("You do not have permission.")
+    
     try:
         s_obj = Suggestion.objects.get(uuid=uuid)
     except Suggestion.DoesNotExist:
@@ -283,22 +305,12 @@ def reactivate_suggestion(request, uuid):
     return redirect(reverse('suggestions:ignored_suggestions'))
 
 @login_required
-def recent_suggestions(request):
-    """list recent suggestions
-    """
-    context = {'projectid': request.session['current_project']['prj_id']}
-    try:
-        prj_obj = Project.objects.get(id=context['projectid'])
-    except Exception as error:
-        messages.error(request, 'Unknown Project: %s' % error)
-        return redirect(reverse('projects:projects'))
-    context['past_days'] = settings.RECENT_DAYS
-    return render(request, 'suggestions/list_recent_suggestions.html', context)
-
-@login_required
 def delete_all_suggestions(request):
     """delete all suggestions in given project
     """
+    if not request.user.has_perm('project.delete_suggestion'):
+        return HttpResponseForbidden("You do not have permission.")
+    
     context = {'projectid': request.session['current_project']['prj_id']}
     try:
         prj_obj = Project.objects.get(id=context['projectid'])
@@ -310,24 +322,12 @@ def delete_all_suggestions(request):
     return redirect(reverse('suggestions:suggestions'))
 
 @login_required
-def ignore_star_suggestions(request):
-    """ move all *. suggestions to ignore
-    """
-    context = {'projectid': request.session['current_project']['prj_id']}
-    try:
-        prj_obj = Project.objects.get(id=context['projectid'])
-    except Exception as error:
-        messages.error(request, 'Unknown Project: %s' % error)
-        return redirect(reverse('suggestions:suggestions'))
-    # run over suggestions
-    prj_obj.suggestion_set.filter(value__contains='*', ignore=False).update(ignore=True)
-    messages.info(request, 'Suggestions Updated successfully')
-    return redirect(reverse('suggestions:suggestions'))
-
-@login_required
 def update_suggestions(request):
     """update suggestions
     """
+    if not request.user.has_perm('project.change_suggestion'):
+        return HttpResponseForbidden("You do not have permission.")
+    
     context = {'projectid': request.session['current_project']['prj_id']}
     try:
         prj_obj = Project.objects.get(id=context['projectid'])
@@ -383,6 +383,9 @@ def update_suggestions(request):
 
 @login_required
 def upload_suggestions(request):
+    if not request.user.has_perm('project.add_suggestion'):
+        return HttpResponseForbidden("You do not have permission.")
+        
     context = {'projectid': request.session['current_project']['prj_id']}
     try:
         prj_obj = Project.objects.get(id=context['projectid'])
@@ -398,7 +401,7 @@ def upload_suggestions(request):
             created_cnt = 0
             updated_cnt = 0
             for line in domain_file:
-                domain = line.decode("utf-8").strip().strip('.')
+                domain = escape(line.decode("utf-8").strip().strip('.'))
                 if domain:
                     sugg_defaults = {
                         "related_project": prj_obj,
@@ -437,8 +440,11 @@ def upload_suggestions(request):
 
 @login_required
 def scan_redirects(request):
+    if not request.user.has_perm('project.change_suggestion'):
+        return HttpResponseForbidden("You do not have permission.")
+    
     context = {'projectid': request.session['current_project']['prj_id']}
-    messages.info(request, 'Domain redirection scan against monitored suggested domains has been triggered in the background.')
+    messages.info(request, 'Domain redirection scan against monitored suggested domains has been triggered in the background. (check jobs)')
 
     try:
         # Get the project ID from the session
@@ -447,7 +453,10 @@ def scan_redirects(request):
         # Define a function to run the command in a separate thread
         def run_command():
             try:
-                call_command('get_domain_redirect', projectid=projectid)
+                # call_command('get_domain_redirect', projectid=projectid)
+                command = 'get_domain_redirect'
+                args = f'--projectid {projectid}'
+                run_job(command, args, projectid, request.user)
             except Exception as e:
                 print(f"Error running get_domain_redirect: {e}")
 
@@ -458,3 +467,97 @@ def scan_redirects(request):
     except Exception as e:
         messages.error(request, f'Error: {e}')
     return redirect(reverse('suggestions:suggestions'))
+
+@login_required
+def scan_suggestions(request):
+    if not request.user.has_perm('project.change_suggestion'):
+        return HttpResponseForbidden("You do not have permission.")
+    
+    if request.method == 'POST':
+        context = {'projectid': request.session['current_project']['prj_id']}
+        project_id = context['projectid']
+
+        def scan_redirect():
+            try:
+                command = 'test_job'
+                args = f'--projectid {project_id}'
+                run_job(command, args, project_id, request.user)
+            except Exception as e:
+                print(f"Error running test_job: {e}")
+
+        def monitor_all_unique_domains():
+            s_objs = Suggestion.objects.filter(redirect_to=None, related_project__id=project_id).exclude(active="False")
+
+            for s_obj in s_objs:
+                m_obj, _ = ActiveDomain.objects.get_or_create(uuid=s_obj.uuid,
+                    defaults = {
+                        "related_keyword": s_obj.related_keyword,
+                        "related_project": s_obj.related_project,
+                        "value": s_obj.value,
+                        "source": s_obj.source,
+                        "creation_time": s_obj.creation_time,
+                        "description": s_obj.description,
+                        "link": s_obj.link,
+                        "monitor": True,
+                    }
+                )
+                # hide from suggestions
+                s_obj.monitor = True
+                s_obj.save()
+
+        if "scan_for_redirection" in request.POST and "monitor_not_redirecting" in request.POST:
+            # Run test_job, then test_job2 after it finishes
+            def chained_jobs():
+                scan_redirect()
+                monitor_all_unique_domains()
+            thread = threading.Thread(target=chained_jobs)
+            thread.start()
+            messages.info(request, 'Domain redirection scan and monitoring of non-redirecting domains have been triggered in the background. (check jobs)')
+        elif "scan_for_redirection" in request.POST:
+            thread = threading.Thread(target=scan_redirect)
+            thread.start()
+            messages.info(request, 'Domain redirection scan has been triggered in the background. (check jobs)')
+        elif "monitor_not_redirecting" in request.POST:
+            thread = threading.Thread(target=monitor_all_unique_domains)
+            thread.start()
+            messages.info(request, 'Monitoring of domains not redirecting has been triggered in the background.')
+
+    return redirect(reverse('suggestions:suggestions'))
+
+@login_required
+def export_suggestions_csv(request):
+    """Export all suggestions for the current project as a CSV file for download."""
+    if not request.user.has_perm('project.view_suggestion'):
+        return HttpResponseForbidden("You do not have permission.")
+
+    project_id = request.session['current_project']['prj_id']
+    suggestions = Suggestion.objects.filter(related_project__id=project_id)
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="suggestions.csv"'
+
+    writer = csv.writer(response)
+    # Write header
+    writer.writerow([
+        'UUID', 'Value', 'Related Project', 'Related Keyword', 'Finding Type', 'Finding Subtype',
+        'Source', 'Description', 'Link', 'Creation Time', 'Active', 'Ignore', 'Monitor', 'Redirect To'
+    ])
+    # Write data rows
+    for s in suggestions:
+        writer.writerow([
+            s.uuid,
+            s.value,
+            s.related_project.projectname if s.related_project else '',
+            s.related_keyword.keyword if s.related_keyword else '',
+            s.finding_type,
+            s.finding_subtype,
+            s.source,
+            s.description,
+            s.link,
+            s.creation_time,
+            s.active,
+            s.ignore,
+            s.monitor,
+            s.redirect_to,
+        ])
+    return response

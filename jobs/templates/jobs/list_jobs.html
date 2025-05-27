@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block header %}
+<style>
+#table_list_projects tbody tr.selected td {background-color:#B0BED9}
+#table_list_projects tbody tr.odd.selected td {background-color:#acbad4}
+</style>
+{% endblock %}
+
+{% block content %}
+{% spaceless %}
+<div class="page-header">
+    <div class="media">
+        <div class="media-left">
+        </div>
+        <div class="media-body">
+            <h2 class="media-heading">Jobs</h2>all the jobs..
+        </div>
+    </div>
+</div>
+{% if messages %}{% for message in messages %}<div {% if message.tags %} class="alert alert-{{ message.tags }}"{% endif %}>{{ message }}</div>{% endfor %}{% endif %}
+
+<!-- Job List Tabs -->
+<div class="panel panel-default">
+  <div class="panel-heading">
+    // Jobs
+  </div>
+  <div class="panel-body">
+    <table id="table_list_jobs" class="table table-condensed table-striped table-bordered" style="font-size: 0.9em;">
+      <thead>
+        <tr>
+          <th><input type="checkbox" name="select_all" value="1" id="select-all-items">&nbsp; Operations</th>
+          <th>Command</th>
+          <th>Start time</th>
+          <th>Finished at</th>
+          <th>Status</th>
+          <th>User</th>
+        </tr>
+      </thead>
+    </table>
+  </div>
+</div>
+
+</form> <!-- close selection form -->
+
+
+{% endspaceless%}
+{% endblock%}
+
+{% block javascript %}
+<script src="{% static 'js/bootbox.min.js' %}"></script>
+<script type="text/javascript" language="javascript" class="init">
+
+$(document).ready(function () {
+    // Function to initialize a DataTable with search functionality
+    function initializeDataTable(tableId, ajaxUrl, columns) {
+        return $(tableId).DataTable({
+            processing: true,
+            serverSide: true,
+            pageLength: 25,
+            orderCellsTop: true,
+            oLanguage: { sProcessing: "<img src='{% static 'img/loading.gif' %}'>", },
+            order: [[1, "asc"]],
+            ajax: {
+                url: ajaxUrl,
+                dataSrc: "results",
+                type: "GET",
+                dataType: "json"
+            },
+            columns: columns
+        });
+    }
+
+    // Define columns for the monitored assets table
+    const jobColumns = [
+        {'data': 'id', 'sName': 'Operations', 'bSortable': false,
+            "mRender": function (data, type, full) {
+                return '<div class="btn-group1">' +
+                    '<input type="checkbox" name="id[]" value="' + $('<div/>').text(data).html() + '">' +
+                    '</div>';
+            },
+            "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
+              $("a", nTd).tooltip();
+            }
+        },
+        {'data': 'command', 'sName': 'Command',
+            "mRender": function (data, type, full) {
+                var select_url = "{% url 'jobs:view_job' job_id=0 %}".replace(0, full.id);
+                return '<div rel="tooltip" data-placement="left" data-original-title="Show details"><a href="'+select_url+'">'+data+'</a></div>';
+            },
+            "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
+                $("div", nTd).tooltip();
+            },
+        },
+        {'data': 'started_at', 'sName': 'Started at'},
+        {'data': 'finished_at', 'sName': 'Finished at'},
+        {'data': 'status', 'sName': 'Last Status'},
+        {'data': 'username', 'sName': 'Username'}
+    ];
+
+    // Initialize DataTables
+    var jobTable = initializeDataTable('#table_list_jobs', "/api/v1/project/{{ projectid }}/jobs/all/", jobColumns);
+
+    // Function to apply search functionality to a DataTable
+    function applySearch(table, searchInputsSelector) {
+        table.columns().every(function () {
+            var that = this;
+            $(searchInputsSelector).on('keyup change', function () {
+                let columnIndex = $(this).parent().index();
+                table.column(columnIndex).search(this.value).draw();
+            });
+        });
+      // Apply the severity filter
+      $('#severity-filter').on('change', function () {
+        let selectedSeverity = $(this).val();
+        table.column(2).search(selectedSeverity).draw();
+      });
+    }
+
+    // Apply search functionality
+    applySearch(monitoredTable, 'input.column-search-input');
+    applySearch(ignoredTable, 'input.column-search-input');
+
+    // Function to handle "Select All" functionality
+    function handleSelectAll(selectAllId, table) {
+      $(selectAllId).on('click', function () {
+        var rows = table.rows({ 'search': 'applied' }).nodes();
+        $('input[type="checkbox"]', rows).prop('checked', this.checked);
+      });
+
+      $(table.table().body()).on('change', 'input[type="checkbox"]', function () {
+        if (!this.checked) {
+          var el = $(selectAllId).get(0);
+          if (el && el.checked && ('indeterminate' in el)) {
+            el.indeterminate = true;
+          }
+        }
+      });
+    }
+
+    // Handle "Select All" functionality
+    handleSelectAll('#select-all-items', monitoredTable);
+    handleSelectAll('#select-all-items-ignore', ignoredTable);
+
+    // Confirmation dialog for actions
+    $(document).on("click", ".confirm", function (e) {
+        e.preventDefault();
+        var title = $(this).attr('data-display');
+        var location = $(this).attr('data-href');
+        bootbox.confirm('Are you sure?', function (confirmed) {
+            if (confirmed) {
+                window.location.replace(location);
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

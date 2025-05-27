@@ -4,7 +4,7 @@ from django.urls import reverse
 from menu import Menu, MenuItem
 
 def top_keywords(request):
-    return '<span class="glyphicon glyphicon-tasks" aria-hidden="true"></span> Keywords'
+    return '<span class="glyphicon" aria-hidden="true"></span> Keywords'
 
 sharing_children = (
     MenuItem("Keywords",

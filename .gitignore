@@ -3,6 +3,10 @@ settings.py
 custom-navbar.css
 custom-logo-standalone.svg
 
+# SSL keys
+cert.pem
+key.pem
+
 # Ignore Django migration files
 */migrations/*.py
 !*/migrations/__init__.py
@@ -181,3 +185,6 @@ cython_debug/
 
 # Swap files
 *.swp
+
+# OS files
+.DS_Store

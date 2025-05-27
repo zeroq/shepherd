@@ -5,7 +5,7 @@ from menu import Menu, MenuItem
 
 
 def top_assets(request):
-    return '<span class="glyphicon glyphicon-tasks" aria-hidden="true"></span> Scans/Tools'
+    return '<span class="glyphicon" aria-hidden="true"></span> Scans/Tools'
 
 sharing_children = (
     MenuItem("Assets", reverse("findings:assets"), weight=10),

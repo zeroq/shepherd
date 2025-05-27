@@ -54,4 +54,4 @@ class Finding(models.Model):
     raw = models.JSONField(null=True)
 
     def __str__(self):
-        return "%i - %s - %s - %s" % (self.id, self.vulnname, self.severity, self.domain.value)
+        return "%i - %s - %s - %s" % (self.id, self.name, self.severity, self.domain.value)

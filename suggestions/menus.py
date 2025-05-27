@@ -4,7 +4,7 @@ from django.urls import reverse
 from menu import Menu, MenuItem
 
 def top_suggestions(request):
-    return '<span class="glyphicon glyphicon-tasks" aria-hidden="true"></span> Suggestions'
+    return '<span class="glyphicon" aria-hidden="true"></span> Suggestions'
 
 sharing_children = (
     MenuItem("Suggestions", reverse("suggestions:suggestions"), weight=10),

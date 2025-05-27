@@ -9,21 +9,31 @@ from django.contrib.auth.decorators import login_required
 from django.conf import settings
 from django.utils import timezone
 from django.utils.timezone import make_aware
+from django.http import HttpResponseForbidden
 
-from project.models import Project, Suggestion, ActiveDomain
+from project.models import Project, Suggestion, ActiveDomain, Job
 from findings.models import Finding, Port
-from findings.utils import asset_get_or_create, asset_finding_get_or_create
+from findings.utils import asset_get_or_create, asset_finding_get_or_create, ignore_asset
 from django.core.management import call_command
 from django.http import JsonResponse
 import threading
+from jobs.utils import run_job
 
 
-#### Asset stuffs 
+
+
+#### Asset stuffs
 @login_required
 def assets(request):
+    # Check if the user has the "view_project" permission or is in the read-only users
+    if not request.user.has_perm('project.view_activedomain'):
+        return HttpResponseForbidden("You do not have permission.")
+    
     context = {'projectid': request.session['current_project']['prj_id']}
     # check for POST request
     if request.method == 'POST':
+        if not request.user.has_perm('project.change_activedomain'):
+            return HttpResponseForbidden("You do not have permission.")
         # determine action
         if "btnignore" in request.POST:
             action = "ignore"
@@ -36,62 +46,15 @@ def assets(request):
             return redirect(reverse('findings:assets'))
         # get UUIDs of items
         id_lst = request.POST.getlist('id[]')
-        for item in id_lst:
+        for uuid in id_lst:
             if action == "ignore":
                 try:
-                    a_obj = ActiveDomain.objects.get(uuid=item)
-                    a_obj.monitor = False
-                    a_obj.save()
+                    ignore_asset(uuid)
                 except ActiveDomain.DoesNotExist:
-                    messages.error(request, 'Unknown Asset: %s' % item)
+                    messages.error(request, 'Unknown Asset: %s' % uuid)
                     continue # take next item
-                messages.info(request, 'Ignored Asset: %s' % a_obj.value)
+                messages.info(request, 'Ignored Asset: %s' % ActiveDomain.objects.get(uuid=uuid).value)
             elif action == "move":
-                try:
-                    s_obj = Suggestion.objects.get(uuid=item)
-                    a_obj = ActiveDomain.objects.get(uuid=item)
-                    # disable monitoring
-                    s_obj.monitor = False
-                    s_obj.save()
-                    # delete active entry
-                    a_obj.delete()
-                except Exception as error:
-                    messages.error(request, 'Unknown: %s' % error)
-                    continue # take next item
-                messages.info(request, 'Moved Asset back to suggestions: %s' % s_obj.value)
-            elif action == "delete":
-                try:
-                    a_obj = ActiveDomain.objects.get(uuid=item)
-                    domain_to_delete = a_obj.value
-                    a_obj.delete()
-                    messages.info(request, 'Deleted Asset: %s' % domain_to_delete)
-                except ActiveDomain.DoesNotExist:
-                    messages.error(request, 'Unknown Asset: %s' % item)
-                    continue  # take next item
-        # redirect to asset list
-        return redirect(reverse('findings:assets'))
-    else:
-        # anything that needs to be done for GET request?
-        pass
-    return render(request, 'findings/list_assets.html', context)
-
-@login_required
-def ignored_assets(request):
-    context = {'projectid': request.session['current_project']['prj_id']}
-    # check for POST request
-    if request.method == 'POST':
-        # determine action
-        if "btndelete" in request.POST:
-            action = "delete"
-        elif "btnmove" in request.POST:
-            action = "move"
-        else:
-            messages.error(request, 'Unknown action received!')
-            return redirect(reverse('findings:ignored_assets'))
-        # get UUIDs of items
-        id_lst = request.POST.getlist('id[]')
-        for item in id_lst:
-            if action == 'delete':
                 try:
                     s_obj = Suggestion.objects.get(uuid=uuid)
                     a_obj = ActiveDomain.objects.get(uuid=uuid)
@@ -103,27 +66,30 @@ def ignored_assets(request):
                 except Exception as error:
                     messages.error(request, 'Unknown: %s' % error)
                     continue # take next item
-                messages.info(request, 'Deleted Asset from monitoring: %s' % s_obj.value)
-            elif action == 'move':
+                messages.info(request, 'Moved Asset back to suggestions: %s' % s_obj.value)
+            elif action == "delete":
                 try:
-                    a_obj = ActiveDomain.objects.get(uuid=item)
-                    a_obj.monitor = True
-                    a_obj.save()
+                    a_obj = ActiveDomain.objects.get(uuid=uuid)
+                    domain_to_delete = a_obj.value
+                    a_obj.delete()
+                    messages.info(request, 'Deleted Asset: %s' % domain_to_delete)
                 except ActiveDomain.DoesNotExist:
                     messages.error(request, 'Unknown Asset: %s' % uuid)
-                    continue # take next item
-                messages.info(request, 'Moved Asset back to monitoring: %s' % a_obj.value)
+                    continue  # take next item
         # redirect to asset list
-        return redirect(reverse('findings:ignored_assets'))
+        return redirect(reverse('findings:assets'))
     else:
         # anything that needs to be done for GET request?
         pass
-    return render(request, 'findings/list_assets_ignored.html', context)
+    return render(request, 'findings/list_assets.html', context)
 
 @login_required
 def move_asset(request, uuid):
     """move asset to suggestions
     """
+    if not request.user.has_perm('project.change_activedomain'):
+        return HttpResponseForbidden("You do not have permission.")
+    
     try:
         s_obj = Suggestion.objects.get(uuid=uuid)
         a_obj = ActiveDomain.objects.get(uuid=uuid)
@@ -141,6 +107,9 @@ def move_asset(request, uuid):
 def move_all_assets(request):
     """move all assets back to suggestions
     """
+    if not request.user.has_perm('project.change_activedomain'):
+        return HttpResponseForbidden("You do not have permission.")
+    
     context = {'projectid': request.session['current_project']['prj_id']}
     try:
         prj_obj = Project.objects.get(id=context['projectid'])
@@ -160,22 +129,26 @@ def move_all_assets(request):
     return redirect(reverse('findings:assets'))
 
 @login_required
-def ignore_asset(request, uuid):
+def ignore_asset_glyphicon(request, uuid):
     """move asset to ignore list
     """
+    if not request.user.has_perm('project.change_activedomain'):
+        return HttpResponseForbidden("You do not have permission.")
+    
     try:
-        a_obj = ActiveDomain.objects.get(uuid=uuid)
+        ignore_asset(uuid)
     except ActiveDomain.DoesNotExist:
         messages.error(request, 'Unknown Asset: %s' % uuid)
-        return redirect(reverse('findings:assets'))
-    a_obj.monitor = False
-    a_obj.save()
+
     return redirect(reverse('findings:assets'))
 
 @login_required
 def delete_asset(request, uuid):
     """delete asset from monitoring (still in suggestions)
     """
+    if not request.user.has_perm('project.delete_activedomain'):
+        return HttpResponseForbidden("You do not have permission.")
+    
     try:
         s_obj = Suggestion.objects.get(uuid=uuid)
         a_obj = ActiveDomain.objects.get(uuid=uuid)
@@ -193,6 +166,9 @@ def delete_asset(request, uuid):
 def activate_asset(request, uuid):
     """move asset from ignore list back to active asset list
     """
+    if not request.user.has_perm('project.change_activedomain'):
+        return HttpResponseForbidden("You do not have permission.")
+    
     try:
         a_obj = ActiveDomain.objects.get(uuid=uuid)
     except ActiveDomain.DoesNotExist:
@@ -205,7 +181,9 @@ def activate_asset(request, uuid):
 @login_required
 def activate_all_assets(request):
     """Move all ignored assets back to active monitoring"""
-    print("OOOOKKKKKK")
+    if not request.user.has_perm('project.change_activedomain'):
+        return HttpResponseForbidden("You do not have permission.")
+
     context = {'projectid': request.session['current_project']['prj_id']}
     try:
         # Get the current project
@@ -218,13 +196,15 @@ def activate_all_assets(request):
     prj_obj.activedomain_set.filter(monitor=False).update(monitor=True)
 
     messages.info(request, 'All ignored assets have been reactivated.')
-    print("OOOOKKKKKK")
     return redirect(reverse('findings:assets'))
 
 @login_required
 def view_asset(request, uuid):
     """view asset details
     """
+    if not request.user.has_perm('project.view_activedomain'):
+        return HttpResponseForbidden("You do not have permission.")
+    
     try:
         a_obj = ActiveDomain.objects.get(uuid=uuid)
     except ActiveDomain.DoesNotExist:
@@ -261,6 +241,9 @@ def view_asset(request, uuid):
 def view_asset_reported(request, uuid):
     """view asset already reported findings
     """
+    if not request.user.has_perm('project.view_activedomain'):
+        return HttpResponseForbidden("You do not have permission.")
+    
     try:
         a_obj = ActiveDomain.objects.get(uuid=uuid)
     except ActiveDomain.DoesNotExist:
@@ -271,15 +254,25 @@ def view_asset_reported(request, uuid):
         'assetid': uuid,
         'asset': a_obj,
         'info_findings': a_obj.finding_set.filter(
-            severity='info', reported=True),
+            severity='info',
+            reported=True
+            ),
         'critical_findings': a_obj.finding_set.filter(
-            severity='critical', reported=True),
+            severity='critical',
+            reported=True
+            ),
         'high_findings': a_obj.finding_set.filter(
-            severity='high', reported=True),
+            severity='high',
+            reported=True
+            ),
         'medium_findings': a_obj.finding_set.filter(
-            severity='medium', reported=True),
+            severity='medium',
+            reported=True
+            ),
         'low_findings': a_obj.finding_set.filter(
-            severity='low', reported=True)
+            severity='low',
+            reported=True
+            )
     }
     return render(request, 'findings/view_asset_reported.html', context)
     
@@ -289,6 +282,9 @@ def view_asset_reported(request, uuid):
 def send_nucleus(request, uuid, findingid):
     """ send the details of the finding to Nucleus
     """
+    if not request.user.has_perm('findings.change_finding'):
+        return HttpResponseForbidden("You do not have permission.")
+    
     try:
         f_obj = Finding.objects.get(id=findingid)
     except Finding.DoesNotExist:
@@ -314,9 +310,15 @@ def send_nucleus(request, uuid, findingid):
 ### Nmap stuffs
 @login_required
 def nmap_results(request):
+    if not request.user.has_perm('findings.view_port'):
+        return HttpResponseForbidden("You do not have permission.")
+    
     context = {'projectid': request.session['current_project']['prj_id']}
     if request.method == 'POST':
         if 'btndelete' in request.POST:
+            if not request.user.has_perm('findings.delete_port'):
+                return HttpResponseForbidden("You do not have permission.")
+
             port_ids = request.POST.getlist('id[]')
             port_objs = Port.objects.filter(id__in=port_ids)
             for port_obj in port_objs:
@@ -327,32 +329,13 @@ def nmap_results(request):
         print(request.POST)
     return render(request, 'findings/list_nmap_results.html', context)
 
-@login_required
-def nmap_scan(request):
-    context = {'projectid': request.session['current_project']['prj_id']}
-    messages.info(request, 'Nmap scan against monitored hosts triggered in the background.')
-    try:
-        # Get the project ID from the session
-        projectid = context['projectid']
-
-        # Define a function to run the command in a separate thread
-        def run_command():
-            try:
-                call_command('scan_nmap', projectid=projectid)
-            except Exception as e:
-                print(f"Error running scan_nmap: {e}")
-
-        # Start the thread
-        thread = threading.Thread(target=run_command)
-        thread.start()
-
-    except Exception as e:
-        messages.error(request, f'Error: {e}')
-    return render(request, 'findings/list_assets.html', context)
 
 ### Scanners stuffs
 @login_required
 def recent_findings(request):
+    if not request.user.has_perm('findings.view_finding'):
+        return HttpResponseForbidden("You do not have permission.")
+
     context = {'projectid': request.session['current_project']['prj_id']}
     try:
         prj_obj = Project.objects.get(id=context['projectid'])
@@ -379,10 +362,15 @@ def recent_findings(request):
 
 @login_required
 def all_findings(request):
+    if not request.user.has_perm('findings.view_finding'):
+        return HttpResponseForbidden("You do not have permission.")
+    
     context = {'projectid': request.session['current_project']['prj_id']}
     if request.method == 'POST':
         # determine action
         if "btndelete" in request.POST:
+            if not request.user.has_perm('findings.delete_finding'):
+                return HttpResponseForbidden("You do not have permission.")
             action = "delete"
         else:
             messages.error(request, 'Unknown action received!')
@@ -404,6 +392,9 @@ def all_findings(request):
 def delete_finding(request, uuid, findingid, reported):
     """delete a finding
     """
+    if not request.user.has_perm('findings.delete_finding'):
+        return HttpResponseForbidden("You do not have permission.")
+    
     try:
         a_obj = ActiveDomain.objects.get(uuid=uuid)
     except ActiveDomain.DoesNotExist:
@@ -416,58 +407,71 @@ def delete_finding(request, uuid, findingid, reported):
     return redirect(reverse('findings:view_asset', args=(uuid,)))
 
 @login_required
-def nuclei_scan(request):
-    context = {'projectid': request.session['current_project']['prj_id']}
+def scan_assets(request):
+    if not request.user.has_perm('findings.add_finding'):
+        return HttpResponseForbidden("You do not have permission.")
+    
+    if request.method == 'POST':
+        context = {'projectid': request.session['current_project']['prj_id']}
+        project_id = context['projectid']
 
-    if request.method == 'GET':
-        # determine action
-        nt = False
-        # Get the project ID from the session
-        projectid = context['projectid']
-        if "nt" in request.GET:
-            nt = True
+        def scan_nmap():
+            try:
+                command = 'scan_nmap'
+                args = f'--projectid {project_id}'
+                run_job(command, args, project_id, request.user)
+            except Exception as e:
+                print(f"Error running test_job: {e}")
 
-        try:
+        def scan_gowitness():
+            try:
+                command = 'scan_gowitness'
+                args = f'--projectid {project_id}'
+                run_job(command, args, project_id, request.user)
+            except Exception as e:
+                print(f"Error running test_job: {e}")
 
-            # Define a function to run the command in a separate thread
-            def run_command():
-                try:
-                    call_command("scan_nuclei", nt=nt, projectid=projectid)
-                except Exception as e:
-                    print(f"Error running scan_nuclei: {e}")
+        def scan_nuclei():
+            try:
+                command = 'scan_nuclei'
+                args = f'--projectid {project_id}'
+                run_job(command, args, project_id, request.user)
+            except Exception as e:
+                print(f"Error running test_job: {e}")
 
-            # Start the thread
-            thread = threading.Thread(target=run_command)
+        def scan_nuclei_nt():
+            try:
+                command = 'scan_nuclei'
+                args = f'--projectid {project_id} --nt'
+                run_job(command, args, project_id, request.user)
+            except Exception as e:
+                print(f"Error running test_job: {e}")
+
+        if "scan_nmap" in request.POST and "scan_gowitness" in request.POST:
+            # Run test_job, then test_job2 after it finishes
+            def chained_jobs():
+                scan_nmap()
+                scan_gowitness()
+            thread = threading.Thread(target=chained_jobs)
             thread.start()
-            messages.info(request, 'Nuclei scan against monitored hosts triggered in the background.')
-        except Exception as e:
-            messages.error(request, f'Error: {e}')
-        
-    return redirect(reverse('findings:assets'))
-
-@login_required
-def gowitness_scan(request):
-    context = {'projectid': request.session['current_project']['prj_id']}
-
-    if request.method == 'GET':
-        # Get the project ID from the session
-        projectid = context['projectid']
-
-        try:
-
-            # Define a function to run the command in a separate thread
-            def run_command():
-                try:
-                    # call_command("scan_gowitness", projectid=projectid)
-                    pass
-                except Exception as e:
-                    print(f"Error running scan_gowitness: {e}")
-
-            # Start the thread
-            thread = threading.Thread(target=run_command)
+            messages.info(request, 'Nmap scan followed by a GoWitness scan have been triggered in the background. (check jobs)')
+        elif "scan_gowitness" in request.POST:
+            thread = threading.Thread(target=scan_gowitness)
             thread.start()
-            messages.info(request, 'GoWitness scan against monitored hosts triggered in the background.')
-        except Exception as e:
-            messages.error(request, f'Error: {e}')
-        
+            messages.info(request, 'GoWitness scan has been triggered in the background. (check jobs)')
+        elif "scan_nmap" in request.POST:
+            thread = threading.Thread(target=scan_nmap)
+            thread.start()
+            messages.info(request, 'Nmap scan has been triggered in the background. (check jobs)')
+
+        if "scan_nuclei" in request.POST:
+            if "scan_nuclei_new_templates" in request.POST:
+                thread = threading.Thread(target=scan_nuclei_nt)
+                thread.start()
+                messages.info(request, 'Nuclei scan for new templates has been triggered in the background. (check jobs)')
+            else:
+                thread = threading.Thread(target=scan_nuclei)
+                thread.start()
+                messages.info(request, 'Nuclei scan has been triggered in the background. (check jobs)')
+
     return redirect(reverse('findings:assets'))
