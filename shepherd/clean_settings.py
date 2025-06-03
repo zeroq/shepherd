@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     'suggestions',
     'findings',
     'accounts',
+    'jobs',
     'api',
 ]
 
@@ -174,6 +175,7 @@ NUCLEUS_PROJECT = ''
 
 # GoWitness db path
 GOWITNESS_DB_LOCATION = '/tmp'
+GOWITNESS_URL = 'http://127.0.0.1:7171'
 
 # Recent Findings Days
 RECENT_DAYS = 5

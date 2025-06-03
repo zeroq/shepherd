@@ -156,6 +156,9 @@ class Command(BaseCommand):
         # Process the results and add them to the database        
         for item in items:
             
+            if '@' in item['domain']:
+                continue
+
             # Create the suggestion details
             sugg = {
                 "related_keyword": kw,
@@ -166,6 +169,7 @@ class Command(BaseCommand):
                 "link": '',
                 "raw": item,
                 "creation_time": make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds"))),
+                "last_seen_time": make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds"))),
             }
             # Check if domain or subdomain
             parsed_obj = tldextract.extract(item['domain'])
@@ -175,7 +179,7 @@ class Command(BaseCommand):
                 sugg["finding_subtype"] = 'domain'
 
             # Create suggestion entry
-            item_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, str(item['domain']))
+            item_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, f"{item['domain']}:{prj.id}")
             sobj, created = Suggestion.objects.get_or_create(uuid=item_uuid, defaults=sugg)
 
             # Build description
@@ -197,13 +201,19 @@ class Command(BaseCommand):
             if not 'domaintools' in sobj.source:
                 sobj.source = sobj.source + ", domaintools"
 
+            # Check if active
+            if str(item['active']) == "True":
+                sobj.active = True
+            elif str(item['active']) == "False":
+                sobj.active = False
+
             # In case of update
             if not created:
                 sobj.raw = item
-                sobj.active = str(item['active'])
-                sobj.creation_time = make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds")))
-                # Save the object
-                sobj.save()
+                sobj.last_seen_time = make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds")))
+
+            # Save the object
+            sobj.save()
 
             suggestion_count += 1
 
@@ -215,13 +225,15 @@ class Command(BaseCommand):
                 domain = ".".join([parsed_obj.domain, parsed_obj.suffix])
                 sugg["finding_subtype"] = 'domain'
                 sugg["value"] = domain
-                domain_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, str(domain))
+                domain_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, f"{domain}:{prj.id}")
                 sobj, created = Suggestion.objects.get_or_create(uuid=domain_uuid, defaults=sugg)
 
                 if not created:
-                    if item['active']:
-                        sobj.active = str(item['active'])
-                    sobj.creation_time = make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds")))
+                    if str(item['active']) == "True":
+                        sobj.active = True
+                    elif str(item['active']) == "False":
+                        sobj.active = False
+                    sobj.last_seen_time = make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds")))
                     # Save the object
                     sobj.save()
 

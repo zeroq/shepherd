@@ -88,6 +88,11 @@
               <span>SubDomains <span class="label label-default">{{ subdomain_count }}</span></span>
             </a>
           </li>
+          <li role="presentation" {% if activetab == 'starreddomain' %}class="active" {% endif %}>
+            <a href="#sstarreddomain" aria-controls="sstarreddomain" role="tab" data-toggle="tab">
+              <span>Starred Domains <span class="label label-default">{{ starreddomain_count }}</span></span>
+            </a>
+          </li>
           <!-- <li role="presentation" {% if activetab == 'ipaddress' %}class="active"{% endif %}>
             <a href="#sipaddress" aria-controls="sipaddress" role="tab" data-toggle="tab">
                 <span>IP Addresses <span class="label label-default">{{ ip_count }}</span></span>
@@ -148,6 +153,34 @@
               </thead>
             </table>
           </div>
+
+          <div role="tabpanel" class="tab-pane fade {% if activetab == 'starreddomain' %}in active{% endif %}" id="sstarreddomain">
+            <table id="table_list_starreddomain_suggestions" class="table table-condensed table-striped table-bordered" style="font-size: 0.9em;" width="100%">
+              <thead>
+                <tr>
+                  <th><input type="checkbox" name="select_all" value="1" id="select-all-items-starred">&nbsp; Operations</th>
+                  <th>Value</th>
+                  <th>Source</th>
+                  <th>Description</th>
+                  <th>Redirect to</th>
+                  <th>Created</th>
+                  <th>Active</th>
+                </tr>
+              </thead>
+              <thead>
+                <tr>
+                  <th></th>
+                  <th><input type="text" placeholder="Search Value" class="column-search-input" data-column="1"></th>
+                  <th><input type="text" placeholder="Search Source" class="column-search-input" data-column="2"></th>
+                  <th><input type="text" placeholder="Search Description" class="column-search-input" data-column="3"></th>
+                  <th><input type="text" placeholder="Search Redirect" class="column-search-input" data-column="3"></th>
+                  <th><input type="text" placeholder="Search Created" class="column-search-input" data-column="4"></th>
+                  <th><input type="text" placeholder="Search Active" class="column-search-input" data-column="5"></th>
+                </tr>
+              </thead>
+            </table>
+          </div>
+
           <!-- <div role="tabpanel" class="tab-pane fade {% if activetab == 'ipaddress' %}in active{% endif %}" id="sipaddress">
             <table id="table_list_ipaddress_suggestions" class="table table-condensed table-striped table-bordered" style="font-size: 0.9em;" width="100%">
                 <thead>
@@ -207,17 +240,27 @@
           {% csrf_token %}
           <div class="form-group">
             <div class="form-check d-flex align-items-center" style="gap: 8px;">
-              <input type="checkbox" class="form-check-input" id="scan_for_redirection" name="scan_for_redirection" checked>
+              <input type="checkbox" class="form-check-input" id="scan_for_redirection" name="scan_for_redirection" >
               <label class="form-check-label mb-0" for="scan_for_redirection" style="margin-bottom:0; margin-left:6px;">
                 Scan for redirection
               </label>
             </div>
           </div>
+
+          <div class="form-group">
+            <div class="form-check d-flex align-items-center" style="gap: 8px;">
+              <input type="checkbox" class="form-check-input" id="subfinder_scan" name="subfinder_scan" >
+              <label class="form-check-label mb-0" for="subfinder_scan" style="margin-bottom:0; margin-left:6px;">
+                Subfinder scan (against starred domains)
+              </label>
+            </div>
+          </div>
+
           <div class="form-group">
             <div class="form-check d-flex align-items-center" style="gap: 8px;">
               <input type="checkbox" class="form-check-input" id="monitor_not_redirecting" name="monitor_not_redirecting">
               <label class="form-check-label mb-0" for="monitor_not_redirecting" style="margin-bottom:0; margin-left:6px;">
-                Monitor the domains not redirecting
+                Monitor the domains not redirecting (will be done after the scans if any selected)
               </label>
             </div>
           </div>
@@ -288,6 +331,7 @@
 
     var domTable = initializeDataTable('#table_list_suggestions', "/api/v1/project/{{ projectid }}/suggestions/visible/domain/");
     var subTable = initializeDataTable('#table_list_subdomain_suggestions', "/api/v1/project/{{ projectid }}/suggestions/visible/subdomain/");
+    var starredTable = initializeDataTable('#table_list_starreddomain_suggestions', "/api/v1/project/{{ projectid }}/suggestions/visible/starred_domain/");
 
     function applySearch(table) {
       table.columns().every(function () {
@@ -301,6 +345,7 @@
 
     applySearch(domTable);
     applySearch(subTable);
+    applySearch(starredTable);
 
     function handleSelectAll(selectAllId, table) {
       $(selectAllId).on('click', function () {
@@ -320,6 +365,7 @@
 
     handleSelectAll('#select-all-items-dom', domTable);
     handleSelectAll('#select-all-items-sub', subTable);
+    handleSelectAll('#select-all-items-starred', starredTable);
 
     $('#form-selected').on('submit', function (e) {
       var form = this;

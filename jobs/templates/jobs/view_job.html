@@ -67,7 +67,7 @@
 
 <div>
     <h4>Command output</h4>
-    <div style="max-height: 400px; overflow: auto; border: 1px solid #ddd; padding: 10px; background: #fafafa;">
+    <div id="job-output" style="max-height: 400px; overflow: auto; border: 1px solid #ddd; padding: 10px; background: #fafafa;">
         {{ j_obj.output|linebreaksbr }}
     </div>
 </div>
@@ -76,4 +76,12 @@
 
 {% block javascript %}
 <script src="{% static 'js/bootbox.min.js' %}"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    var outputDiv = document.getElementById("job-output");
+    if (outputDiv) {
+        outputDiv.scrollTop = outputDiv.scrollHeight;
+    }
+});
+</script>
 {% endblock %}

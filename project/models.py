@@ -32,15 +32,16 @@ class Suggestion(models.Model):
     """
     related_keyword = models.ForeignKey("Keyword", on_delete=models.CASCADE, null=True, blank=True)
     related_project = models.ForeignKey("Project", on_delete=models.CASCADE)  # relation to the project
-    finding_type = models.CharField(max_length=100, default='domain')  # can be: domain, ip, url, certificate
+    finding_type = models.CharField(max_length=100, default='domain')  # can be: domain, ip, url, certificate, starred_domain
     finding_subtype = models.CharField(max_length=100, default='domain')  # can be: domain, subdomain
     value = models.CharField(max_length=2048, default='')
     uuid = models.CharField(max_length=36, primary_key=True)
     source = models.CharField(max_length=200, default='')  # can be cert.sh for example
     creation_time = models.DateTimeField()  # when was it found to be created
+    last_seen_time = models.DateTimeField(blank=True, null=True)  # when was it last seen
     description = models.TextField(default='')
-    active = models.CharField(max_length=100, default='Ignored') # can be: True, False, Ignored
-    link = models.CharField(max_length=1024, default='', blank=True)
+    active = models.BooleanField(null=True)
+    link = models.CharField(max_length=1024, default='', blank=True, null=True)
     cert_valid = models.BooleanField(default=True)
     cert_wildcard = models.BooleanField(default=False)
     ignore = models.BooleanField(default=False) # ignore these findings in the future (set to invisible and ignore if it shows up again)

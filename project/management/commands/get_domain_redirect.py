@@ -26,15 +26,16 @@ class Command(BaseCommand):
             project_filter['related_project__id'] = kwargs['projectid']
 
         # Filter suggestions where active is not 'False'
-        suggestions = Suggestion.objects.exclude(active="False").filter(**project_filter)
+        suggestions = Suggestion.objects.exclude(active=False).filter(**project_filter).filter(finding_type='domain')
 
         for suggestion in suggestions:
             domain = suggestion.value
             final_domain = self.check_redirect(domain)
 
+            final_suggestion = None
             if final_domain and final_domain != domain:
                 # Find or create the Suggestion object for the final domain
-                final_domain_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, str(final_domain))
+                final_domain_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, f"{final_domain}:{kwargs['projectid']}")
                 final_suggestion, _ = Suggestion.objects.get_or_create(
                     value = final_domain,
                     uuid = final_domain_uuid,
@@ -42,17 +43,18 @@ class Command(BaseCommand):
                         "related_project": suggestion.related_project,
                         "source": "Redirect",
                         "description": f"Redirected from {domain}",
-                        "active": "True",
+                        "active": True,
                         "creation_time": make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds"))),
                     },
                 )
-                # Update the redirect_to field
-                suggestion.redirect_to = final_suggestion
-                suggestion.save()
                 self.stdout.write(f"{domain} redirects to {final_domain}")
                 # exit(0)
             else:
                 self.stdout.write(f"{domain} does not redirect.")
+
+            # Update the redirect_to field
+            suggestion.redirect_to = final_suggestion
+            suggestion.save()
 
     def check_redirect(self, domain):
         """

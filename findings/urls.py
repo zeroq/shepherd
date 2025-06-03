@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, re_path
 from findings import views
 
 urlpatterns = [
@@ -19,6 +19,9 @@ urlpatterns = [
 
     # Nmap stuffs
     path('nmap/results/', views.nmap_results, name='nmap_results'),
+
+    # GoWitness
+    re_path(r'^gowitness/(?P<path>.*)$', views.gowitness_proxy, name='gowitness_proxy'),
 
     # Scanner stuffs
     path('scan_assets/', views.scan_assets, name='scan_assets'),

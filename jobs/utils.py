@@ -11,6 +11,7 @@ def run_job(command, args, projectid, user=None):
     job.started_at = now()
     job.command = command
     job.args = args
+    job.output = ''
     job.save()
     try:
         process = subprocess.Popen(
@@ -18,17 +19,23 @@ def run_job(command, args, projectid, user=None):
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
-            bufsize=1
+            bufsize=1,
         )
-        output = ''
+        output_lines = []
         for line in process.stdout:
-            output += line
-            job.output = output
+            output_lines.append(line)
+            job.output = ''.join(output_lines)
             job.save(update_fields=['output'])
+        process.stdout.close()
         process.wait()
-        job.status = 'finished' if process.returncode == 0 else 'failed'
+        # Defensive: ensure all output is captured
+        if process.returncode == 0:
+            job.status = 'finished'
+        else:
+            job.status = 'failed'
     except Exception as e:
-        job.output += f"\nError: {e}"
+        job.output = (job.output or '') + f"\nError: {e}"
         job.status = 'failed'
-    job.finished_at = now()
-    job.save()
+    finally:
+        job.finished_at = now()
+        job.save()

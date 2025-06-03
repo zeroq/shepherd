@@ -114,6 +114,9 @@ def list_suggestions(request, projectid, selection, vtype, format=None):
     if vtype in ['domain', 'subdomain', 'ipaddress']:
         queryset = queryset.filter(finding_subtype=vtype)
 
+    if vtype in ['starred_domain', 'domain']:
+        queryset = queryset.filter(finding_type=vtype)
+
     ### filter by search value
     if search_value and len(search_value) > 1:
         queryset = queryset.filter(
@@ -143,10 +146,10 @@ def list_suggestions(request, projectid, selection, vtype, format=None):
             Q(creation_time__icontains=search_creation_date)
         )
 
-    if search_active and len(search_active) > 1:
-        queryset = queryset.filter(
-            Q(active__icontains=search_active)
-        )
+    if search_active and len(search_active) > 0:
+        # Convert string to boolean for filtering
+        search_active_bool = search_active.lower() in ['true', '1', 'yes']
+        queryset = queryset.filter(active=search_active_bool)
 
     print(f"Filtered queryset count: {queryset.count()}")  # Debugging statement
 
@@ -160,12 +163,6 @@ def list_suggestions(request, projectid, selection, vtype, format=None):
         queryset = queryset.order_by(f'{order_direction}{order_by_column}')
 
     suggestions = paginator.paginate_queryset(queryset, request)
-
-    # for suggestion in suggestions:
-    #     suggestion.redirect_to_value = (
-    #         suggestion.redirect_to.value if suggestion.redirect_to else None
-    #     )
-
     serializer = SuggestionSerializer(instance=suggestions, many=True)
 
     # Modify the serialized data to include the redirect_to_value

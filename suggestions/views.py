@@ -99,6 +99,7 @@ def suggestions(request):
         prj = Project.objects.get(id=request.session['current_project']['prj_id'])
         context['domain_count'] = prj.suggestion_set.filter(finding_type='domain', finding_subtype='domain', ignore=False).count()
         context['subdomain_count'] = prj.suggestion_set.filter(finding_type='domain', finding_subtype='subdomain', ignore=False).count()
+        context['starreddomain_count'] = prj.suggestion_set.filter(finding_type='starred_domain', ignore=False).count()
         context['ip_count'] = 0 # TODO: fix this
         context['activetab'] = 'domain'
     return render(request, 'suggestions/list_suggestions.html', context)
@@ -479,14 +480,14 @@ def scan_suggestions(request):
 
         def scan_redirect():
             try:
-                command = 'test_job'
+                command = 'get_domain_redirect'
                 args = f'--projectid {project_id}'
                 run_job(command, args, project_id, request.user)
             except Exception as e:
                 print(f"Error running test_job: {e}")
 
         def monitor_all_unique_domains():
-            s_objs = Suggestion.objects.filter(redirect_to=None, related_project__id=project_id).exclude(active="False")
+            s_objs = Suggestion.objects.filter(redirect_to=None, related_project__id=project_id, finding_type='domain').exclude(active="False")
 
             for s_obj in s_objs:
                 m_obj, _ = ActiveDomain.objects.get_or_create(uuid=s_obj.uuid,
@@ -505,22 +506,33 @@ def scan_suggestions(request):
                 s_obj.monitor = True
                 s_obj.save()
 
-        if "scan_for_redirection" in request.POST and "monitor_not_redirecting" in request.POST:
-            # Run test_job, then test_job2 after it finishes
-            def chained_jobs():
-                scan_redirect()
+        def subfinder_scan():
+            try:
+                command = 'scan_subfinder'
+                args = f'--projectid {project_id}'
+                run_job(command, args, project_id, request.user)
+            except Exception as e:
+                print(f"Error running test_job: {e}")
+
+        def chained_jobs():
+            threads = []
+            # Start scan_redirect and subfinder_scan in parallel if requested
+            if "scan_for_redirection" in request.POST:
+                t = threading.Thread(target=scan_redirect)
+                t.start()
+                threads.append(t)
+            if "subfinder_scan" in request.POST:
+                t = threading.Thread(target=subfinder_scan)
+                t.start()
+                threads.append(t)
+            # Wait for all parallel jobs to finish if monitor_not_redirecting is requested
+            if "monitor_not_redirecting" in request.POST:
+                for t in threads:
+                    t.join()
                 monitor_all_unique_domains()
-            thread = threading.Thread(target=chained_jobs)
-            thread.start()
-            messages.info(request, 'Domain redirection scan and monitoring of non-redirecting domains have been triggered in the background. (check jobs)')
-        elif "scan_for_redirection" in request.POST:
-            thread = threading.Thread(target=scan_redirect)
-            thread.start()
-            messages.info(request, 'Domain redirection scan has been triggered in the background. (check jobs)')
-        elif "monitor_not_redirecting" in request.POST:
-            thread = threading.Thread(target=monitor_all_unique_domains)
-            thread.start()
-            messages.info(request, 'Monitoring of domains not redirecting has been triggered in the background.')
+        thread = threading.Thread(target=chained_jobs)
+        thread.start()
+        messages.info(request, 'Selected actions have been triggered in the background. (check jobs for scans)')
 
     return redirect(reverse('suggestions:suggestions'))
 

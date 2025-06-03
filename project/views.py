@@ -3,6 +3,7 @@ from django.shortcuts import render, redirect
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.utils.html import escape
 
 from .models import Project
 from .forms import AddProjectForm
@@ -87,6 +88,11 @@ def add_project(request):
     if request.method == 'POST':
         form = AddProjectForm(request.POST)
         if form.is_valid():
-            form.save()
+            # Escape all cleaned_data fields before saving
+            project = form.save(commit=False)
+            for field, value in form.cleaned_data.items():
+                if isinstance(value, str):
+                    setattr(project, field, escape(value))
+            project.save()
             messages.info(request, "Project successfully added")
     return redirect(reverse('projects:projects'))

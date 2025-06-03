@@ -83,8 +83,7 @@ class Command(BaseCommand):
 
             for domain in domains:
 
-                # Ignore stared domains
-                if '*' in domain:
+                if '@' in domain:
                     continue
 
                 # Create the suggestion details
@@ -94,9 +93,10 @@ class Command(BaseCommand):
                     "finding_type": 'domain',
                     "value": domain,
                     "source": 'crtsh',
-                    "active": "True",
+                    "active": True,
                     "creation_time": make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds"))),
                 }
+
                 # Check if domain or subdomain
                 parsed_obj = tldextract.extract(domain)
                 if parsed_obj.subdomain:
@@ -104,8 +104,13 @@ class Command(BaseCommand):
                 else:
                     sugg["finding_subtype"] = 'domain'
 
+                # Add starred domains
+                if '*' in domain:
+                    sugg["finding_type"] = 'starred_domain'
+                    sugg["finding_subtype"] = ''
+
                 # Create suggestion entry
-                domain_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, str(domain))
+                domain_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, f"{domain}:{prj.id}")
                 sobj, created = Suggestion.objects.get_or_create(uuid=domain_uuid, defaults=sugg)
 
                 # In case of update
@@ -113,7 +118,7 @@ class Command(BaseCommand):
                     # Build source:
                     if not 'crtsh' in sobj.source:
                         sobj.source = sobj.source + ", crtsh"
-                    sobj.active = "True"
+                    sobj.active = True
                     sobj.creation_time = make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds")))
                     # Save the object
                     sobj.save()
@@ -130,7 +135,7 @@ class Command(BaseCommand):
                     sugg["value"] = domain
 
                     # Suggestion entry creation
-                    domain_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, str(domain))
+                    domain_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, f"{domain}:{prj.id}")
                     sobj, created = Suggestion.objects.get_or_create(uuid=domain_uuid, defaults=sugg)
 
                     # In case of update
@@ -138,7 +143,7 @@ class Command(BaseCommand):
                         # Build source:
                         if not 'crtsh' in sobj.source:
                             sobj.source = sobj.source + ", crtsh"
-                        sobj.active = "True"
+                        sobj.active = True
                         sobj.creation_time = make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds")))
                         # Save the object
                         sobj.save()

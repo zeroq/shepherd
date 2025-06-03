@@ -122,22 +122,25 @@
         </div>
         <div class="modal-body">
           {% csrf_token %}
+
           <div class="form-group">
             <div class="form-check d-flex align-items-center" style="gap: 8px;">
-              <input type="checkbox" class="form-check-input" id="scankeywords_crtsh" name="crtsh" checked>
-              <label class="form-check-label mb-0" for="scankeywords_crtsh" style="margin-bottom:0; margin-left:6px;">
-                crt.sh
-              </label>
-            </div>
-          </div>
-          <div class="form-group">
-            <div class="form-check d-flex align-items-center" style="gap: 8px;">
-              <input type="checkbox" class="form-check-input" id="scankeywords_domaintools" name="domaintools">
+              <input type="checkbox" class="form-check-input" id="scankeywords_domaintools" name="domaintools" >
               <label class="form-check-label mb-0" for="scankeywords_domaintools" style="margin-bottom:0; margin-left:6px;">
                 DomainTools
               </label>
             </div>
           </div>
+
+          <div class="form-group">
+            <div class="form-check d-flex align-items-center" style="gap: 8px;">
+              <input type="checkbox" class="form-check-input" id="scankeywords_crtsh" name="crtsh" >
+              <label class="form-check-label mb-0" for="scankeywords_crtsh" style="margin-bottom:0; margin-left:6px;">
+                Crt.sh
+              </label>
+            </div>
+          </div>
+
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>

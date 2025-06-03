@@ -1,4 +1,5 @@
 import tld
+import requests
 from datetime import datetime, timedelta
 
 from django.shortcuts import render, redirect
@@ -9,7 +10,8 @@ from django.contrib.auth.decorators import login_required
 from django.conf import settings
 from django.utils import timezone
 from django.utils.timezone import make_aware
-from django.http import HttpResponseForbidden
+from django.http import HttpResponse, HttpResponseForbidden, StreamingHttpResponse
+from django.views.decorators.csrf import csrf_exempt
 
 from project.models import Project, Suggestion, ActiveDomain, Job
 from findings.models import Finding, Port
@@ -30,6 +32,8 @@ def assets(request):
         return HttpResponseForbidden("You do not have permission.")
     
     context = {'projectid': request.session['current_project']['prj_id']}
+    prj = Project.objects.get(id=context['projectid'])
+    
     # check for POST request
     if request.method == 'POST':
         if not request.user.has_perm('project.change_activedomain'):
@@ -49,7 +53,7 @@ def assets(request):
         for uuid in id_lst:
             if action == "ignore":
                 try:
-                    ignore_asset(uuid)
+                    ignore_asset(uuid, prj)
                 except ActiveDomain.DoesNotExist:
                     messages.error(request, 'Unknown Asset: %s' % uuid)
                     continue # take next item
@@ -134,9 +138,12 @@ def ignore_asset_glyphicon(request, uuid):
     """
     if not request.user.has_perm('project.change_activedomain'):
         return HttpResponseForbidden("You do not have permission.")
+
+    context = {'projectid': request.session['current_project']['prj_id']}
+    prj = Project.objects.get(id=context['projectid'])
     
     try:
-        ignore_asset(uuid)
+        ignore_asset(uuid, prj)
     except ActiveDomain.DoesNotExist:
         messages.error(request, 'Unknown Asset: %s' % uuid)
 
@@ -329,6 +336,85 @@ def nmap_results(request):
         print(request.POST)
     return render(request, 'findings/list_nmap_results.html', context)
 
+
+### GoWitness stuffs
+@login_required
+@csrf_exempt  # If you want to allow POST/PUT, etc.
+def gowitness_proxy2(request, path=''):
+    if not request.user.has_perm('findings.view_finding'):
+        return HttpResponseForbidden("You do not have permission.")
+
+    gowitness_url = getattr(settings, 'GOWITNESS_URL', None)
+    method = request.method
+    url = f"{gowitness_url}/{path}"
+    headers = {k: v for k, v in request.headers.items() if k.lower() != 'host'}
+
+    try:
+        resp = requests.request(
+            method,
+            url,
+            headers=headers,
+            params=request.GET,
+            data=request.body,
+            stream=True,
+            timeout=30,
+        )
+        proxy_response = StreamingHttpResponse(
+            resp.iter_content(chunk_size=8192),
+            status=resp.status_code,
+            content_type=resp.headers.get('Content-Type', 'text/html')
+        )
+        # Copy headers you want (cookies, etc.)
+        for key, value in resp.headers.items():
+            if key.lower() not in ['content-encoding', 'transfer-encoding', 'content-length', 'connection']:
+                proxy_response[key] = value
+        return proxy_response
+    except requests.RequestException as e:
+        return HttpResponse(f"Error proxying request: {e}", status=502)
+
+@login_required
+@csrf_exempt
+def gowitness_proxy(request, path=''):
+    if not request.user.has_perm('findings.view_finding'):
+        return HttpResponseForbidden("You do not have permission.")
+
+    gowitness_url = getattr(settings, 'GOWITNESS_URL', None)
+    method = request.method
+    url = f"{gowitness_url}/{path}"
+    headers = {k: v for k, v in request.headers.items() if k.lower() != 'host'}
+
+    try:
+        resp = requests.request(
+            method,
+            url,
+            headers=headers,
+            params=request.GET,
+            data=request.body,
+            stream=True,
+            timeout=30,
+        )
+        content_type = resp.headers.get('Content-Type', '')
+        if content_type.startswith('text/html'):
+            # Read the full HTML content
+            html_content = resp.content.decode(resp.encoding or 'utf-8', errors='replace')
+            context = {
+                'gowitness_content': html_content,
+                'projectid': request.session['current_project']['prj_id'],
+            }
+            return render(request, 'findings/view_gowitness.html', context)
+        else:
+            # Stream non-HTML content (images, JS, etc.)
+            proxy_response = StreamingHttpResponse(
+                resp.iter_content(chunk_size=8192),
+                status=resp.status_code,
+                content_type=content_type
+            )
+            for key, value in resp.headers.items():
+                if key.lower() not in ['content-encoding', 'transfer-encoding', 'content-length', 'connection']:
+                    proxy_response[key] = value
+            return proxy_response
+    except requests.RequestException as e:
+        return HttpResponse(f"Error proxying request: {e}", status=502)
 
 ### Scanners stuffs
 @login_required

@@ -9,15 +9,13 @@ pip3 install -r requirements.txt
 
 # Start server
 python3 manage.py runserver 127.0.0.1:80
-
-# For additional tools
-# Install https://github.com/projectdiscovery/nuclei in the PATH
 ```
 
-# Trigger imports
+# Other tools
 
 ```bash
-python3 manage.py import_domaintools
-python3 manage.py scan_nmap
-python3 manage.py scan_nuclei
+# Tools must be in the path
+go install github.com/sensepost/gowitness@latest
+go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
+go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
 ```

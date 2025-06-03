@@ -7,7 +7,7 @@ class Command(BaseCommand):
     help = "Check DNS records for all suggestions and update their active status"
 
     def handle(self, *args, **kwargs):
-        suggestions = Suggestion.objects.exclude(active="False")  # Filter out inactive suggestions
+        suggestions = Suggestion.objects #.exclude(active=False)  # Filter out inactive suggestions
         self.stdout.write(f"Checking DNS records for {suggestions.count()} active suggestions...")
 
         def check_dns(suggestion):
@@ -31,12 +31,12 @@ class Command(BaseCommand):
                 suggestion, has_dns = future.result()
                 print(suggestion.value, has_dns)
                 if not has_dns:
-                    suggestion.active = "False"
+                    suggestion.active = False
                     suggestion.save()
-                    self.stdout.write(f"Updated {suggestion.value}: active=\"False\"")
+                    self.stdout.write(f"Updated {suggestion.value}: active=False")
                 else:
-                    suggestion.active = "True"
+                    suggestion.active = True
                     suggestion.save()
-                    self.stdout.write(f"Updated {suggestion.value}: active=\"True\"")
+                    self.stdout.write(f"Updated {suggestion.value}: active=True")
 
         self.stdout.write("DNS check completed.")

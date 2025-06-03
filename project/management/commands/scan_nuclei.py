@@ -66,25 +66,23 @@ class Command(BaseCommand):
         self.stdout.write(f'Scanning domain: {domain.value}')
         try:
             # Create a temporary file to store the Nuclei scan results
-            with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+            findings = []
+            with tempfile.NamedTemporaryFile(delete=True) as temp_file:
                 temp_file_path = temp_file.name
+                # print(temp_file_path)
 
-            # Build the Nuclei command
-            command = ['nuclei', '-u', domain.value, '-je', temp_file_path]
-            if nt_option:
-                command.append('-nt')  # Add the "-nt" option if specified
+                # Build the Nuclei command
+                command = ['nuclei', '-u', domain.value, '-je', temp_file_path]
+                if nt_option:
+                    command.append('-nt')  # Add the "-nt" option if specified
 
-            # Trigger Nuclei scan
-            result = subprocess.run(command, capture_output=True, text=True)
-            if result.returncode != 0:
-                self.stderr.write(f'Error scanning domain {domain.value}: {result.stderr}')
-                return
+                # Trigger Nuclei scan
+                result = subprocess.run(command, capture_output=True, text=True)
+                if result.returncode != 0:
+                    self.stderr.write(f'Error scanning domain {domain.value}: {result.stderr}')
+                    return
 
-            # Read the results from the temporary file
-            # print(temp_file_path)
-            # exit(0)
-            with open(temp_file_path, 'r') as file:
-                findings = json.load(file)
+                findings = json.load(temp_file)
 
             for finding in findings:
                 # Store the result as a Finding object
@@ -112,13 +110,15 @@ class Command(BaseCommand):
                 finding_obj.scan_date = make_aware(datetime.now())
                 finding_obj.last_seen = finding_obj.scan_date
                 finding_obj.save()
+
             domain.lastscan_time = make_aware(datetime.now())
             domain.save()
             if len(findings):
-                self.stdout.write(f'Stored {len(findings)} findings for domain {domain.value}')
+                self.stdout.write(f'Stored and deduplicated {len(findings)} findings for domain {domain.value}')
+            else:
+                self.stdout.write(f'No findings for domain {domain.value}')
         except Exception as e:
             self.stderr.write(f'Exception scanning domain {domain.value}: {str(e)}')
-
 
     def update_nuclei(self):
 
