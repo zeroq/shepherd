@@ -31,9 +31,16 @@ class Command(BaseCommand):
             type=int,
             help='ID of the project to scan',
         )
+        parser.add_argument(
+            '--uuids',
+            type=str,
+            help='Comma separated list of ActiveDomain UUIDs to process',
+            required=False,
+        )
 
     def handle(self, *args, **options):
         projectid = options.get('projectid')
+        uuids_arg = options.get('uuids')
 
         # Get the projects to scan
         if projectid:
@@ -48,9 +55,13 @@ class Command(BaseCommand):
 
         for prj in projects:
             prj_items = []
-            for ad in prj.activedomain_set.all():
-                if ad.monitor:
-                    prj_items.append((ad.value, ad))
+            domains_qs = prj.activedomain_set.filter(monitor=True)
+            # Filter by uuids if provided
+            if uuids_arg:
+                uuid_list = [u.strip() for u in uuids_arg.split(",") if u.strip()]
+                domains_qs = domains_qs.filter(uuid__in=uuid_list)
+            for ad in domains_qs:
+                prj_items.append((ad.value, ad))
             # Multi-Process results
             prj_res = pool.map(self.port_lookup, prj_items)
             # Loop through each active domain results
@@ -74,12 +85,12 @@ class Command(BaseCommand):
                         port_obj.cpe = port_entry['cpe']
                         port_obj.raw = port_entry
                         port_obj.save()
-                print(f"[+] {open_ports_cnt} ports found for {ad_obj.value}")
+                self.stdout.write(f"[+] {open_ports_cnt} ports found for {ad_obj.value}")
 
     def port_lookup(self, domain_tuple):
         try:
             webaddress = domain_tuple[0]
-            print(webaddress)
+            self.stdout.write(f"Nmap scan starting for {webaddress}")
             port_list = []
             nm = nmap.PortScanner()
             nm.scan(
@@ -107,4 +118,4 @@ class Command(BaseCommand):
                     port_list.append(pdict)
             return (port_list, domain_tuple[1])
         except Exception as error:
-            print(error)
+            self.stdout.write(error)

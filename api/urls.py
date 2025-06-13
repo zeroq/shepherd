@@ -11,6 +11,7 @@ urlpatterns = [
     path('v1/project/<str:projectid>/keywords/<str:selection>/', views.list_keywords, name='list_keywords'),
     path('v1/project/<str:projectid>/suggestions/<str:selection>/<str:vtype>/', views.list_suggestions, name='list_suggestions'),
     path('v1/project/<str:projectid>/assets/<str:selection>/', views.list_assets, name='list_assets'),
+    path('v1/project/<str:projectid>/screenshots/', views.list_screenshots, name='list_screenshots'),
     #path('v1/project/<str:projectid>/modify/', views.modify_project, name='modify_project'),
     #path('v1/project/<str:projectid>/delete/', views.delete_project, name='delete_project'),
 

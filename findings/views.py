@@ -1,26 +1,19 @@
 import tld
-import requests
 from datetime import datetime, timedelta
-
 from django.shortcuts import render, redirect
 from django.urls import reverse
 from django.contrib import messages
-from django.db.models import Count
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
 from django.utils import timezone
 from django.utils.timezone import make_aware
-from django.http import HttpResponse, HttpResponseForbidden, StreamingHttpResponse
-from django.views.decorators.csrf import csrf_exempt
-
-from project.models import Project, Suggestion, ActiveDomain, Job
+from django.http import HttpResponseForbidden
+from project.models import Project, Suggestion, ActiveDomain
 from findings.models import Finding, Port
 from findings.utils import asset_get_or_create, asset_finding_get_or_create, ignore_asset
-from django.core.management import call_command
 from django.http import JsonResponse
 import threading
 from jobs.utils import run_job
-
 
 
 
@@ -33,7 +26,7 @@ def assets(request):
     
     context = {'projectid': request.session['current_project']['prj_id']}
     prj = Project.objects.get(id=context['projectid'])
-    
+
     # check for POST request
     if request.method == 'POST':
         if not request.user.has_perm('project.change_activedomain'):
@@ -337,85 +330,6 @@ def nmap_results(request):
     return render(request, 'findings/list_nmap_results.html', context)
 
 
-### GoWitness stuffs
-@login_required
-@csrf_exempt  # If you want to allow POST/PUT, etc.
-def gowitness_proxy2(request, path=''):
-    if not request.user.has_perm('findings.view_finding'):
-        return HttpResponseForbidden("You do not have permission.")
-
-    gowitness_url = getattr(settings, 'GOWITNESS_URL', None)
-    method = request.method
-    url = f"{gowitness_url}/{path}"
-    headers = {k: v for k, v in request.headers.items() if k.lower() != 'host'}
-
-    try:
-        resp = requests.request(
-            method,
-            url,
-            headers=headers,
-            params=request.GET,
-            data=request.body,
-            stream=True,
-            timeout=30,
-        )
-        proxy_response = StreamingHttpResponse(
-            resp.iter_content(chunk_size=8192),
-            status=resp.status_code,
-            content_type=resp.headers.get('Content-Type', 'text/html')
-        )
-        # Copy headers you want (cookies, etc.)
-        for key, value in resp.headers.items():
-            if key.lower() not in ['content-encoding', 'transfer-encoding', 'content-length', 'connection']:
-                proxy_response[key] = value
-        return proxy_response
-    except requests.RequestException as e:
-        return HttpResponse(f"Error proxying request: {e}", status=502)
-
-@login_required
-@csrf_exempt
-def gowitness_proxy(request, path=''):
-    if not request.user.has_perm('findings.view_finding'):
-        return HttpResponseForbidden("You do not have permission.")
-
-    gowitness_url = getattr(settings, 'GOWITNESS_URL', None)
-    method = request.method
-    url = f"{gowitness_url}/{path}"
-    headers = {k: v for k, v in request.headers.items() if k.lower() != 'host'}
-
-    try:
-        resp = requests.request(
-            method,
-            url,
-            headers=headers,
-            params=request.GET,
-            data=request.body,
-            stream=True,
-            timeout=30,
-        )
-        content_type = resp.headers.get('Content-Type', '')
-        if content_type.startswith('text/html'):
-            # Read the full HTML content
-            html_content = resp.content.decode(resp.encoding or 'utf-8', errors='replace')
-            context = {
-                'gowitness_content': html_content,
-                'projectid': request.session['current_project']['prj_id'],
-            }
-            return render(request, 'findings/view_gowitness.html', context)
-        else:
-            # Stream non-HTML content (images, JS, etc.)
-            proxy_response = StreamingHttpResponse(
-                resp.iter_content(chunk_size=8192),
-                status=resp.status_code,
-                content_type=content_type
-            )
-            for key, value in resp.headers.items():
-                if key.lower() not in ['content-encoding', 'transfer-encoding', 'content-length', 'connection']:
-                    proxy_response[key] = value
-            return proxy_response
-    except requests.RequestException as e:
-        return HttpResponse(f"Error proxying request: {e}", status=502)
-
 ### Scanners stuffs
 @login_required
 def recent_findings(request):
@@ -501,63 +415,89 @@ def scan_assets(request):
         context = {'projectid': request.session['current_project']['prj_id']}
         project_id = context['projectid']
 
+        # Fetch selected UUIDs from POST data (if any)
+        selected_uuids = request.POST.getlist('uuid[]')
+        print(selected_uuids)
+
         def scan_nmap():
             try:
                 command = 'scan_nmap'
                 args = f'--projectid {project_id}'
+                if selected_uuids:
+                    args += f' --uuids {",".join(selected_uuids)}'
                 run_job(command, args, project_id, request.user)
             except Exception as e:
-                print(f"Error running test_job: {e}")
+                print(f"Error running scan_nmap: {e}")
 
-        def scan_gowitness():
+        def scan_httpx():
             try:
-                command = 'scan_gowitness'
+                command = 'scan_httpx'
                 args = f'--projectid {project_id}'
+                if selected_uuids:
+                    args += f' --uuids {",".join(selected_uuids)}'
                 run_job(command, args, project_id, request.user)
             except Exception as e:
-                print(f"Error running test_job: {e}")
+                print(f"Error running scan_httpx: {e}")
 
         def scan_nuclei():
             try:
                 command = 'scan_nuclei'
                 args = f'--projectid {project_id}'
+                if selected_uuids:
+                    args += f' --uuids {",".join(selected_uuids)}'
                 run_job(command, args, project_id, request.user)
             except Exception as e:
-                print(f"Error running test_job: {e}")
+                print(f"Error running scan_nuclei: {e}")
 
         def scan_nuclei_nt():
             try:
                 command = 'scan_nuclei'
                 args = f'--projectid {project_id} --nt'
+                if selected_uuids:
+                    args += f' --uuids {",".join(selected_uuids)}'
                 run_job(command, args, project_id, request.user)
             except Exception as e:
-                print(f"Error running test_job: {e}")
+                print(f"Error running scan_nuclei: {e}")
 
-        if "scan_nmap" in request.POST and "scan_gowitness" in request.POST:
-            # Run test_job, then test_job2 after it finishes
+        # Prepare threads for parallel jobs
+        threads = []
+
+        # If both scan_nmap and scan_httpx are selected, run them sequentially in a single thread
+        if "scan_nmap" in request.POST and "scan_httpx" in request.POST:
             def chained_jobs():
                 scan_nmap()
-                scan_gowitness()
-            thread = threading.Thread(target=chained_jobs)
-            thread.start()
-            messages.info(request, 'Nmap scan followed by a GoWitness scan have been triggered in the background. (check jobs)')
-        elif "scan_gowitness" in request.POST:
-            thread = threading.Thread(target=scan_gowitness)
-            thread.start()
-            messages.info(request, 'GoWitness scan has been triggered in the background. (check jobs)')
-        elif "scan_nmap" in request.POST:
-            thread = threading.Thread(target=scan_nmap)
-            thread.start()
-            messages.info(request, 'Nmap scan has been triggered in the background. (check jobs)')
+                scan_httpx()
+            threads.append(threading.Thread(target=chained_jobs))
+            messages.info(request, 'Nmap scan followed by a Httpx scan have been triggered in the background. (check jobs)')
+        else:
+            if "scan_nmap" in request.POST:
+                threads.append(threading.Thread(target=scan_nmap))
+                messages.info(request, 'Nmap scan has been triggered in the background. (check jobs)')
+            if "scan_httpx" in request.POST:
+                threads.append(threading.Thread(target=scan_httpx))
+                messages.info(request, 'Httpx scan has been triggered in the background. (check jobs)')
 
+        # Nuclei scans can always be parallelized
         if "scan_nuclei" in request.POST:
             if "scan_nuclei_new_templates" in request.POST:
-                thread = threading.Thread(target=scan_nuclei_nt)
-                thread.start()
+                threads.append(threading.Thread(target=scan_nuclei_nt))
                 messages.info(request, 'Nuclei scan for new templates has been triggered in the background. (check jobs)')
             else:
-                thread = threading.Thread(target=scan_nuclei)
-                thread.start()
+                threads.append(threading.Thread(target=scan_nuclei))
                 messages.info(request, 'Nuclei scan has been triggered in the background. (check jobs)')
 
+        # Start all threads
+        for thread in threads:
+            thread.start()
+
     return redirect(reverse('findings:assets'))
+
+@login_required
+def httpx_results(request):
+    if not request.user.has_perm('findings.view_finding'):
+        return HttpResponseForbidden("You do not have permission.")
+    context = {
+        'projectid': request.session.get('current_project', {}).get('prj_id', None),
+    }
+
+    return render(request, 'findings/list_httpx_results.html', context)

@@ -5,10 +5,10 @@ from project.models import Keyword
 
 class AddKeywordForm(ModelForm):
     KTYPE_CHOICES = [
-        ('registrant_org', 'Registrant Organization'),
-        ('registrant_email', 'Registrant Email'),
-        ('registrant_email_domain', 'Registrant Email Domain'),
-        ('crtsh_domain', 'Domain for CRTSH'),
+        ('domaintools_registrant_org', 'DomainTools - Registrant Organization'),
+        ('domaintools_registrant_email', 'DomainTools - Registrant Email'),
+        ('domaintools_registrant_email_domain', 'DomainTools - Registrant Email Domain'),
+        ('crtsh_domain', 'CRTSH - Domain'),
     ]
 
     ktype = forms.ChoiceField(choices=KTYPE_CHOICES, required=True, label="Keyword type")

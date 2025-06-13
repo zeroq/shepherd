@@ -39,24 +39,24 @@ class Command(BaseCommand):
         projects = Project.objects.filter(**project_filter)
 
         for prj in projects:
-            print(prj.projectname)
+            self.stdout.write(prj.projectname)
             for kw in prj.keyword_set.all():
 
                 if not kw.enabled:
                     continue
 
                 if kw.ktype == "crtsh_domain":
-                    print("[+] crtsh search for: {}".format(kw.keyword))
+                    self.stdout.write("[+] crtsh search for: {}".format(kw.keyword))
                     url = 'https://crt.sh/'
                     params_get = {
                         "output" : "json",
                         "q" : kw.keyword,
                     }
                     suggestion_count = self.crtsh_suggestion_population(url, params_get, kw, prj)
-                    print("[+] suggestions populated: {}".format(suggestion_count))
+                    self.stdout.write("[+] suggestions populated: {}".format(suggestion_count))
                     total_suggestion_count += suggestion_count
 
-        print("[+] total crtsh suggestions populated or updated: {}".format(total_suggestion_count))
+        self.stdout.write("[+] total crtsh suggestions populated or updated: {}".format(total_suggestion_count))
 
 
     def crtsh_suggestion_population(self, url, params_get, kw, prj):
@@ -72,7 +72,11 @@ class Command(BaseCommand):
         suggestion_count = 0
 
         rsp = requests.get(url, params=params_get, proxies=proxies, verify=verify)
-        results = json.loads(rsp.content)
+        try:
+            results = json.loads(rsp.content)
+        except Exception as error:
+            self.stderr.write(error)
+            return
 
         # Initialize list of domains that will contain results
         for item in results:

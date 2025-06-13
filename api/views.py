@@ -13,11 +13,11 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 
 from api.pagination import CustomPaginator
-from api.serializer import JobSerializer, ProjectSerializer, KeywordSerializer, SuggestionSerializer, ActiveDomainSerializer, FindingSerializer, PortSerializer
+from api.serializer import JobSerializer, ProjectSerializer, KeywordSerializer, SuggestionSerializer, ActiveDomainSerializer, FindingSerializer, PortSerializer, ScreenshotSerializer
 from api.utils import get_ordering_vars
 
 from project.models import Project, Keyword, Suggestion, ActiveDomain, Job
-from findings.models import Finding, Port
+from findings.models import Finding, Port, Screenshot
 
 # Create your views here.
 
@@ -111,11 +111,15 @@ def list_suggestions(request, projectid, selection, vtype, format=None):
     else:
         queryset = prj.suggestion_set.filter(ignore=False)  # Do not display ignored suggestions
 
-    if vtype in ['domain', 'subdomain', 'ipaddress']:
-        queryset = queryset.filter(finding_subtype=vtype)
 
-    if vtype in ['starred_domain', 'domain']:
+    if vtype in ['domain']:
+        queryset = queryset.filter(finding_type='domain')
+
+    elif vtype in ['starred_domain']:
         queryset = queryset.filter(finding_type=vtype)
+
+    elif vtype in ['second_level_domain']:
+        queryset = queryset.filter(finding_type='domain', finding_subtype='domain')
 
     ### filter by search value
     if search_value and len(search_value) > 1:
@@ -642,3 +646,102 @@ def list_jobs(request, projectid):
     return paginator.get_paginated_response(data)
 
 ##### END JOBS ###############
+
+@api_view(['GET'])
+@authentication_classes((SessionAuthentication,))
+@permission_classes((IsAuthenticated,))
+def list_screenshots(request, projectid, format=None):
+    if not request.user.has_perm('findings.view_finding'):
+        return HttpResponseForbidden("You do not have permission to view this project.")
+
+    try:
+        prj = Project.objects.get(id=projectid)
+    except Project.DoesNotExist:
+        return JsonResponse({
+            "draw": int(request.GET.get('draw', 1)),
+            "recordsTotal": 0,
+            "recordsFiltered": 0,
+            "data": []
+        })
+
+    # Filtering and search
+    domains = prj.activedomain_set.all()
+    queryset = Screenshot.objects.filter(domain__in=domains).order_by('-date')
+
+    # DataTables search on columns
+    search_columns = [
+        request.GET.get('columns[0][search][value]', ''),  # url
+        '',  # screenshot (not searchable)
+        request.GET.get('columns[2][search][value]', ''),  # technologies
+        request.GET.get('columns[3][search][value]', ''),  # title
+        request.GET.get('columns[4][search][value]', ''),  # status_code
+        request.GET.get('columns[5][search][value]', ''),  # webserver
+        request.GET.get('columns[6][search][value]', ''),  # date
+    ]
+    if search_columns[0]:
+        queryset = queryset.filter(url__icontains=search_columns[0])
+    if search_columns[2]:
+        queryset = queryset.filter(technologies__icontains=search_columns[2])
+    if search_columns[3]:
+        queryset = queryset.filter(title__icontains=search_columns[3])
+    if search_columns[4]:
+        queryset = queryset.filter(status_code__icontains=search_columns[4])
+    if search_columns[5]:
+        queryset = queryset.filter(webserver__icontains=search_columns[5])
+    if search_columns[6]:
+        queryset = queryset.filter(date__icontains=search_columns[6])
+
+    # Global search
+    search_value = request.GET.get('search[value]', '')
+    if search_value:
+        queryset = queryset.filter(
+            Q(url__icontains=search_value) |
+            Q(technologies__icontains=search_value) |
+            Q(title__icontains=search_value) |
+            Q(status_code__icontains=search_value) |
+            Q(webserver__icontains=search_value)
+        )
+
+    # Ordering
+    order_column_index = request.GET.get('order[0][column]', None)
+    order_dir = request.GET.get('order[0][dir]', 'desc')
+    order_columns = ['url', '', 'technologies', 'title', 'status_code', 'webserver', 'date']
+    if order_column_index is not None:
+        idx = int(order_column_index)
+        if order_columns[idx]:
+            order_field = order_columns[idx]
+            if order_dir == 'desc':
+                order_field = '-' + order_field
+            queryset = queryset.order_by(order_field)
+
+    # Pagination
+    # start = int(request.GET.get('start', 0))
+    # length = int(request.GET.get('length', 25))
+    # total = queryset.count()
+    # page = queryset[start:start+length]
+
+    # data = []
+    # for s in page:
+    #     data.append({
+    #         'url': s.url,
+    #         'screenshot_base64': s.screenshot_base64,
+    #         'technologies': s.technologies,
+    #         'title': s.title,
+    #         'status_code': s.status_code,
+    #         'webserver': s.webserver,
+    #         'date': s.date.strftime('%Y-%m-%d %H:%M:%S'),
+    #     })
+
+    # return JsonResponse({
+    #     'draw': int(request.GET.get('draw', 1)),
+    #     'recordsTotal': total,
+    #     'recordsFiltered': total,
+    #     'data': data,
+    # })
+
+    paginator = CustomPaginator()
+    screenshots = paginator.paginate_queryset(queryset, request)
+    serializer = ScreenshotSerializer(instance=screenshots, many=True)
+    data = serializer.data
+
+    return paginator.get_paginated_response(data)

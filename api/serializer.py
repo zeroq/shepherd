@@ -2,7 +2,7 @@
 from rest_framework import serializers
 
 from project.models import Job, Project, Keyword, Suggestion, ActiveDomain
-from findings.models import Finding, Port
+from findings.models import Finding, Port, Screenshot
 
 class ProjectSerializer(serializers.ModelSerializer):
     class Meta:
@@ -53,3 +53,9 @@ class JobSerializer(serializers.ModelSerializer):
     class Meta:
         model = Job
         fields = '__all__'
+
+class ScreenshotSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Screenshot
+        fields = '__all__'
+        

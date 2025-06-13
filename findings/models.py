@@ -55,3 +55,23 @@ class Finding(models.Model):
 
     def __str__(self):
         return "%i - %s - %s - %s" % (self.id, self.name, self.severity, self.domain.value)
+
+class Screenshot(models.Model):
+    """
+    Model to store screenshots and related metadata for a URL.
+    """
+    url = models.CharField(max_length=2048, primary_key=True)
+    domain = models.ForeignKey(ActiveDomain, on_delete=models.CASCADE, null=True, default=None)
+    technologies = models.CharField(max_length=2048, blank=True, default='')
+    screenshot_base64 = models.TextField(blank=True, default='')  # base64-encoded image
+    title = models.CharField(max_length=2048, blank=True, default='')
+    webserver = models.CharField(max_length=2048, blank=True, default='')
+    host_ip = models.CharField(max_length=256, blank=True, default='')
+    status_code = models.CharField(max_length=32, blank=True, default='')
+    response_body = models.TextField(blank=True, default='')
+    failed = models.BooleanField(default=False)
+
+    date = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Screenshot for {self.url} at {self.date}"

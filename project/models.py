@@ -39,7 +39,7 @@ class Suggestion(models.Model):
     source = models.CharField(max_length=200, default='')  # can be cert.sh for example
     creation_time = models.DateTimeField()  # when was it found to be created
     last_seen_time = models.DateTimeField(blank=True, null=True)  # when was it last seen
-    description = models.TextField(default='')
+    description = models.TextField(default='', blank=True, null=True)
     active = models.BooleanField(null=True)
     link = models.CharField(max_length=1024, default='', blank=True, null=True)
     cert_valid = models.BooleanField(default=True)

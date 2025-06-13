@@ -31,11 +31,18 @@ class Command(BaseCommand):
             action='store_true',
             help='Trigger the Nuclei scan with the "--nt" option',
         )
+        parser.add_argument(
+            '--uuids',
+            type=str,
+            help='Comma separated list of ActiveDomain UUIDs to process',
+            required=False,
+        )
 
     def handle(self, *args, **kwargs):
         projectid = kwargs.get('projectid')
         update = kwargs.get('update')
         nt_option = kwargs.get('nt')
+        uuids_arg = kwargs.get('uuids')
 
         # Handle the update argument
         if True: #update:
@@ -51,6 +58,11 @@ class Command(BaseCommand):
                 raise CommandError(f"Project with ID {projectid} does not exist.")
         else:
             active_domains = ActiveDomain.objects.filter(monitor=True)
+
+        # Filter by uuids if provided
+        if uuids_arg:
+            uuid_list = [u.strip() for u in uuids_arg.split(",") if u.strip()]
+            active_domains = active_domains.filter(uuid__in=uuid_list)
 
         if not active_domains.exists():
             self.stdout.write("No active domains found to scan.")

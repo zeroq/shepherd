@@ -1,6 +1,6 @@
 import hmac
 import hashlib
-import sys
+import html
 import time
 import requests
 from urllib.parse import urlencode, quote_plus
@@ -48,59 +48,60 @@ class Command(BaseCommand):
 
         projects = Project.objects.filter(**project_filter)
         for prj in projects:
-            print(prj.projectname)
+            self.stdout.write(prj.projectname)
             for kw in prj.keyword_set.all():
 
                 if not kw.enabled:
                     continue
 
-                if kw.ktype == "registrant_org":
+                keyword = html.unescape(kw.keyword)
+                if kw.ktype == "domaintools_registrant_org":
                     # Per registrant
-                    print("[+] domaintools search per registrant: {}".format(kw.keyword))
+                    self.stdout.write("[+] domaintools search per registrant: {}".format(keyword))
                     params_get = {
                         "api_username" : settings.DOMAINTOOLS_USER,
-                        "registrant" : kw.keyword,
+                        "registrant" : keyword,
                     }
                     suggestion_count = self.domaintools_suggestion_population(host, uri, params_get, kw, prj)
-                    print("[+] suggestions populated: {}".format(suggestion_count))
+                    self.stdout.write("[+] suggestions populated: {}".format(suggestion_count))
                     total_suggestion_count += suggestion_count
 
                     # Per registrant org
-                    print("[+] domaintools search per registrant organization: {}".format(kw.keyword))
+                    self.stdout.write("[+] domaintools search per registrant organization: {}".format(keyword))
                     params_get = {
                         "api_username" : settings.DOMAINTOOLS_USER,
-                        "registrant_org" : kw.keyword,
+                        "registrant_org" : keyword,
                     }
                     suggestion_count = self.domaintools_suggestion_population(host, uri, params_get, kw, prj)
-                    print("[+] suggestions populated: {}".format(suggestion_count))
+                    self.stdout.write("[+] suggestions populated: {}".format(suggestion_count))
                     total_suggestion_count += suggestion_count
 
-                if kw.ktype == "registrant_email":
+                if kw.ktype == "domaintools_registrant_email":
                     # Per e-mail
-                    print("[+] domaintools search per registrant email: {}".format(kw.keyword))
+                    self.stdout.write("[+] domaintools search per registrant email: {}".format(keyword))
                     params_get = {
                         "api_username" : settings.DOMAINTOOLS_USER,
-                        "email" : kw.keyword,
+                        "email" : keyword,
                     }
                     suggestion_count = self.domaintools_suggestion_population(host, uri, params_get, kw, prj)
-                    print("[+] suggestions populated: {}".format(suggestion_count))
+                    self.stdout.write("[+] suggestions populated: {}".format(suggestion_count))
                     total_suggestion_count += suggestion_count
 
-                if kw.ktype == "registrant_email_domain":
+                if kw.ktype == "domaintools_registrant_email_domain":
                     # Per e-mail domain
-                    print("[+] domaintools search per registrant email domain: {}".format(kw.keyword))
+                    self.stdout.write("[+] domaintools search per registrant email domain: {}".format(keyword))
                     params_get = {
                         "api_username" : settings.DOMAINTOOLS_USER,
-                        "email_domain" : kw.keyword,
+                        "email_domain" : keyword,
                     }
                     suggestion_count = self.domaintools_suggestion_population(host, uri, params_get, kw, prj)
-                    print("[+] suggestions populated: {}".format(suggestion_count))
+                    self.stdout.write("[+] suggestions populated: {}".format(suggestion_count))
                     total_suggestion_count += suggestion_count
 
                 else:
                     continue
 
-        print("[+] total domaintools suggestions populated or updated: {}".format(total_suggestion_count))
+        self.stdout.write("[+] total domaintools suggestions populated or updated: {}".format(total_suggestion_count))
 
 
     def domaintools_suggestion_population(self, host, uri, params_get, kw, prj):
@@ -132,7 +133,7 @@ class Command(BaseCommand):
         # Initialize list of items that will conatin doaintools results
         items = []
         if result["response"]["limit_exceeded"]:
-            print("[-] domaintools results limit exceeded -> refine the query")
+            self.stdout.write("[-] domaintools results limit exceeded -> refine the query")
             return suggestion_count
         else:
             items += result['response']['results']
@@ -145,10 +146,10 @@ class Command(BaseCommand):
                     items += result['response']['results']
                     err_cnt = 0
                 except:
-                    print("[-] request failed: {}, {}. Waiting 1 sec..".format(rsp, rsp.text))
+                    self.stdout.write("[-] request failed: {}, {}. Waiting 1 sec..".format(rsp, rsp.text))
                     time.sleep(0.5)
                     if err_cnt >= err_limit:
-                        print("[-] Too many failed requests, skip method")
+                        self.stdout.write("[-] Too many failed requests, skip method")
                         break
                     else:
                         err_cnt += 1

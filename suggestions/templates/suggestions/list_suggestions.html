@@ -33,8 +33,8 @@
       <!-- Add Suggestion Button -->
       <div class="action-section">
         <button type="button" class="btn btn-primary btn-xs" data-toggle="modal" data-target="#SuggestionModal">Add Domain</button>&nbsp;
-        <button type="button" class="btn btn-primary btn-xs" data-toggle="modal" data-target="#ScanSuggestionsModal">Scan suggestions</button>&nbsp;
         <button type="button" class="btn btn-primary btn-xs" onclick="location.href='{% url 'suggestions:export' %}'">Export to csv</button>&nbsp;
+        <button type="button" class="btn btn-primary btn-xs" data-toggle="modal" data-target="#ScanSuggestionsModal">Scan all suggestions</button>&nbsp;
       </div>
       <hr>
       <!-- File Upload Form -->
@@ -57,12 +57,10 @@
         <div class="panel panel-default">
           <div class="panel-heading">// Selected Actions</div>
           <div class="panel-body">
-            <button type="submit" name="btnmonitor" id="monitor-selected" class="btn btn-primary btn-xs">Monitor
-              selected</button>&nbsp;
-            <button type="submit" name="btnignore" id="ignore-selected" class="btn btn-primary btn-xs">Ignore
-              selected</button>&nbsp;
-            <button type="submit" name="btndelete" id="delete-selected" class="btn btn-primary btn-xs confirm">Delete
-              selected</button>
+            <button type="submit" name="btnmonitor" id="monitor-selected" class="btn btn-primary btn-xs">Monitor selected</button>&nbsp;
+            <button type="submit" name="btnignore" id="ignore-selected" class="btn btn-primary btn-xs">Ignore selected</button>&nbsp;
+            <button type="submit" name="btndelete" id="delete-selected" class="btn btn-primary btn-xs confirm">Delete selected</button>&nbsp;
+            <button type="button" id="scan-selected-suggestions-btn" class="btn btn-primary btn-xs" data-toggle="modal" data-target="#ScanSuggestionsModal">Scan selected suggestions</button>&nbsp;
           </div>
         </div>
       </div>
@@ -79,17 +77,17 @@
         <!-- Nav tabs -->
         <ul class="nav nav-tabs" role="tablist">
           <li role="presentation" {% if activetab == 'domain' %}class="active" {% endif %}>
-            <a href="#sdomain" aria-controls="sdomain" role="tab" data-toggle="tab">
-              <span>Domains <span class="label label-default">{{ domain_count }}</span></span>
+            <a href="#allDomains" aria-controls="allDomains" role="tab" data-toggle="tab">
+              <span>All Domains <span class="label label-default">{{ domain_count }}</span></span>
             </a>
           </li>
           <li role="presentation" {% if activetab == 'subdomain' %}class="active" {% endif %}>
-            <a href="#ssubdomain" aria-controls="ssubdomain" role="tab" data-toggle="tab">
-              <span>SubDomains <span class="label label-default">{{ subdomain_count }}</span></span>
+            <a href="#secondLevelDomains" aria-controls="secondLevelDomains" role="tab" data-toggle="tab">
+              <span>2nd level domains <span class="label label-default">{{ secondleveldomain_count }}</span></span>
             </a>
           </li>
           <li role="presentation" {% if activetab == 'starreddomain' %}class="active" {% endif %}>
-            <a href="#sstarreddomain" aria-controls="sstarreddomain" role="tab" data-toggle="tab">
+            <a href="#starredDomains" aria-controls="starredDomains" role="tab" data-toggle="tab">
               <span>Starred Domains <span class="label label-default">{{ starreddomain_count }}</span></span>
             </a>
           </li>
@@ -100,8 +98,8 @@
         </li> -->
         </ul><br />
         <div class="tab-content">
-          <div role="tabpanel" class="tab-pane fade {% if activetab == 'domain' %}in active{% endif %}" id="sdomain">
-            <table id="table_list_suggestions" class="table table-condensed table-striped table-bordered" style="font-size: 0.9em;" width="100%">
+          <div role="tabpanel" class="tab-pane fade {% if activetab == 'domain' %}in active{% endif %}" id="allDomains">
+            <table id="table_list_domain_suggestions" class="table table-condensed table-striped table-bordered" style="font-size: 0.9em;" width="100%">
               <thead>
                 <tr>
                   <th><input type="checkbox" name="select_all" value="1" id="select-all-items-dom">&nbsp; Operations</th>
@@ -127,8 +125,8 @@
             </table>
           </div>
 
-          <div role="tabpanel" class="tab-pane fade {% if activetab == 'subdomain' %}in active{% endif %}" id="ssubdomain">
-            <table id="table_list_subdomain_suggestions" class="table table-condensed table-striped table-bordered" style="font-size: 0.9em;" width="100%">
+          <div role="tabpanel" class="tab-pane fade {% if activetab == 'subdomain' %}in active{% endif %}" id="secondLevelDomains">
+            <table id="table_list_second_level_domain_suggestions" class="table table-condensed table-striped table-bordered" style="font-size: 0.9em;" width="100%">
               <thead>
                 <tr>
                   <th><input type="checkbox" name="select_all" value="1" id="select-all-items-sub">&nbsp; Operations</th>
@@ -154,7 +152,7 @@
             </table>
           </div>
 
-          <div role="tabpanel" class="tab-pane fade {% if activetab == 'starreddomain' %}in active{% endif %}" id="sstarreddomain">
+          <div role="tabpanel" class="tab-pane fade {% if activetab == 'starreddomain' %}in active{% endif %}" id="starredDomains">
             <table id="table_list_starreddomain_suggestions" class="table table-condensed table-striped table-bordered" style="font-size: 0.9em;" width="100%">
               <thead>
                 <tr>
@@ -232,26 +230,27 @@
 <div class="modal fade" id="ScanSuggestionsModal" tabindex="-1" role="dialog" aria-labelledby="scanSuggestionsModalLabel">
   <div class="modal-dialog" role="document">
     <div class="modal-content">
-      <form action="{% url 'suggestions:scan_suggestions' %}" method="post">
+      <form id="scan-suggestions-form" action="{% url 'suggestions:scan_suggestions' %}" method="post">
         <div class="modal-header">
           <h4>Scan Suggestions</h4>
         </div>
         <div class="modal-body">
           {% csrf_token %}
+
           <div class="form-group">
             <div class="form-check d-flex align-items-center" style="gap: 8px;">
-              <input type="checkbox" class="form-check-input" id="scan_for_redirection" name="scan_for_redirection" >
-              <label class="form-check-label mb-0" for="scan_for_redirection" style="margin-bottom:0; margin-left:6px;">
-                Scan for redirection
+              <input type="checkbox" class="form-check-input" id="subfinder_scan" name="subfinder_scan" >
+              <label class="form-check-label mb-0" for="subfinder_scan" style="margin-bottom:0; margin-left:6px;">
+                Subfinder scan (all starred domains if using the scan all button)
               </label>
             </div>
           </div>
 
           <div class="form-group">
             <div class="form-check d-flex align-items-center" style="gap: 8px;">
-              <input type="checkbox" class="form-check-input" id="subfinder_scan" name="subfinder_scan" >
-              <label class="form-check-label mb-0" for="subfinder_scan" style="margin-bottom:0; margin-left:6px;">
-                Subfinder scan (against starred domains)
+              <input type="checkbox" class="form-check-input" id="scan_for_redirection" name="scan_for_redirection" >
+              <label class="form-check-label mb-0" for="scan_for_redirection" style="margin-bottom:0; margin-left:6px;">
+                Redirect Scan
               </label>
             </div>
           </div>
@@ -260,7 +259,7 @@
             <div class="form-check d-flex align-items-center" style="gap: 8px;">
               <input type="checkbox" class="form-check-input" id="monitor_not_redirecting" name="monitor_not_redirecting">
               <label class="form-check-label mb-0" for="monitor_not_redirecting" style="margin-bottom:0; margin-left:6px;">
-                Monitor the domains not redirecting (will be done after the scans if any selected)
+                AutoMonitor the domains not redirecting (will be done after the scans if any selected)
               </label>
             </div>
           </div>
@@ -329,8 +328,8 @@
       });
     }
 
-    var domTable = initializeDataTable('#table_list_suggestions', "/api/v1/project/{{ projectid }}/suggestions/visible/domain/");
-    var subTable = initializeDataTable('#table_list_subdomain_suggestions', "/api/v1/project/{{ projectid }}/suggestions/visible/subdomain/");
+    var domTable = initializeDataTable('#table_list_domain_suggestions', "/api/v1/project/{{ projectid }}/suggestions/visible/domain/");
+    var subTable = initializeDataTable('#table_list_second_level_domain_suggestions', "/api/v1/project/{{ projectid }}/suggestions/visible/second_level_domain/");
     var starredTable = initializeDataTable('#table_list_starreddomain_suggestions', "/api/v1/project/{{ projectid }}/suggestions/visible/starred_domain/");
 
     function applySearch(table) {
@@ -436,6 +435,79 @@
         }
       });
     });
+
+    // Track if scan was triggered for selected suggestions
+    var scanSelectedSuggestions = false;
+
+    // When "Scan selected suggestions" is clicked, set flag and open modal
+    $('#scan-selected-suggestions-btn').on('click', function (e) {
+      // Collect checked checkboxes from all tables
+      var selectedUuids = [];
+      domTable.$('input[type="checkbox"][name="id[]"]:checked').each(function () {
+        selectedUuids.push($(this).val());
+      });
+      subTable.$('input[type="checkbox"][name="id[]"]:checked').each(function () {
+        selectedUuids.push($(this).val());
+      });
+      starredTable.$('input[type="checkbox"][name="id[]"]:checked').each(function () {
+        selectedUuids.push($(this).val());
+      });
+
+      if (selectedUuids.length === 0) {
+        e.preventDefault();
+        bootbox.alert("Please select at least one suggestion to scan.");
+        scanSelectedSuggestions = false;
+        return false;
+      }
+      scanSelectedSuggestions = true;
+      // Modal opens automatically due to data-toggle
+    });
+
+    // When "Scan suggestions" is clicked, clear flag
+    $('[data-target="#ScanSuggestionsModal"]').not('#scan-selected-suggestions-btn').on('click', function (e) {
+      scanSelectedSuggestions = false;
+    });
+
+    // On modal form submit, if scanSelectedSuggestions, add selected UUIDs as hidden inputs
+    $('#scan-suggestions-form').on('submit', function (e) {
+      if (scanSelectedSuggestions) {
+        // Remove any previous uuid[] hidden inputs
+        $(this).find('input[name="uuid[]"]').remove();
+
+        // Collect checked checkboxes from all tables
+        var selectedUuids = [];
+        domTable.$('input[type="checkbox"][name="id[]"]:checked').each(function () {
+          selectedUuids.push($(this).val());
+        });
+        subTable.$('input[type="checkbox"][name="id[]"]:checked').each(function () {
+          selectedUuids.push($(this).val());
+        });
+        starredTable.$('input[type="checkbox"][name="id[]"]:checked').each(function () {
+          selectedUuids.push($(this).val());
+        });
+
+        // Add as hidden inputs
+        for (var i = 0; i < selectedUuids.length; i++) {
+          $('<input>')
+            .attr('type', 'hidden')
+            .attr('name', 'uuid[]')
+            .val(selectedUuids[i])
+            .appendTo(this);
+        }
+      }
+      // else: normal scan, no UUIDs added
+    });
+
+    // Clear column search inputs and reset DataTable filters when switching tabs
+    $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
+      // Clear all search inputs
+      $('.column-search-input').val('');
+      // Reset search for all tables
+      domTable.columns().search('').draw();
+      subTable.columns().search('').draw();
+      starredTable.columns().search('').draw();
+    });
   });
+
 </script>
 {% endblock %}

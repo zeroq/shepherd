@@ -97,10 +97,10 @@ def suggestions(request):
         return redirect(reverse('suggestions:suggestions'))
     else:
         prj = Project.objects.get(id=request.session['current_project']['prj_id'])
-        context['domain_count'] = prj.suggestion_set.filter(finding_type='domain', finding_subtype='domain', ignore=False).count()
-        context['subdomain_count'] = prj.suggestion_set.filter(finding_type='domain', finding_subtype='subdomain', ignore=False).count()
+        context['domain_count'] = prj.suggestion_set.filter(finding_type='domain', ignore=False).count()
+        context['secondleveldomain_count'] = prj.suggestion_set.filter(finding_type='domain', finding_subtype='domain', ignore=False).count()
         context['starreddomain_count'] = prj.suggestion_set.filter(finding_type='starred_domain', ignore=False).count()
-        context['ip_count'] = 0 # TODO: fix this
+        context['ip_count'] = 0
         context['activetab'] = 'domain'
     return render(request, 'suggestions/list_suggestions.html', context)
 
@@ -403,6 +403,7 @@ def upload_suggestions(request):
             updated_cnt = 0
             for line in domain_file:
                 domain = escape(line.decode("utf-8").strip().strip('.'))
+
                 if domain:
                     sugg_defaults = {
                         "related_project": prj_obj,
@@ -412,6 +413,11 @@ def upload_suggestions(request):
                         "finding_type": "domain",
                         "creation_time": make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds"))),
                     }
+
+                    # Check if Starred domain
+                    if domain.startswith("*"):
+                        sugg_defaults["finding_type"] = "starred_domain"
+
                     # Check if domain or subdomain
                     parsed_obj = tldextract.extract(domain)
                     if parsed_obj.subdomain:
@@ -478,13 +484,18 @@ def scan_suggestions(request):
         context = {'projectid': request.session['current_project']['prj_id']}
         project_id = context['projectid']
 
+        # Fetch selected UUIDs from POST data (if any)
+        selected_uuids = request.POST.getlist('uuid[]')
+
         def scan_redirect():
             try:
                 command = 'get_domain_redirect'
                 args = f'--projectid {project_id}'
+                if selected_uuids:
+                    args += f' --uuids {",".join(selected_uuids)}'
                 run_job(command, args, project_id, request.user)
             except Exception as e:
-                print(f"Error running test_job: {e}")
+                print(f"Error running get_domain_redirect: {e}")
 
         def monitor_all_unique_domains():
             s_objs = Suggestion.objects.filter(redirect_to=None, related_project__id=project_id, finding_type='domain').exclude(active="False")
@@ -510,25 +521,19 @@ def scan_suggestions(request):
             try:
                 command = 'scan_subfinder'
                 args = f'--projectid {project_id}'
+                if selected_uuids:
+                    args += f' --uuids {",".join(selected_uuids)}'
                 run_job(command, args, project_id, request.user)
             except Exception as e:
-                print(f"Error running test_job: {e}")
+                print(f"Error running scan_subfinder: {e}")
 
         def chained_jobs():
-            threads = []
-            # Start scan_redirect and subfinder_scan in parallel if requested
-            if "scan_for_redirection" in request.POST:
-                t = threading.Thread(target=scan_redirect)
-                t.start()
-                threads.append(t)
+            # Run jobs sequentially: subfinder -> scan for redirection -> monitor not redirecting
             if "subfinder_scan" in request.POST:
-                t = threading.Thread(target=subfinder_scan)
-                t.start()
-                threads.append(t)
-            # Wait for all parallel jobs to finish if monitor_not_redirecting is requested
+                subfinder_scan()
+            if "scan_for_redirection" in request.POST:
+                scan_redirect()
             if "monitor_not_redirecting" in request.POST:
-                for t in threads:
-                    t.join()
                 monitor_all_unique_domains()
         thread = threading.Thread(target=chained_jobs)
         thread.start()

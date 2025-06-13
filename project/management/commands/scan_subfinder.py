@@ -22,9 +22,16 @@ class Command(BaseCommand):
             help='ID of the project to scan',
             required=True,
         )
+        parser.add_argument(
+            '--uuids',
+            type=str,
+            help='Comma separated list of suggestion UUIDs to scan',
+            required=False,
+        )
 
     def handle(self, *args, **kwargs):
         projectid = kwargs.get('projectid')
+        uuids_arg = kwargs.get('uuids')
 
         # Fetch active domains based on the project ID
         if projectid:
@@ -35,6 +42,11 @@ class Command(BaseCommand):
                 raise CommandError(f"Project with ID {projectid} does not exist.")
         else:
             starred_domains = Suggestion.objects.filter(ignore=False, finding_type='starred_domain')
+
+        # Filter by uuids if provided
+        if uuids_arg:
+            uuid_list = [u.strip() for u in uuids_arg.split(",") if u.strip()]
+            starred_domains = starred_domains.filter(uuid__in=uuid_list)
 
         if not starred_domains.exists():
             self.stdout.write("No active domains found to scan.")
@@ -53,9 +65,9 @@ class Command(BaseCommand):
             with tempfile.NamedTemporaryFile(delete=True) as temp_file:
                 temp_file_path = temp_file.name
                 # print(temp_file_path)
-                # Remove the star from the domain
-                parsed_obj = tldextract.extract(domain)
-                domain = ".".join([parsed_obj.domain, parsed_obj.suffix])
+                # Remove the star from the domain if exists
+                if domain.startswith("*."):
+                    domain = domain[2:]
 
                 # Build the Subfinder command
                 command = ['subfinder', '-d', domain, '-oJ', '-o', temp_file_path]
