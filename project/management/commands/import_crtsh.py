@@ -75,7 +75,7 @@ class Command(BaseCommand):
         try:
             results = json.loads(rsp.content)
         except Exception as error:
-            self.stderr.write(error)
+            print(error)
             return
 
         # Initialize list of domains that will contain results

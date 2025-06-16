@@ -80,7 +80,7 @@ def suggestions(request):
                         m_obj.related_keyword = s_obj.related_keyword
                         m_obj.related_project = s_obj.related_project
                         m_obj.value = s_obj.value
-                        m_obj.uuid = imported_uuid.uuid5(imported_uuid.NAMESPACE_DNS, "%s" % m_obj.value)
+                        m_obj.uuid = s_obj.uuid
                         m_obj.source = s_obj.source
                         m_obj.creation_time = s_obj.creation_time
                         m_obj.description = s_obj.description
@@ -244,14 +244,14 @@ def monitor_suggestion(request, uuid):
     return redirect(reverse('suggestions:suggestions'))
 
 @login_required
-def monitor_all_unique_domains(request):
+def monitor_all_unique_domains_derprecated(request):
     """Monitor all domains that are active and that do not redirect to another domain
     """
     if not request.user.has_perm('project.add_activedomain'):
         return HttpResponseForbidden("You do not have permission.")
     
     context = {'projectid': request.session['current_project']['prj_id']}
-    s_objs = Suggestion.objects.filter(redirect_to=None).exclude(active="False")
+    s_objs = Suggestion.objects.filter(redirect_to=None).exclude(active=False).exclude(ignore=True)
 
     for s_obj in s_objs:
         m_obj, _ = ActiveDomain.objects.get_or_create(uuid=s_obj.uuid,
@@ -498,7 +498,7 @@ def scan_suggestions(request):
                 print(f"Error running get_domain_redirect: {e}")
 
         def monitor_all_unique_domains():
-            s_objs = Suggestion.objects.filter(redirect_to=None, related_project__id=project_id, finding_type='domain').exclude(active="False")
+            s_objs = Suggestion.objects.filter(redirect_to=None, related_project__id=project_id, finding_type='domain').exclude(active=False).exclude(ignore=True)
 
             for s_obj in s_objs:
                 m_obj, _ = ActiveDomain.objects.get_or_create(uuid=s_obj.uuid,

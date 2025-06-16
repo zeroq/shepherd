@@ -37,24 +37,27 @@ class Command(BaseCommand):
         if projectid:
             try:
                 project = Project.objects.get(id=projectid)
-                starred_domains = Suggestion.objects.filter(ignore=False, related_project=project, finding_type='starred_domain')
+                domains = Suggestion.objects.filter(ignore=False, related_project=project)
             except Project.DoesNotExist:
                 raise CommandError(f"Project with ID {projectid} does not exist.")
         else:
-            starred_domains = Suggestion.objects.filter(ignore=False, finding_type='starred_domain')
+            domains = Suggestion.objects.filter(ignore=False)
 
         # Filter by uuids if provided
         if uuids_arg:
             uuid_list = [u.strip() for u in uuids_arg.split(",") if u.strip()]
-            starred_domains = starred_domains.filter(uuid__in=uuid_list)
+            domains = domains.filter(uuid__in=uuid_list)
+        else:
+            domains = domains.filter(finding_type='starred_domain')
+            
 
-        if not starred_domains.exists():
+        if not domains.exists():
             self.stdout.write("No active domains found to scan.")
             return
 
         # Use ThreadPoolExecutor to run scans in parallel
         with ThreadPoolExecutor(max_workers=10) as executor:
-            futures = [executor.submit(self.subfinder_scan_domain, domain.value, project) for domain in starred_domains]
+            futures = [executor.submit(self.subfinder_scan_domain, domain.value, project) for domain in domains]
             for future in as_completed(futures):
                 future.result()  # This will raise any exceptions caught during the scan
 
