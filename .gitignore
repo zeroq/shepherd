@@ -8,8 +8,14 @@ cert.pem
 key.pem
 
 # Ignore Django migration files
-*/migrations/*.py
-!*/migrations/__init__.py
+**/migrations/*.py
+!**/migrations/__init__.py
+
+# sockets
+gunicorn.sock
+
+# static files
+/static/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

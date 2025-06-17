@@ -12,20 +12,20 @@ class APICustomPaginator(DjangoPaginator):
 
     @cached_property
     def count(self):
+        # try:
+        #     with connection.cursor() as cursor:
+        #         table_name = self.object_list.model._meta.db_table
+        #         cursor.execute("SELECT reltuples::BIGINT AS estimate FROM pg_class WHERE relname='%s';" % (table_name))
+        #         row = cursor.fetchone()
+        #         return row[0]
+        # except:
         try:
-            with connection.cursor() as cursor:
-                table_name = self.object_list.model._meta.db_table
-                cursor.execute("SELECT reltuples::BIGINT AS estimate FROM pg_class WHERE relname='%s';" % (table_name))
-                row = cursor.fetchone()
-                return row[0]
-        except:
-            try:
-                return self.object_list.count()
-            except (AttributeError, TypeError):
-                # AttributeError if object_list has no count() method.
-                # TypeError if object_list.count() requires arguments
-                # (i.e. is of type list).
-                return len(self.object_list)
+            return self.object_list.count()
+        except (AttributeError, TypeError):
+            # AttributeError if object_list has no count() method.
+            # TypeError if object_list.count() requires arguments
+            # (i.e. is of type list).
+            return len(self.object_list)
 
 class CustomPaginator(PageNumberPagination):
     django_paginator_class = APICustomPaginator

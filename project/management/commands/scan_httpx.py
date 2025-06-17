@@ -67,7 +67,7 @@ class Command(BaseCommand):
         
         httpx_in_file = "/tmp/httpx_urls.txt"
         httpx_out_file = "/tmp/httpx_out.jsonl"
-        httpx_path = "/Users/leo.georget/go/bin/httpx"
+        httpx_path = "httpx"
 
         with open(httpx_in_file, 'w') as f:
             for url in httpx_urls:

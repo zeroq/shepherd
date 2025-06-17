@@ -32,7 +32,6 @@ def list_projects(request, format=None):
     if not request.user.has_perm('project.view_project'):
         return HttpResponseForbidden("You do not have permission to view this project.")
     
-    paginator = CustomPaginator()
     if request.query_params:
         if 'search[value]' in request.query_params:
             search_value = request.query_params['search[value]']
@@ -43,9 +42,9 @@ def list_projects(request, format=None):
     ### create queryset
     queryset = Project.objects.all()
     ### filter by search value
-    if search_value and len(search_value)>1:
+    if search_value and len(search_value) > 1:
         queryset = queryset.filter(
-            Q(projectname__icontains=search_value)|
+            Q(projectname__icontains=search_value) |
             Q(description__istartswith=search_value)
         )
     ### get variables
@@ -54,9 +53,13 @@ def list_projects(request, format=None):
                                                          default_direction='-')
     ### order queryset
     if order_by_column:
-        queryset = queryset.order_by('%s%s' % (order_direction, order_by_column))
+        order = f"{'-' if order_direction == '-' else ''}{order_by_column}"
+        queryset = queryset.order_by(order)
+
+    paginator = CustomPaginator()
     prjs = paginator.paginate_queryset(queryset, request)
     serializer = ProjectSerializer(instance=prjs, many=True)
+
     return paginator.get_paginated_response(serializer.data)
 
 
