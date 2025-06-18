@@ -54,7 +54,7 @@ class Command(BaseCommand):
                 sugg = {
                     "finding_type": "domain",
                     "related_project": suggestion.related_project,
-                    "source": "Redirect",
+                    "source": "redirect",
                     "description": f"Redirected from {domain}",
                     "active": True,
                     "creation_time": make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds"))),

@@ -24,11 +24,12 @@ class Command(BaseCommand):
                 read_permissions |= app_read_permissions  # Combine permissions
 
         # Create "Write" group
-        write_group, created = Group.objects.get_or_create(name='Write')
+        write_group, created = Group.objects.get_or_create(name='Read/Write')
         write_group.permissions.set(write_permissions)
         self.stdout.write(self.style.SUCCESS('Write group created or updated with all permissions from specified apps.'))
 
         # Create "Read-Only" group
-        read_only_group, created = Group.objects.get_or_create(name='Read-Only')
+        read_only_group, created = Group.objects.get_or_create(name='Read Only')
         read_only_group.permissions.set(read_permissions)  # Assign all read-related permissions
         self.stdout.write(self.style.SUCCESS('Read-Only group created or updated with all read-related permissions.'))
+        

@@ -616,7 +616,7 @@ def delete_finding(request, projectid, findingid):
 @authentication_classes((SessionAuthentication, ))
 @permission_classes((IsAuthenticated,))
 def list_jobs(request, projectid):
-    if not request.user.has_perm('jobs.view_job'):
+    if not request.user.has_perm('project.view_job'):
         return HttpResponseForbidden("You do not have permission to view this.")
 
     # check if project exists

@@ -90,7 +90,7 @@ class Command(BaseCommand):
         ]
 
         try:
-            result = subprocess.run(command, stdout=subprocess.DEVNULL)
+            result = subprocess.run(command, stdout=subprocess.DEVNULL, cwd="/var/www/")
             self.stdout.write("Httpx scan completed successfully.")
             # self.stdout.write(result.stdout)
         except subprocess.CalledProcessError as e:

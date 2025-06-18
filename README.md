@@ -24,9 +24,11 @@ export PATH=/opt/shepherd/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr
 
 # Tool installation
 apt install nmap
-go install -v github.com/projectdiscovery/httpx/cmd/httpx@latest
 go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
 go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
+go install -v github.com/projectdiscovery/httpx/cmd/httpx@latest
+wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+apt install ./google-chrome-stable_current_amd64.deb
 ```
 
 # For production

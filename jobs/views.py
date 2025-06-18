@@ -8,7 +8,7 @@ from project.models import Project, Suggestion, ActiveDomain, Job
 
 @login_required
 def jobs(request):
-    if not request.user.has_perm('jobs.view_job'):
+    if not request.user.has_perm('project.view_job'):
         return HttpResponseForbidden("You do not have permission.")
     
     context = {'projectid': request.session['current_project']['prj_id']}

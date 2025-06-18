@@ -27,6 +27,7 @@ def keywords(request):
         Suggestion.objects.filter(related_project_id=project_id)
         .exclude(description__isnull=True)
         .exclude(description__exact="")
+        .filter(description__icontains="registrant")
         .values_list('description', flat=True)
         .distinct()
     )
