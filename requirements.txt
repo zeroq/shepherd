@@ -16,3 +16,5 @@ django-extensions
 Werkzeug
 pyOpenSSL
 requests
+gunicorn
+psycopg2-binary

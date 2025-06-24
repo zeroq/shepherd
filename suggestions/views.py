@@ -19,7 +19,7 @@ import tldextract
 import threading
 import csv
 from django.http import HttpResponse
-
+from django.contrib.messages import get_messages, add_message, SUCCESS, ERROR
 
 @login_required
 def suggestions(request):
@@ -397,13 +397,13 @@ def upload_suggestions(request):
     if request.method == "POST" and request.FILES.get("domain_file"):
         domain_file = request.FILES["domain_file"]
 
-        # Loop through the file and add each domain to the database
-        try:
+        # Read all lines into memory (small files) or save to temp file for large files
+        lines = [escape(line.decode("utf-8").strip().strip('.')) for line in domain_file]
+
+        def process_domains(lines, prj_obj, user):
             created_cnt = 0
             updated_cnt = 0
-            for line in domain_file:
-                domain = escape(line.decode("utf-8").strip().strip('.'))
-
+            for domain in lines:
                 if domain:
                     sugg_defaults = {
                         "related_project": prj_obj,
@@ -436,10 +436,12 @@ def upload_suggestions(request):
                         sobj.creation_time = make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds")))
                         sobj.save()
                         updated_cnt += 1
+            # Optionally, you could log or notify admins here
 
-            messages.success(request, f"Domains uploaded successfully. Created: {created_cnt}, Updated: {updated_cnt}")
-        except Exception as e:
-            messages.error(request, f"Error processing file: {e}")
+        # Start processing in a background thread
+        thread = threading.Thread(target=process_domains, args=(lines, prj_obj, request.user))
+        thread.start()
+        messages.success(request, "Domains are being uploaded in the background. Please refresh the page after a while to see the results.")
     else:
         messages.error(request, "No file uploaded.")
     return redirect(reverse('suggestions:suggestions'))

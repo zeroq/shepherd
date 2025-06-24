@@ -1,6 +1,7 @@
 # Install and quick run
 
 ```bash
+git clone https://github.com/zeroq/shepherd
 cp shepherd/clean_settings.py shepherd/settings.py
 # Set DEBUG to False for use in Production
 
@@ -13,27 +14,40 @@ pip3 install -r requirements.txt
 python3 manage.py runserver 127.0.0.1:80
 ```
 
-# Dependency tools
+# Dependency tools (can all be installed as a single user for quick runs)
 
 ```bash
-# If installing for prod: install as www-data (else jump to tool installation)
-rm -rf /usr/local/go && tar -C /usr/local -xzf go1.24.4.linux-amd64.tar.gz
+# As root
+apt install nmap
+wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+apt install ./google-chrome-stable_current_amd64.deb
+wget https://go.dev/dl/go1.24.4.linux-amd64.tar.gz -O /tmp/go1.24.4.linux-amd64.tar.gz
+rm -rf /usr/local/go
+tar -C /usr/local -xzf /tmp/go1.24.4.linux-amd64.tar.gz
+
+# Switch to www-data
+mkdir /var/www/
 sudo chown -R www-data:www-data /var/www/
 sudo -u www-data bash
-export PATH=/opt/shepherd/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/usr/local/go/bin:/var/www/go/bin
 
-# Tool installation
-apt install nmap
+# As www-data
+export PATH=/opt/shepherd/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/usr/local/go/bin:/var/www/go/bin
+cd
 go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
 go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
 go install -v github.com/projectdiscovery/httpx/cmd/httpx@latest
-wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-apt install ./google-chrome-stable_current_amd64.deb
+
 ```
 
 # For production
 ```bash
+# As root
+cd /opt
+git clone https://github.com/zeroq/shepherd
+cp shepherd/clean_settings.py shepherd/settings.py
+chown -R www-data:www-data /opt/shepherd/
 apt install python3-pip python3-venv libpq-dev postgresql postgresql-contrib nginx
+cd /opt/shepherd
 python3 -m venv venv
 source venv/bin/activate
 pip3 install -r requirements.txt
@@ -48,13 +62,12 @@ ALTER ROLE shepherd SET default_transaction_isolation TO 'read committed';
 ALTER ROLE shepherd SET timezone TO 'UTC';
 GRANT ALL PRIVILEGES ON DATABASE shepherddb TO shepherd;
 \q
-
-# Django project
-pip3 install gunicorn psycopg2-binary
 ```
 
-## settings.py
+## shepherd/settings.py
 ```py
+DEBUG = False
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -65,6 +78,12 @@ DATABASES = {
         'PORT': '',
     }
 }
+
+# For Nginx proxy to Gunicorn
+USE_X_FORWARDED_HOST = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+RATELIMIT_IP_META_KEY = 'HTTP_X_FORWARDED_FOR'
+RATELIMIT_TRUSTED_PROXIES = ['127.0.0.1', '::1']
 ```
 
 ## /etc/systemd/system/gunicorn.service
@@ -116,7 +135,7 @@ server {
 
     location / {
         include proxy_params;
-        # proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        # proxy_set_header X-Forwarded-For;
         proxy_pass http://unix:/opt/shepherd/gunicorn.sock;
     }
 }
@@ -124,6 +143,7 @@ server {
 
 ## Enable the site and restard Nginx
 ```bash
+rm /etc/nginx/sites-enabled/default
 ln -s /etc/nginx/sites-available/shepherd /etc/nginx/sites-enabled
 nginx -t
 systemctl restart nginx
