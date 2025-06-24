@@ -6,8 +6,32 @@ import dns.resolver
 class Command(BaseCommand):
     help = "Check DNS records for all suggestions and update their active status"
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--projectid',
+            type=int,
+            help='Filter by specific project ID',
+            required=False,
+        )
+        parser.add_argument(
+            '--uuids',
+            type=str,
+            help='Comma separated list of suggestion UUIDs to process',
+            required=False,
+        )
+
     def handle(self, *args, **kwargs):
-        suggestions = Suggestion.objects #.exclude(active=False)  # Filter out inactive suggestions
+        project_filter = {}
+        if kwargs.get('projectid'):
+            project_filter['related_project__id'] = kwargs['projectid']
+
+        uuids_arg = kwargs.get('uuids')
+
+        suggestions = Suggestion.objects.filter(**project_filter).filter(finding_type='domain')
+        if uuids_arg:
+            uuid_list = [u.strip() for u in uuids_arg.split(",") if u.strip()]
+            suggestions = suggestions.filter(uuid__in=uuid_list)
+
         self.stdout.write(f"Checking DNS records for {suggestions.count()} active suggestions...")
 
         def check_dns(suggestion):
