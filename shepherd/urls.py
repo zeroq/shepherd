@@ -28,6 +28,7 @@ urlpatterns = [
     path('accounts/', include(('accounts.urls', 'accounts'), namespace='accounts')),
     path('api/', include(('api.urls', 'api'), namespace='api')),
     path('jobs/', include(('jobs.urls', 'jobs'), namespace='jobs')),
+    path('oidc/', include('mozilla_django_oidc.urls')),
 ]
 
 if settings.ADMIN_ENABLED:

@@ -18,3 +18,4 @@ pyOpenSSL
 requests
 gunicorn
 psycopg2-binary
+mozilla-django-oidc>=4.0.0

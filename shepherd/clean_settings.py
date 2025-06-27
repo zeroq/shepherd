@@ -193,3 +193,24 @@ RATELIMIT_USE_CACHE = 'default'
 # SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # RATELIMIT_IP_META_KEY = 'HTTP_X_FORWARDED_FOR'
 # RATELIMIT_TRUSTED_PROXIES = ['127.0.0.1', '::1']
+
+
+#### SSO
+# # OpenID Connect (OIDC) settings
+# AUTHENTICATION_BACKENDS = (
+#     'django.contrib.auth.backends.ModelBackend',
+#     'mozilla_django_oidc.auth.OIDCAuthenticationBackend',
+# )
+
+# LOGIN_URL = '/oidc/authenticate/'
+# LOGIN_REDIRECT_URL = '/'
+# LOGOUT_REDIRECT_URL = '/'
+
+# # OIDC provider settings for Microsoft (Azure AD)
+# OIDC_RP_CLIENT_ID = 'your-azure-client-id'
+# OIDC_RP_CLIENT_SECRET = 'your-azure-client-secret'
+# OIDC_OP_AUTHORIZATION_ENDPOINT = 'https://login.microsoftonline.com/<tenant-id>/oauth2/v2.0/authorize'
+# OIDC_OP_TOKEN_ENDPOINT = 'https://login.microsoftonline.com/<tenant-id>/oauth2/v2.0/token'
+# OIDC_OP_USER_ENDPOINT = 'https://graph.microsoft.com/oidc/userinfo'
+# OIDC_OP_JWKS_ENDPOINT = 'https://login.microsoftonline.com/<tenant-id>/discovery/v2.0/keys'
+# OIDC_RP_SIGN_ALGO = 'RS256'

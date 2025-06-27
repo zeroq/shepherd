@@ -145,14 +145,14 @@ class Command(BaseCommand):
                     
                 screenshot_defaults = {
                     "domain": domain_obj,
-                    "technologies": ",".join(screenshot_json["tech"]),
-                    "screenshot_base64": screenshot_json["screenshot_bytes"],
-                    "title": screenshot_json["title"],
-                    "webserver": screenshot_json["webserver"],
-                    "host_ip": screenshot_json["host"],
-                    "status_code": screenshot_json["status_code"],
-                    "response_body": screenshot_json["headless_body"],
-                    "failed": screenshot_json["failed"],
+                    "technologies": ",".join(screenshot_json.get("tech", [])),
+                    "screenshot_base64": screenshot_json.get("screenshot_bytes", ""),
+                    "title": screenshot_json.get("title", ""),
+                    "webserver": screenshot_json.get("webserver", ""),
+                    "host_ip": screenshot_json.get("host", ""),
+                    "status_code": screenshot_json.get("status_code", None),
+                    "response_body": screenshot_json.get("headless_body", ""),
+                    "failed": screenshot_json.get("failed", False),
                     "date": make_aware(datetime.now())
                 }
                 # Create or update Screenshot by url
