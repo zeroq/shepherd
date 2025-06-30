@@ -168,6 +168,13 @@ REST_FRAMEWORK = {
 DOMAINTOOLS_KEY = ""
 DOMAINTOOLS_USER = ""
 
+# Shodan API
+SHODAN_API_KEY = ""
+
+# FOFA API
+FOFA_EMAIL = ""
+FOFA_KEY = ""
+
 # Nucleus API
 NUCLEUS_URL = ''
 NUCLEUS_KEY = ''
@@ -197,10 +204,10 @@ RATELIMIT_USE_CACHE = 'default'
 
 #### SSO
 # # OpenID Connect (OIDC) settings
-# AUTHENTICATION_BACKENDS = (
+# AUTHENTICATION_BACKENDS = [
+#     'accounts.auth.CustomOIDCBackend',
 #     'django.contrib.auth.backends.ModelBackend',
-#     'mozilla_django_oidc.auth.OIDCAuthenticationBackend',
-# )
+# ]
 
 # LOGIN_URL = '/oidc/authenticate/'
 # LOGIN_REDIRECT_URL = '/'

@@ -9,6 +9,8 @@ class AddKeywordForm(ModelForm):
         ('domaintools_registrant_email', 'DomainTools - Registrant Email'),
         ('domaintools_registrant_email_domain', 'DomainTools - Registrant Email Domain'),
         ('crtsh_domain', 'CRTSH - Domain'),
+        ('shodan_keyword', 'Shodan - query keyword'),
+
     ]
 
     ktype = forms.ChoiceField(choices=KTYPE_CHOICES, required=True, label="Keyword type")

@@ -79,14 +79,13 @@ class Command(BaseCommand):
         # Execute the httpx command
         command = [
             httpx_path,
-            "-l",
-            httpx_in_file,
+            "-l", httpx_in_file,
             "-ss",
+            "-st", "30",
             "-no-screenshot-full-page",
             "-td",
             "-j",
-            "-o",
-            httpx_out_file,
+            "-o", httpx_out_file,
         ]
 
         try:

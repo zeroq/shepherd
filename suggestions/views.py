@@ -425,7 +425,7 @@ def upload_suggestions(request):
                     else:
                         sugg_defaults["finding_subtype"] = 'domain'
 
-                    item_uuid = imported_uuid.uuid5(imported_uuid.NAMESPACE_DNS, str(domain))
+                    item_uuid = imported_uuid.uuid5(imported_uuid.NAMESPACE_DNS, f"{domain}:{prj_obj.id}")
                     sobj, created = Suggestion.objects.get_or_create(uuid=item_uuid, defaults=sugg_defaults)
 
                     if created:
