@@ -44,11 +44,11 @@ class Command(BaseCommand):
         missing_screenshots = options.get('missing_screenshots')
 
         if missing_screenshots:
-            # Get all Screenshot objects with empty screenshot_base64
-            screenshot_qs = Screenshot.objects.filter(screenshot_base64='')
-            # Get unique domains from these screenshots
-            domain_ids = screenshot_qs.values_list('domain', flat=True).distinct()
-            active_domains = ActiveDomain.objects.filter(id__in=domain_ids, monitor=True)
+            # Get all Screenshot objects with empty screenshot_base64 and non-null domain
+            screenshot_qs = Screenshot.objects.filter(screenshot_base64='').exclude(domain=None)
+            # Get unique domain IDs from these screenshots
+            domain_ids = screenshot_qs.values_list('domain_id', flat=True).distinct()
+            active_domains = ActiveDomain.objects.filter(uuid__in=domain_ids, monitor=True)
             if projectid:
                 active_domains = active_domains.filter(related_project_id=projectid)
             if uuids_arg:
