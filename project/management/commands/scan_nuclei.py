@@ -37,12 +37,18 @@ class Command(BaseCommand):
             help='Comma separated list of ActiveDomain UUIDs to process',
             required=False,
         )
+        parser.add_argument(
+            '--new-assets',
+            action='store_true',
+            help='Only scan assets with empty lastscan_time',
+        )
 
     def handle(self, *args, **kwargs):
         projectid = kwargs.get('projectid')
         update = kwargs.get('update')
         nt_option = kwargs.get('nt')
         uuids_arg = kwargs.get('uuids')
+        new_assets_only = kwargs.get('new_assets')
 
         # Handle the update argument
         if True: #update:
@@ -64,12 +70,16 @@ class Command(BaseCommand):
             uuid_list = [u.strip() for u in uuids_arg.split(",") if u.strip()]
             active_domains = active_domains.filter(uuid__in=uuid_list)
 
+        # Filter by new_assets_only if set
+        if new_assets_only:
+            active_domains = active_domains.filter(lastscan_time__isnull=True)
+
         if not active_domains.exists():
             self.stdout.write("No active domains found to scan.")
             return
 
         # Use ThreadPoolExecutor to run scans in parallel
-        with ThreadPoolExecutor(max_workers=10) as executor:
+        with ThreadPoolExecutor(max_workers=20) as executor:
             futures = [executor.submit(self.scan_domain, domain, nt_option) for domain in active_domains]
             for future in as_completed(futures):
                 future.result()  # This will raise any exceptions caught during the scan

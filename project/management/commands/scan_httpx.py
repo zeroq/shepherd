@@ -26,24 +26,51 @@ class Command(BaseCommand):
             help='Comma separated list of ActiveDomain UUIDs to process',
             required=False,
         )
+        parser.add_argument(
+            '--new-assets',
+            action='store_true',
+            help='Only scan assets with empty lastscan_time',
+        )
+        parser.add_argument(
+            '--missing-screenshots',
+            action='store_true',
+            help='Only scan assets (domains) where Screenshot.screenshot_base64 is empty',
+        )
 
     def handle(self, *args, **options):
         projectid = options.get('projectid')
         uuids_arg = options.get('uuids')
+        new_assets_only = options.get('new_assets')
+        missing_screenshots = options.get('missing_screenshots')
 
-        if projectid:
-            try:
-                project = Project.objects.get(id=projectid)
-                active_domains = ActiveDomain.objects.filter(monitor=True, related_project=project)
-            except Project.DoesNotExist:
-                raise CommandError(f"Project with ID {projectid} does not exist.")
+        if missing_screenshots:
+            # Get all Screenshot objects with empty screenshot_base64
+            screenshot_qs = Screenshot.objects.filter(screenshot_base64='')
+            # Get unique domains from these screenshots
+            domain_ids = screenshot_qs.values_list('domain', flat=True).distinct()
+            active_domains = ActiveDomain.objects.filter(id__in=domain_ids, monitor=True)
+            if projectid:
+                active_domains = active_domains.filter(related_project_id=projectid)
+            if uuids_arg:
+                uuid_list = [u.strip() for u in uuids_arg.split(",") if u.strip()]
+                active_domains = active_domains.filter(uuid__in=uuid_list)
         else:
-            active_domains = ActiveDomain.objects.filter(monitor=True)
+            if projectid:
+                try:
+                    project = Project.objects.get(id=projectid)
+                    active_domains = ActiveDomain.objects.filter(monitor=True, related_project=project)
+                except Project.DoesNotExist:
+                    raise CommandError(f"Project with ID {projectid} does not exist.")
+            else:
+                active_domains = ActiveDomain.objects.filter(monitor=True)
 
-        # Filter by uuids if provided
-        if uuids_arg:
-            uuid_list = [u.strip() for u in uuids_arg.split(",") if u.strip()]
-            active_domains = active_domains.filter(uuid__in=uuid_list)
+            # Filter by uuids if provided
+            if uuids_arg:
+                uuid_list = [u.strip() for u in uuids_arg.split(",") if u.strip()]
+                active_domains = active_domains.filter(uuid__in=uuid_list)
+            # Filter by new_assets_only if set
+            if new_assets_only:
+                active_domains = active_domains.filter(lastscan_time__isnull=True)
 
         httpx_urls = []
         for active_domain in active_domains:
@@ -159,5 +186,6 @@ class Command(BaseCommand):
                     url=screenshot_json["url"],
                     defaults=screenshot_defaults,
                 )
-
+                domain_obj.lastscan_time = make_aware(datetime.now())
+                domain_obj.save()
                 self.stdout.write(f"Screenshot saved for url: {screenshot_json['url']}")

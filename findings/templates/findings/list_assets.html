@@ -27,6 +27,7 @@
     <div class="panel-body">
       <button type="button" class="btn btn-primary btn-xs confirm" onclick="location.href='{% url 'findings:move_all_assets' %}'">Move all assets back to suggestions</button>&nbsp;
       <button type="button" class="btn btn-primary btn-xs" data-toggle="modal" data-target="#ScanAssetsModal">Scan all assets</button>&nbsp;
+      <button type="button" class="btn btn-primary btn-xs" id="scan-new-assets-btn" data-toggle="modal" data-target="#ScanAssetsModal">Scan new assets</button>&nbsp;
     </div>
   </div>
 </div>
@@ -205,7 +206,7 @@
 </form> <!-- close selection form -->
 
 {% endspaceless%}
-{% endblock%}
+{% endblock %}
 
 {% block javascript %}
 <script src="{% static 'js/bootbox.min.js' %}"></script>
@@ -263,8 +264,30 @@ $(document).ready(function () {
         {'data': 'vulns', 'sName': 'Vulnerabilities'},
         {'data': 'source', 'sName': 'Source'},
         {'data': 'description', 'sName': 'Description'},
-        {'data': 'lastscan_time', 'sName': 'Last Scan'},
-        {'data': 'creation_time', 'sName': 'Created'}
+        {'data': 'lastscan_time', 'sName': 'Last Scan',
+          'render': function(data, type, row) {
+            if (!data) return '';
+            if (window.moment) {
+              if (typeof data === 'string' && data.endsWith('Z')) {
+                return moment.utc(data).local().format('DD-MM-YYYY HH:mm');
+              }
+              return moment(data).format('DD-MM-YYYY HH:mm');
+            }
+            return data;
+          }
+        },
+        {'data': 'creation_time', 'sName': 'Created',
+          'render': function(data, type, row) {
+            if (!data) return '';
+            if (window.moment) {
+              if (typeof data === 'string' && data.endsWith('Z')) {
+                return moment.utc(data).local().format('DD-MM-YYYY HH:mm');
+              }
+              return moment(data).format('DD-MM-YYYY HH:mm');
+            }
+            return data;
+          }
+        }
     ];
 
     // Define columns for the ignored assets table
@@ -298,7 +321,18 @@ $(document).ready(function () {
         },
         {'data': 'source', 'sName': 'Source'},
         {'data': 'description', 'sName': 'Description'},
-        {'data': 'creation_time', 'sName': 'Created'}
+        {'data': 'creation_time', 'sName': 'Created',
+          'render': function(data, type, row) {
+            if (!data) return '';
+            if (window.moment) {
+              if (typeof data === 'string' && data.endsWith('Z')) {
+                return moment.utc(data).local().format('DD-MM-YYYY HH:mm');
+              }
+              return moment(data).format('DD-MM-YYYY HH:mm');
+            }
+            return data;
+          }
+        }
     ];
 
     // Initialize DataTables
@@ -379,13 +413,29 @@ $(document).ready(function () {
       // Modal opens automatically due to data-toggle
     });
 
-    // When "Scan assets" is clicked, clear flag
-    $('[data-target="#ScanAssetsModal"]').not('#scan-selected-assets-btn').on('click', function (e) {
-      scanSelectedAssets = false;
-    });
+    // Track if scan was triggered for new assets
+    var scanNewAssets = false;
 
-    // On modal form submit, if scanSelectedAssets, add selected UUIDs as hidden inputs
+    // When "Scan new assets" is clicked, set flag and open modal
+    $('#scan-new-assets-btn').on('click', function (e) {
+      scanNewAssets = true;
+    });
+    // When "Scan all assets" is clicked, clear flag
+    $('[data-target="#ScanAssetsModal"]').not('#scan-new-assets-btn').on('click', function (e) {
+      scanNewAssets = false;
+    });
+    // On modal form submit, if scanNewAssets, add POST param instead of GET
     $('#scan-assets-form').on('submit', function (e) {
+      // Remove any previous scan_new_assets hidden input
+      $(this).find('input[name="scan_new_assets"]').remove();
+      if (scanNewAssets) {
+        // Add as hidden input for POST
+        $('<input>')
+          .attr('type', 'hidden')
+          .attr('name', 'scan_new_assets')
+          .val('on')
+          .appendTo(this);
+      }
       if (scanSelectedAssets) {
         // Remove any previous uuid[] hidden inputs
         $(this).find('input[name="uuid[]"]').remove();

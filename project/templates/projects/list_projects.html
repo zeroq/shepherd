@@ -123,7 +123,18 @@ $(document).ready( function () {
                 },
             },
             {'data': 'description', 'sName': 'Description', 'aTargets': [ 2 ]},
-            {'data': 'creation_time', 'sName': 'Created', 'aTargets': [ 6 ]},
+            {'data': 'creation_time', 'sName': 'Created', 'aTargets': [ 6 ],
+              'render': function(data, type, row) {
+                if (!data) return '';
+                if (window.moment) {
+                  if (typeof data === 'string' && data.endsWith('Z')) {
+                    return moment.utc(data).local().format('DD-MM-YYYY HH:mm');
+                  }
+                  return moment(data).format('DD-MM-YYYY HH:mm');
+                }
+                return data;
+              }
+            },
             {'data': 'id', 'sName': 'Operations', 'aTargets': [ 10 ],
                 'bSortable': false,
                 "mRender": function (data, type, full) {

@@ -37,10 +37,16 @@ class Command(BaseCommand):
             help='Comma separated list of ActiveDomain UUIDs to process',
             required=False,
         )
+        parser.add_argument(
+            '--new-assets',
+            action='store_true',
+            help='Only scan assets with empty lastscan_time',
+        )
 
     def handle(self, *args, **options):
         projectid = options.get('projectid')
         uuids_arg = options.get('uuids')
+        new_assets_only = options.get('new_assets')
 
         # Get the projects to scan
         if projectid:
@@ -60,6 +66,10 @@ class Command(BaseCommand):
             if uuids_arg:
                 uuid_list = [u.strip() for u in uuids_arg.split(",") if u.strip()]
                 domains_qs = domains_qs.filter(uuid__in=uuid_list)
+            # Filter by new_assets_only if set
+            if new_assets_only:
+                domains_qs = domains_qs.filter(lastscan_time__isnull=True)
+
             for ad in domains_qs:
                 prj_items.append((ad.value, ad))
             # Multi-Process results
@@ -85,6 +95,8 @@ class Command(BaseCommand):
                         port_obj.cpe = port_entry['cpe']
                         port_obj.raw = port_entry
                         port_obj.save()
+                ad_obj.lastscan_time = make_aware(datetime.now())
+                ad_obj.save()
                 self.stdout.write(f"[+] {open_ports_cnt} ports found for {ad_obj.value}")
 
     def port_lookup(self, domain_tuple):

@@ -6,7 +6,7 @@ class CustomOIDCBackend(OIDCAuthenticationBackend):
         user = super().create_user(claims)
         user.username = claims.get('email')
         user.save()
-        read_only_group, _ = Group.objects.get_or_create(name='Read-Only')
+        read_only_group, _ = Group.objects.get_or_create(name='Read Only')
         user.groups.add(read_only_group)
         return user
 

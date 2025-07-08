@@ -417,7 +417,14 @@ def scan_assets(request):
 
         # Fetch selected UUIDs from POST data (if any)
         selected_uuids = request.POST.getlist('uuid[]')
-        print(selected_uuids)
+        scan_new_assets = request.POST.get('scan_new_assets') == 'on'
+        print('selected_uuids:', selected_uuids)
+        print('scan_new_assets:', scan_new_assets)
+
+        # If scan_new_assets is set, override selected_uuids with all new asset UUIDs
+        if scan_new_assets:
+            new_assets = ActiveDomain.objects.filter(related_project=project_id, lastscan_time__isnull=True)
+            selected_uuids = list(new_assets.values_list('uuid', flat=True))
 
         def scan_nmap():
             try:
@@ -425,6 +432,8 @@ def scan_assets(request):
                 args = f'--projectid {project_id}'
                 if selected_uuids:
                     args += f' --uuids {",".join(selected_uuids)}'
+                if scan_new_assets:
+                    args += ' --new-assets'
                 run_job(command, args, project_id, request.user)
             except Exception as e:
                 print(f"Error running scan_nmap: {e}")
@@ -435,6 +444,8 @@ def scan_assets(request):
                 args = f'--projectid {project_id}'
                 if selected_uuids:
                     args += f' --uuids {",".join(selected_uuids)}'
+                if scan_new_assets:
+                    args += ' --new-assets'
                 run_job(command, args, project_id, request.user)
             except Exception as e:
                 print(f"Error running scan_httpx: {e}")
@@ -445,6 +456,8 @@ def scan_assets(request):
                 args = f'--projectid {project_id}'
                 if selected_uuids:
                     args += f' --uuids {",".join(selected_uuids)}'
+                if scan_new_assets:
+                    args += ' --new-assets'
                 run_job(command, args, project_id, request.user)
             except Exception as e:
                 print(f"Error running scan_nuclei: {e}")
@@ -455,6 +468,8 @@ def scan_assets(request):
                 args = f'--projectid {project_id} --nt'
                 if selected_uuids:
                     args += f' --uuids {",".join(selected_uuids)}'
+                if scan_new_assets:
+                    args += ' --new-assets'
                 run_job(command, args, project_id, request.user)
             except Exception as e:
                 print(f"Error running scan_nuclei: {e}")

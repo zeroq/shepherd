@@ -89,7 +89,7 @@ class Command(BaseCommand):
 
                 for line in temp_file:
                     subfinder_domain = json.loads(line)
-                    subfinder_domain_name = subfinder_domain['host']
+                    subfinder_domain_name = subfinder_domain['host'].lower()
 
                     # Create the suggestion details
                     sugg = {
