@@ -115,7 +115,18 @@ $(document).ready(function () {
             { 'data': 'port', 'sName': 'Port', 'aTargets': [2] },
             { 'data': 'banner', 'sName': 'Banner', 'aTargets': [3] },
             { 'data': 'cpe', 'sName': 'CPE', 'aTargets': [4] },
-            { 'data': 'scan_date', 'sName': 'Last Scan', 'aTargets': [5] },
+            { 'data': 'scan_date', 'sName': 'Last Scan', 'aTargets': [5],
+                'render': function(data, type, row) {
+                    if (!data) return '';
+                    if (window.moment) {
+                        if (typeof data === 'string' && data.endsWith('Z')) {
+                            return moment.utc(data).local().format('DD-MM-YYYY HH:mm');
+                        }
+                        return moment(data).format('DD-MM-YYYY HH:mm');
+                    }
+                    return data;
+                }
+            }
         ]
     });
 

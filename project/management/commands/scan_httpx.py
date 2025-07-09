@@ -8,6 +8,7 @@ from datetime import datetime
 from project.models import ActiveDomain, Project
 from findings.models import Screenshot
 from django.conf import settings
+import tempfile
 
 
 class Command(BaseCommand):
@@ -91,101 +92,101 @@ class Command(BaseCommand):
                 self.stdout.write(f"  {url}")
             
             httpx_urls += active_domain_urls
-        
-        httpx_in_file = "/tmp/httpx_urls.txt"
-        httpx_out_file = "/tmp/httpx_out.jsonl"
+
         httpx_path = "httpx"
-
-        with open(httpx_in_file, 'w') as f:
+        # Use tempfile for input and output files
+        with tempfile.NamedTemporaryFile(mode='w+', delete=True) as in_f, tempfile.NamedTemporaryFile(mode='w+', delete=True) as out_f:
+            httpx_in_file = in_f.name
+            httpx_out_file = out_f.name
             for url in httpx_urls:
-                f.write(f"{url}\n")
+                in_f.write(f"{url}\n")
+            in_f.flush()
 
-        self.stdout.write(f"URLs written to {httpx_in_file}")
-        self.stdout.write(f"Total URLs: {len(httpx_urls)}")
+            self.stdout.write(f"URLs written to {httpx_in_file}")
+            self.stdout.write(f"Total URLs: {len(httpx_urls)}")
 
-        # Execute the httpx command
-        command = [
-            httpx_path,
-            "-l", httpx_in_file,
-            "-ss",
-            "-st", "30",
-            "-no-screenshot-full-page",
-            "-td",
-            "-j",
-            "-o", httpx_out_file,
-        ]
+            command = [
+                httpx_path,
+                "-l", httpx_in_file,
+                "-ss",
+                "-st", "30",
+                "-no-screenshot-full-page",
+                "-td",
+                "-j",
+                "-o", httpx_out_file,
+            ]
 
-        try:
-            result = subprocess.run(command, stdout=subprocess.DEVNULL, cwd="/var/www/")
-            self.stdout.write("Httpx scan completed successfully.")
-            # self.stdout.write(result.stdout)
-        except subprocess.CalledProcessError as e:
-            self.stdout.write("Error occurred while running Httpx:")
-            self.stdout.write(e.stderr)
-            return
-        
-        # Store results in the DB
-        with open(httpx_out_file, 'r') as f:
-            for line in f:
-                # Fields available:
-                #     timestamp
-                #     port
-                #     url !
-                #     input
-                #     location
-                #     title !
-                #     scheme
-                #     webserver !
-                #     content_type
-                #     method
-                #     host !
-                #     path
-                #     time
-                #     a
-                #     tech !
-                #     words
-                #     lines
-                #     status_code !
-                #     content_length
-                #     failed !
-                #     headless_body !
-                #     screenshot_bytes !
-                #     stored_response_path
-                #     screenshot_path
-                #     screenshot_path_rel
-                #     knowledgebase
-                #     resolvers
-                screenshot_json = json.loads(line)
-                # for key in screenshot_json:
-                #     if not key in ['screenshot_bytes', 'headless_body']:
-                #         self.stdout.write(f"{key}: {screenshot_json[key]}")
-                #     else:
-                #         self.stdout.write(f"{key}: AAAAA....")
-                # exit(0)
-                # Extract domain from url and match to ActiveDomain
-                parsed_url = urlparse(screenshot_json["url"])
-                domain_value = parsed_url.hostname
-                domain_obj = None
-                if domain_value:
-                    domain_obj = ActiveDomain.objects.filter(value__iexact=domain_value).first()
+            try:
+                result = subprocess.run(command, stdout=subprocess.DEVNULL, cwd="/var/www/")
+                self.stdout.write("Httpx scan completed successfully.")
+            except subprocess.CalledProcessError as e:
+                self.stdout.write("Error occurred while running Httpx:")
+                self.stdout.write(e.stderr)
+                return
+
+            # Store results in the DB
+            with open(httpx_out_file, 'r') as f:
+                for line in f:
+                    # Fields available:
+                    #     timestamp
+                    #     port
+                    #     url !
+                    #     input
+                    #     location
+                    #     title !
+                    #     scheme
+                    #     webserver !
+                    #     content_type
+                    #     method
+                    #     host !
+                    #     path
+                    #     time
+                    #     a
+                    #     tech !
+                    #     words
+                    #     lines
+                    #     status_code !
+                    #     content_length
+                    #     failed !
+                    #     headless_body !
+                    #     screenshot_bytes !
+                    #     stored_response_path
+                    #     screenshot_path
+                    #     screenshot_path_rel
+                    #     knowledgebase
+                    #     resolvers
+                    screenshot_json = json.loads(line)
+                    # for key in screenshot_json:
+                    #     if not key in ['screenshot_bytes', 'headless_body']:
+                    #         self.stdout.write(f"{key}: {screenshot_json[key]}")
+                    #     else:
+                    #         self.stdout.write(f"{key}: AAAAA....")
+                    # exit(0)
+                    # Extract domain from url and match to ActiveDomain
+                    parsed_url = urlparse(screenshot_json["url"])
+                    domain_value = parsed_url.hostname
+                    domain_obj = None
+                    if domain_value:
+                        domain_obj = ActiveDomain.objects.filter(value__iexact=domain_value).first()
+                        
+                    screenshot_defaults = {
+                        "domain": domain_obj,
+                        "technologies": ",".join(screenshot_json.get("tech", [])),
+                        "screenshot_base64": screenshot_json.get("screenshot_bytes", ""),
+                        "title": screenshot_json.get("title", ""),
+                        "webserver": screenshot_json.get("webserver", ""),
+                        "host_ip": screenshot_json.get("host", ""),
+                        "status_code": screenshot_json.get("status_code", None),
+                        "response_body": screenshot_json.get("headless_body", ""),
+                        "failed": screenshot_json.get("failed", False),
+                        "date": make_aware(datetime.now())
+                    }
+                    # Create or update Screenshot by url
+                    screenshot_obj, created = Screenshot.objects.update_or_create(
+                        url=screenshot_json["url"],
+                        defaults=screenshot_defaults,
+                    )
+                    domain_obj.lastscan_time = make_aware(datetime.now())
+                    domain_obj.save()
+                    self.stdout.write(f"Screenshot saved for url: {screenshot_json['url']}")
                     
-                screenshot_defaults = {
-                    "domain": domain_obj,
-                    "technologies": ",".join(screenshot_json.get("tech", [])),
-                    "screenshot_base64": screenshot_json.get("screenshot_bytes", ""),
-                    "title": screenshot_json.get("title", ""),
-                    "webserver": screenshot_json.get("webserver", ""),
-                    "host_ip": screenshot_json.get("host", ""),
-                    "status_code": screenshot_json.get("status_code", None),
-                    "response_body": screenshot_json.get("headless_body", ""),
-                    "failed": screenshot_json.get("failed", False),
-                    "date": make_aware(datetime.now())
-                }
-                # Create or update Screenshot by url
-                screenshot_obj, created = Screenshot.objects.update_or_create(
-                    url=screenshot_json["url"],
-                    defaults=screenshot_defaults,
-                )
-                domain_obj.lastscan_time = make_aware(datetime.now())
-                domain_obj.save()
-                self.stdout.write(f"Screenshot saved for url: {screenshot_json['url']}")

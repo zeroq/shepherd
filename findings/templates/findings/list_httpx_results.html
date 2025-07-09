@@ -110,7 +110,18 @@ $(document).ready(function () {
         { data: 'title', sName: 'Title' },
         { data: 'status_code', sName: 'Status Code' },
         { data: 'webserver', sName: 'Webserver' },
-        { data: 'date', sName: 'Date' }
+        { data: 'date', sName: 'Date',
+          'render': function(data, type, row) {
+            if (!data) return '';
+            if (window.moment) {
+              if (typeof data === 'string' && data.endsWith('Z')) {
+                return moment.utc(data).local().format('DD-MM-YYYY HH:mm');
+              }
+              return moment(data).format('DD-MM-YYYY HH:mm');
+            }
+            return data;
+          }
+        }
     ];
 
     var httpxTable = initializeDataTable(
