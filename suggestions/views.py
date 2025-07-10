@@ -122,6 +122,10 @@ def manual_add_suggestion(request):
             record.source = escape(record.source) if record.source else None
             record.link = escape(record.link) if record.link else None
 
+            # Set related_project to currently selected project
+            project_id = request.session['current_project']['prj_id']
+            record.related_project_id = project_id
+
             # Generate UUID and save the record
             record.uuid = imported_uuid.uuid5(imported_uuid.NAMESPACE_DNS, "%s" % record.value)
             record.creation_time = timezone.now()

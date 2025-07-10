@@ -238,6 +238,7 @@ $(document).ready( function () {
     // AJAX Send to nucleus
     $(document).on("click", ".send-to-nucleus", function (e) {
         e.preventDefault(); // Prevent the default link behavior
+        displayMessage("info", "Sending the finding to Nucleus...");
     
         var url = $(this).data("url"); // Get the URL from the data-url attribute
         var title = $(this).data("display"); // Get the display name for feedback

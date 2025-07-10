@@ -18,12 +18,11 @@ class AddSuggestionForm(ModelForm):
 
     class Meta:
         model = Suggestion
-        fields = ['value', 'related_project', 'finding_type', 'finding_subtype', 'source', 'description']
+        fields = ['value', 'finding_type', 'finding_subtype', 'source', 'description']
 
     def __init__(self, *args, **kwargs):
         super(AddSuggestionForm, self).__init__(*args, **kwargs)
         self.fields['value'].widget.attrs.update({'class': 'form-control'})
-        self.fields['related_project'].widget.attrs.update({'class': 'form-control'})
         self.fields['source'].widget.attrs.update({
             'class': 'form-control',
             'value': 'manual',

@@ -66,8 +66,8 @@ class ActiveDomain(models.Model):
     source = models.CharField(max_length=200, default='')  # can be cert.sh for example
     creation_time = models.DateTimeField()  # when was it found to be created
     lastscan_time = models.DateTimeField(blank=True, null=True)  # when was it last scanned
-    description = models.TextField(default='')
-    link = models.CharField(max_length=1024, default='', blank=True)
+    description = models.TextField(blank=True, default='', null=True)
+    link = models.CharField(max_length=1024, default='', blank=True, null=True)
     monitor = models.BooleanField(default=True) # monitor this item
     
     def __str__(self):
@@ -83,7 +83,7 @@ class ActiveIP(models.Model):
     source = models.CharField(max_length=200, default='')  # can be cert.sh for example
     creation_time = models.DateTimeField()  # when was it found to be created
     lastscan_time = models.DateTimeField(blank=True, null=True)  # when was it last scanned
-    description = models.TextField(default='')
+    description = models.TextField(blank=True, default='', null=True)
     link = models.CharField(max_length=1024)
     monitor = models.BooleanField(default=True) # monitor this item
 

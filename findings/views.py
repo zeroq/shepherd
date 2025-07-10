@@ -293,9 +293,9 @@ def send_nucleus(request, uuid, findingid):
 
     # prepare header
     rheader = {'x-apikey': settings.NUCLEUS_KEY, 'Content-Type': 'application/json'}
-    asset = tld.get_tld(f_obj.domain.value, fix_protocol=True, as_object=True)
-    asset_name, asset_id = asset_get_or_create(asset.fld, settings.NUCLEUS_URL, settings.NUCLEUS_PROJECT, rheader)
-    print(asset_name, asset_id)
+    # asset = tld.get_tld(f_obj.domain.value, fix_protocol=True, as_object=True)
+    asset_name, asset_id = asset_get_or_create(f_obj.domain.value, settings.NUCLEUS_URL, settings.NUCLEUS_PROJECT, rheader)
+    # print(asset_name, asset_id)
     # add finding
     result, msg = asset_finding_get_or_create(asset_name, asset_id, f_obj, settings.NUCLEUS_URL, settings.NUCLEUS_PROJECT, rheader)
     # update reporting time

@@ -93,8 +93,30 @@ $(document).ready(function () {
                 $("div", nTd).tooltip();
             },
         },
-        {'data': 'started_at', 'sName': 'Started at'},
-        {'data': 'finished_at', 'sName': 'Finished at'},
+        {'data': 'started_at', 'sName': 'Started at',
+          'render': function(data, type, row) {
+            if (!data) return '';
+            if (window.moment) {
+              if (typeof data === 'string' && data.endsWith('Z')) {
+                return moment.utc(data).local().format('DD-MM-YYYY HH:mm');
+              }
+              return moment(data).format('DD-MM-YYYY HH:mm');
+            }
+            return data;
+          }
+        },
+        {'data': 'finished_at', 'sName': 'Finished at',
+          'render': function(data, type, row) {
+            if (!data) return '';
+            if (window.moment) {
+              if (typeof data === 'string' && data.endsWith('Z')) {
+                return moment.utc(data).local().format('DD-MM-YYYY HH:mm');
+              }
+              return moment(data).format('DD-MM-YYYY HH:mm');
+            }
+            return data;
+          }
+        },
         {'data': 'status', 'sName': 'Last Status'},
         {'data': 'username', 'sName': 'Username'}
     ];

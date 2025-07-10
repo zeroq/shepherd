@@ -18,8 +18,9 @@ def asset_finding_get_or_create(asset_name, asset_id, vuln_obj, url, nucleus_pro
     #    return False, "Entry Exists"
 
     # Finding details
-    finding_severity = vuln_obj.severity.upper()
-    if finding_severity == 'INFO':
+    finding_severity = vuln_obj.severity.capitalize()
+    print(finding_severity)
+    if finding_severity == 'Info':
         finding_severity = 'Informational'
     finding_name = vuln_obj.name
 
@@ -29,7 +30,7 @@ def asset_finding_get_or_create(asset_name, asset_id, vuln_obj, url, nucleus_pro
         "finding_name": finding_name,
         "finding_severity": finding_severity,
     }
-    rsp = requests.post(f'{url}/projects/{nucleus_project}/findings/search', headers=request_header, json=data_body, verify=False)
+    rsp = requests.post(f'{url}/projects/{nucleus_project}/findings/search', headers=request_header, json=data_body, verify=True)
     result_list = rsp.json()
     if len(result_list)>0:
         entry = result_list[0]
@@ -58,7 +59,7 @@ def asset_finding_get_or_create(asset_name, asset_id, vuln_obj, url, nucleus_pro
         # "finding_code_snippet": vuln_obj.curl,
     }
 
-    rsp = requests.post(f'{url}/projects/{nucleus_project}/findings', headers=request_header, json=new_finding, verify=False)
+    rsp = requests.post(f'{url}/projects/{nucleus_project}/findings', headers=request_header, json=new_finding, verify=True)
     print(json.dumps(rsp.json(), indent=4))
     return True, "Entry Created"
 

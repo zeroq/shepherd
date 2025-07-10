@@ -22,29 +22,51 @@
 {% if messages %}{% for message in messages %}<div {% if message.tags %} class="alert alert-{{ message.tags }}"{% endif %}>{{ message }}</div>{% endfor %}{% endif %}
 <div>
     <h4>Details</h4>
-        <table id="asset_details" class="table table-condensed table-bordered" style="font-size: 0.9em;">
+    <table id="details" class="table table-condensed">
         <tbody>
             <tr>
-                <td>Name:</td><td>{{ asset.value }}</td>
-            </tr>
-            <tr>
-                <td>UUID:</td><td>{{ asset.uuid }}</td>
-            </tr>
-            <tr>
-                <td>Source:</td><td>{{ asset.source }}</td>
-            </tr>
-            <tr>
-                <td>Created:</td><td>{{ asset.creation_time }}</td>
-            </tr>
-            <tr>
-                <td>Last Scan:</td><td>{{ asset.lastscan_time }}</td>
+                <td>
+                    <table id="asset_details" class="table table-condensed table-bordered" style="font-size: 0.9em;">
+                        <tbody>
+                            <tr>
+                                <td>Name:</td><td>{{ asset.value }}</td>
+                            </tr>
+                            <tr>
+                                <td>UUID:</td><td>{{ asset.uuid }}</td>
+                            </tr>
+                            <tr>
+                                <td>Source:</td><td>{{ asset.source }}</td>
+                            </tr>
+                            <tr>
+                                <td>Created:</td><td>{{ asset.creation_time }}</td>
+                            </tr>
+                            <tr>
+                                <td>Last Scan:</td><td>{{ asset.lastscan_time }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </td>
+                <td>
+                    <table id="port_details" class="table table-condensed table-bordered" style="font-size: 0.9em;">
+                        <tbody>
+                        {% for port in asset.port_set.all %}
+                        <tr>
+                            <td>Port</td><td>{{ port.port }}</td>
+                            <td>Banner</td><td>{{ port.banner }}</td>
+                            <td>Product</td><td>{{ port.product }}</td>
+                            <td>Last Scan</td><td>{{ port.scan_date }}</td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </td>
             </tr>
         </tbody>
-        </table>
+    </table>
 </div>
 <div>
     <div>
-        <button type="button" class="btn btn-primary btn-xs" onclick="location.href='{% url 'findings:view_asset' uuid=asset.uuid %}'">Show not reported entries</button><br/><br/>
+        <button type="button" class="btn btn-primary btn-xs" onclick="location.href='{% url 'findings:view_asset' uuid=asset.uuid %}'">Show all entries</button><br/><br/>
     </div>
 </div>
 <div>
@@ -55,25 +77,15 @@
             <th>Vulnerability</th>
             <th>Severity</th>
             <th>Scan Date</th>
-            <th>Vulnerable at</th>
             <th>Description</th>
-            <th>Details</th>
-            <th>Ops</th>
         </thead>
         <tbody>
             {% for entry in critical_findings %}
             <tr>
-                <td>{{ entry.vulnname }}</td>
+                <td>{{ entry.name }}</td>
                 <td>{{ entry.severity }}</td>
                 <td>{{ entry.scan_date }}</td>
-                <td>{{ entry.vulnerableAt }}</td>
                 <td>{{ entry.description }}</td>
-                <td>{{ entry.raw.vulnerabilityDetail }}</td>
-                <td>
-                    <a class="btn btn-xs" rel="tooltip" data-placement="right" data-original-title="Delete Entry" onclick="location.href='{% url 'findings:delete_finding' uuid=asset.uuid findingid=entry.id reported='true'%}'">
-                        <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
-                    </a>
-                </td>
             </tr>
             {% endfor %}
         </tbody>
@@ -86,26 +98,15 @@
             <th>Vulnerability</th>
             <th>Severity</th>
             <th>Scan Date</th>
-            <th>Vulnerable at</th>
             <th>Description</th>
-            <th>Details</th>
-            <th>Ops</th>
         </thead>
         <tbody>
             {% for entry in high_findings %}
             <tr>
-                <td>{{ entry.vulnname }}</td>
+                <td>{{ entry.name }}</td>
                 <td>{{ entry.severity }}</td>
                 <td>{{ entry.scan_date }}</td>
-                <td>{{ entry.vulnerableAt }}</td>
                 <td>{{ entry.description }}</td>
-                <td>{{ entry.raw.vulnerabilityDetail }}</td>
-                <td>
-                    <button type="button" class="btn btn-primary btn-xs" onclick="location.href='{% url 'findings:delete_finding' uuid=asset.uuid findingid=entry.id %}'">
-                    <a class="btn btn-xs" rel="tooltip" data-placement="right" data-original-title="Delete Entry" onclick="location.href='{% url 'findings:delete_finding' uuid=asset.uuid findingid=entry.id reported='true'%}'">
-                        <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
-                    </a>
-                </td>
             </tr>
             {% endfor %}
         </tbody>
@@ -118,25 +119,15 @@
             <th>Vulnerability</th>
             <th>Severity</th>
             <th>Scan Date</th>
-            <th>Vulnerable at</th>
             <th>Description</th>
-            <th>Details</th>
-            <th>Ops</th>
         </thead>
         <tbody>
             {% for entry in medium_findings %}
             <tr>
-                <td>{{ entry.vulnname }}</td>
+                <td>{{ entry.name }}</td>
                 <td>{{ entry.severity }}</td>
                 <td>{{ entry.scan_date }}</td>
-                <td>{{ entry.vulnerableAt }}</td>
                 <td>{{ entry.description }}</td>
-                <td>{{ entry.raw.vulnerabilityDetail }}</td>
-                <td>
-                    <a class="btn btn-xs" rel="tooltip" data-placement="right" data-original-title="Delete Entry" onclick="location.href='{% url 'findings:delete_finding' uuid=asset.uuid findingid=entry.id reported='true'%}'">
-                        <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
-                    </a>
-                </td>
             </tr>
             {% endfor %}
         </tbody>
@@ -149,25 +140,15 @@
             <th>Vulnerability</th>
             <th>Severity</th>
             <th>Scan Date</th>
-            <th>Vulnerable at</th>
             <th>Description</th>
-            <th>Details</th>
-            <th>Ops</th>
         </thead>
         <tbody>
             {% for entry in low_findings %}
             <tr>
-                <td>{{ entry.vulnname }}</td>
+                <td>{{ entry.name }}</td>
                 <td>{{ entry.severity }}</td>
                 <td>{{ entry.scan_date }}</td>
-                <td>{{ entry.vulnerableAt }}</td>
                 <td>{{ entry.description }}</td>
-                <td>{{ entry.raw.vulnerabilityDetail }}</td>
-                <td>
-                    <a class="btn btn-xs" rel="tooltip" data-placement="right" data-original-title="Delete Entry" onclick="location.href='{% url 'findings:delete_finding' uuid=asset.uuid findingid=entry.id reported='true'%}'">
-                        <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
-                    </a>
-                </td>
             </tr>
             {% endfor %}
         </tbody>
@@ -177,30 +158,18 @@
     <h4>Informative Findings</h4>
         <table class="table table-condensed table-striped table-bordered" style="font-size: 0.8em;">
         <thead>
-            <th>ID</th>
             <th>Vulnerability</th>
             <th>Severity</th>
             <th>Scan Date</th>
-            <th>Vulnerable at</th>
             <th>Description</th>
-            <th>Details</th>
-            <th>Ops</th>
         </thead>
         <tbody>
             {% for entry in info_findings %}
             <tr>
-                <td>{{ entry.id }}</td>
-                <td>{{ entry.vulnname }}</td>
+                <td>{{ entry.name }}</td>
                 <td>{{ entry.severity }}</td>
                 <td>{{ entry.scan_date }}</td>
-                <td>{{ entry.vulnerableAt }}</td>
                 <td>{{ entry.description }}</td>
-                <td>{{ entry.raw.vulnerabilityDetail }}</td>
-                <td>
-                    <a class="btn btn-xs" rel="tooltip" data-placement="right" data-original-title="Delete Entry" onclick="location.href='{% url 'findings:delete_finding' uuid=asset.uuid findingid=entry.id reported='true'%}'">
-                        <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
-                    </a>
-                </td>
             </tr>
             {% endfor %}
         </tbody>
@@ -212,4 +181,4 @@
 
 {% block javascript %}
 <script src="{% static 'js/bootbox.min.js' %}"></script>
-{% endblock%}
+{% endblock %}

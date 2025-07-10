@@ -22,7 +22,7 @@
 {% if messages %}{% for message in messages %}<div {% if message.tags %} class="alert alert-{{ message.tags }}"{% endif %}>{{ message }}</div>{% endfor %}{% endif %}
 <div>
     <h4>Details</h4>
-    <table id="klammer" class="table table-condensed">
+    <table id="details" class="table table-condensed">
         <tbody>
             <tr>
                 <td>
@@ -77,9 +77,7 @@
             <th>Vulnerability</th>
             <th>Severity</th>
             <th>Scan Date</th>
-            <th>Vulnerable at</th>
             <th>Description</th>
-            <th>Ops</th>
         </thead>
         <tbody>
             {% for entry in critical_findings %}
@@ -87,17 +85,7 @@
                 <td>{{ entry.name }}</td>
                 <td>{{ entry.severity }}</td>
                 <td>{{ entry.scan_date }}</td>
-                <td>{{ entry.vulnerableAt }}</td>
                 <td>{{ entry.description }}</td>
-                <td>
-                    <a class="btn btn-xs send-to-nucleus" rel="tooltip" data-placement="right" 
-                       data-original-title="To Nucleus" data-url="{% url 'findings:send_nucleus' uuid='00000000-0000-0000-0000-000000000000' findingid=entry.id %}" data-display="{{ full.name }}" href="#">
-                        <span class="glyphicon glyphicon-send" aria-hidden="true"></span>
-                    </a>
-                    <a class="btn btn-xs confirm" rel="tooltip" data-placement="right" data-original-title="Delete Entry" data-display="' + full.name + '" data-href="' + delete_url + '" href="#" data-method="DELETE">
-                        <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
-                    </a>
-                </td>
             </tr>
             {% endfor %}
         </tbody>
@@ -110,9 +98,7 @@
             <th>Vulnerability</th>
             <th>Severity</th>
             <th>Scan Date</th>
-            <th>Vulnerable at</th>
             <th>Description</th>
-            <th>Ops</th>
         </thead>
         <tbody>
             {% for entry in high_findings %}
@@ -120,17 +106,7 @@
                 <td>{{ entry.name }}</td>
                 <td>{{ entry.severity }}</td>
                 <td>{{ entry.scan_date }}</td>
-                <td>{{ entry.vulnerableAt }}</td>
                 <td>{{ entry.description }}</td>
-                <td>
-                    <a class="btn btn-xs send-to-nucleus" rel="tooltip" data-placement="right" 
-                       data-original-title="To Nucleus" data-url="{% url 'findings:send_nucleus' uuid='00000000-0000-0000-0000-000000000000' findingid=entry.id %}" data-display="{{ full.name }}" href="#">
-                        <span class="glyphicon glyphicon-send" aria-hidden="true"></span>
-                    </a>
-                    <a class="btn btn-xs confirm" rel="tooltip" data-placement="right" data-original-title="Delete Entry" data-display="' + full.name + '" data-href="' + delete_url + '" href="#" data-method="DELETE">
-                        <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
-                    </a>
-                </td>
             </tr>
             {% endfor %}
         </tbody>
@@ -143,9 +119,7 @@
             <th>Vulnerability</th>
             <th>Severity</th>
             <th>Scan Date</th>
-            <th>Vulnerable at</th>
             <th>Description</th>
-            <th>Ops</th>
         </thead>
         <tbody>
             {% for entry in medium_findings %}
@@ -153,17 +127,7 @@
                 <td>{{ entry.name }}</td>
                 <td>{{ entry.severity }}</td>
                 <td>{{ entry.scan_date }}</td>
-                <td>{{ entry.vulnerableAt }}</td>
                 <td>{{ entry.description }}</td>
-                <td>
-                    <a class="btn btn-xs send-to-nucleus" rel="tooltip" data-placement="right" 
-                       data-original-title="To Nucleus" data-url="{% url 'findings:send_nucleus' uuid='00000000-0000-0000-0000-000000000000' findingid=entry.id %}" data-display="{{ full.name }}" href="#">
-                        <span class="glyphicon glyphicon-send" aria-hidden="true"></span>
-                    </a>
-                    <a class="btn btn-xs confirm" rel="tooltip" data-placement="right" data-original-title="Delete Entry" data-display="' + full.name + '" data-href="' + delete_url + '" href="#" data-method="DELETE">
-                        <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
-                    </a>
-                </td>
             </tr>
             {% endfor %}
         </tbody>
@@ -176,9 +140,7 @@
             <th>Vulnerability</th>
             <th>Severity</th>
             <th>Scan Date</th>
-            <th>Vulnerable at</th>
             <th>Description</th>
-            <th>Ops</th>
         </thead>
         <tbody>
             {% for entry in low_findings %}
@@ -186,17 +148,7 @@
                 <td>{{ entry.name }}</td>
                 <td>{{ entry.severity }}</td>
                 <td>{{ entry.scan_date }}</td>
-                <td>{{ entry.vulnerableAt }}</td>
                 <td>{{ entry.description }}</td>
-                <td>
-                    <a class="btn btn-xs send-to-nucleus" rel="tooltip" data-placement="right" 
-                       data-original-title="To Nucleus" data-url="{% url 'findings:send_nucleus' uuid='00000000-0000-0000-0000-000000000000' findingid=entry.id %}" data-display="{{ full.name }}" href="#">
-                        <span class="glyphicon glyphicon-send" aria-hidden="true"></span>
-                    </a>
-                    <a class="btn btn-xs confirm" rel="tooltip" data-placement="right" data-original-title="Delete Entry" data-display="' + full.name + '" data-href="' + delete_url + '" href="#" data-method="DELETE">
-                        <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
-                    </a>
-                </td>
             </tr>
             {% endfor %}
         </tbody>
@@ -206,32 +158,18 @@
     <h4>Informative Findings</h4>
         <table class="table table-condensed table-striped table-bordered" style="font-size: 0.8em;">
         <thead>
-            <th>ID</th>
             <th>Vulnerability</th>
             <th>Severity</th>
             <th>Scan Date</th>
-            <th>Vulnerable at</th>
             <th>Description</th>
-            <th>Ops</th>
         </thead>
         <tbody>
             {% for entry in info_findings %}
             <tr>
-                <td>{{ entry.id }}</td>
                 <td>{{ entry.name }}</td>
                 <td>{{ entry.severity }}</td>
                 <td>{{ entry.scan_date }}</td>
-                <td>{{ entry.vulnerableAt }}</td>
                 <td>{{ entry.description }}</td>
-                <td>                  
-                    <a class="btn btn-xs send-to-nucleus" rel="tooltip" data-placement="right" 
-                       data-original-title="To Nucleus" data-url="{% url 'findings:send_nucleus' uuid='00000000-0000-0000-0000-000000000000' findingid=entry.id %}" data-display="{{ full.name }}" href="#">
-                        <span class="glyphicon glyphicon-send" aria-hidden="true"></span>
-                    </a>
-                    <a class="btn btn-xs confirm" rel="tooltip" data-placement="right" data-original-title="Delete Entry" data-display="' + full.name + '" data-href="' + delete_url + '" href="#" data-method="DELETE">
-                        <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
-                    </a>
-                </td>
             </tr>
             {% endfor %}
         </tbody>
