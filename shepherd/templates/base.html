@@ -118,6 +118,31 @@
         $.fn.DataTable.ext.pager.numbers_length = 14;
     </script>
 
+    <script type="text/javascript">
+      // Debounced column search for DataTables
+      function applyDebouncedColumnSearch(table, inputSelector = 'input.column-search-input', selectSelector = 'select.column-search-input', delay = 400, $scope) {
+        var debounceTimers = {};
+        var $inputs = $scope ? $scope.find(inputSelector) : $(inputSelector);
+        var $selects = $scope ? $scope.find(selectSelector) : $(selectSelector);
+      
+        table.columns().every(function () {
+          var that = this;
+          $inputs.on('keyup', function () {
+            let columnIndex = $(this).parent().index();
+            let input = this;
+            clearTimeout(debounceTimers[columnIndex]);
+            debounceTimers[columnIndex] = setTimeout(function () {
+              table.column(columnIndex).search(input.value).draw();
+            }, delay);
+          });
+          $selects.on('change', function () {
+            let columnIndex = $(this).parent().index();
+            table.column(columnIndex).search(this.value).draw();
+          });
+        });
+      }
+    </script>
+
     {% block javascript %}{% endblock %}
   </body>
 </html>

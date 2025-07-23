@@ -100,7 +100,7 @@ def ignore_asset(uuid, prj):
     """move asset to ignore list
     """
     a_obj = ActiveDomain.objects.get(uuid=uuid, related_project=prj)
-    s_obj = Suggestion.objects.get(value=a_obj.value, related_project=prj)
+    s_obj = Suggestion.objects.get(uuid=uuid, related_project=prj)
     a_obj.monitor = False
     s_obj.ignore = True
     a_obj.save()

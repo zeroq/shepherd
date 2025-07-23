@@ -279,7 +279,7 @@ def list_assets(request, projectid, selection, format=None):
     )
 
     ### order queryset
-    if order_by_column:
+    if order_by_column and order_by_column != "vulns":
         queryset = queryset.order_by(f'{order_direction}{order_by_column}')
 
     ### paginate queryset

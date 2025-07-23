@@ -72,7 +72,7 @@ $(document).ready(function () {
             pageLength: 25,
             orderCellsTop: true,
             oLanguage: { sProcessing: "<img src='{% static 'img/loading.gif' %}'>", },
-            order: [[6, "desc"]],
+            order: [[0, "asc"]], // Default order by URL column
             ajax: {
                 url: ajaxUrl,
                 dataSrc: function(json) {
@@ -130,14 +130,10 @@ $(document).ready(function () {
         httpxColumns
     );
 
-    // Apply the search
-    $('#table_list_httpx_results thead tr:eq(1) th').each(function (i) {
-        $('input', this).on('keyup change', function () {
-            if (httpxTable.column(i).search() !== this.value) {
-                httpxTable.column(i).search(this.value).draw();
-            }
-        });
-    });
+    // Find the second header row (filter row) and bind to its inputs/selects
+    var $filterRow = $('#table_list_httpx_results thead tr:eq(1)');
+    applyDebouncedColumnSearch(httpxTable, 'input.column-search-input', 'select.column-search-input', 400, $filterRow);
+
 });
 </script>
 {% endblock %}

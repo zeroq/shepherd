@@ -145,19 +145,35 @@ $(document).ready( function () {
             {'data': 'description', 'sName': 'Description', 'aTargets': [ 4 ]},
             {'data': 'cve', 'sName': 'CVE', 'aTargets': [ 5 ]},
             {'data': 'severity', 'sName': 'Severity', 'aTargets': [ 6 ]},
-            {'data': 'scan_date', 'sName': 'Scan Date', 'aTargets': [ 7 ]},
-            {'data': 'last_reported', 'sName': 'Last reported', 'aTargets': [ 8 ]},
+            {'data': 'scan_date', 'sName': 'Scan Date', 'aTargets': [ 7 ],
+                'render': function(data, type, row) {
+                if (!data) return '';
+                // Use moment.js for formatting if available
+                if (window.moment) {
+                    return moment(data).format('DD-MM-YYYY HH:mm');
+                }
+                // Fallback: just show the string
+                return data;
+                }
+            },
+            {'data': 'last_reported', 'sName': 'Last reported', 'aTargets': [ 8 ],
+                'render': function(data, type, row) {
+                if (!data) return '';
+                // Use moment.js for formatting if available
+                if (window.moment) {
+                    return moment(data).format('DD-MM-YYYY HH:mm');
+                }
+                // Fallback: just show the string
+                return data;
+                }
+            },
         ]
     });
 
     // Apply the search
-    findingsTable.columns().every(function () {
-        var that = this;
-        $('input.column-search').on('keyup change', function () {
-            let columnIndex = $(this).parent().index();
-            findingsTable.column(columnIndex).search(this.value).draw();
-        });
-    });
+    // Use the global debounced column search from base.html
+    applyDebouncedColumnSearch(findingsTable, 'input.column-search', 'select.column-search');
+    
     // Apply the severity filter
     $('#severity-filter').on('change', function () {
         let selectedSeverity = $(this).val();
@@ -207,12 +223,31 @@ $(document).ready( function () {
         e.preventDefault();
         var title = $(this).attr('data-display');
         var location = $(this).attr('data-href');
+        var method = $(this).attr('data-method');
         var form = $(this).closest('form'); // Find the closest form element
         var buttonName = $(this).attr('name'); // Get the button's name attribute
 
         bootbox.confirm('Are you sure?', function(confirmed) {
             if (confirmed) {
-                if (form.length) {
+                if (method && method.toUpperCase() === 'DELETE') {
+                    // If data-method is DELETE, send DELETE request via AJAX
+                    $.ajax({
+                        url: location,
+                        type: 'DELETE',
+                        headers: {
+                            'X-CSRFToken': getCookie('csrftoken')
+                        },
+                        success: function(response) {
+                            displayMessage('info', 'Entry deleted successfully.');
+                            // Optionally reload table or page
+                            findingsTable.ajax.reload();
+                        },
+                        error: function(xhr) {
+                            var error = xhr.responseText ? JSON.parse(xhr.responseText) : {error: 'Delete failed'};
+                            displayMessage('danger', 'Error: ' + (error.error || 'Delete failed'));
+                        }
+                    });
+                } else if (form.length) {
                     // If it's part of a form, append the action URL and button name, then submit the form
                     $('<input>')
                         .attr('type', 'hidden')

@@ -51,9 +51,10 @@ class Command(BaseCommand):
         new_assets_only = kwargs.get('new_assets')
 
         # Handle the update argument
-        if True: #update:
+        if update:
             self.update_nuclei()
             self.stdout.write("Nuclei engine and templates updated successfully.")
+            return
 
         # Fetch active domains based on the project ID
         if projectid:

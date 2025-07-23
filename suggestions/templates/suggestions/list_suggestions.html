@@ -391,19 +391,15 @@
     var subTable = initializeDataTable('#table_list_second_level_domain_suggestions', "/api/v1/project/{{ projectid }}/suggestions/visible/second_level_domain/");
     var starredTable = initializeDataTable('#table_list_starreddomain_suggestions', "/api/v1/project/{{ projectid }}/suggestions/visible/starred_domain/");
 
-    function applySearch(table) {
-      table.columns().every(function () {
-        var that = this;
-        $('input.column-search-input, select.column-search-input').on('keyup change', function () {
-          let columnIndex = $(this).parent().index();
-          table.column(columnIndex).search(this.value).draw();
-        });
-      });
+    function applySearch(table, tableId) {
+      // Find the second header row (filter row) and bind to its inputs/selects
+      var $filterRow = $(tableId + ' thead tr:eq(1)');
+      applyDebouncedColumnSearch(table, 'input.column-search-input', 'select.column-search-input', 400, $filterRow);
     }
-
-    applySearch(domTable);
-    applySearch(subTable);
-    applySearch(starredTable);
+    
+    applySearch(domTable, '#table_list_domain_suggestions');
+    applySearch(subTable, '#table_list_second_level_domain_suggestions');
+    applySearch(starredTable, '#table_list_starreddomain_suggestions');
 
     function handleSelectAll(selectAllId, table) {
       $(selectAllId).on('click', function () {

@@ -140,10 +140,6 @@ $(document).ready(function () {
       });
     }
 
-    // Apply search functionality
-    applySearch(monitoredTable, 'input.column-search-input');
-    applySearch(ignoredTable, 'input.column-search-input');
-
     // Function to handle "Select All" functionality
     function handleSelectAll(selectAllId, table) {
       $(selectAllId).on('click', function () {
@@ -160,10 +156,6 @@ $(document).ready(function () {
         }
       });
     }
-
-    // Handle "Select All" functionality
-    handleSelectAll('#select-all-items', monitoredTable);
-    handleSelectAll('#select-all-items-ignore', ignoredTable);
 
     // Confirmation dialog for actions
     $(document).on("click", ".confirm", function (e) {

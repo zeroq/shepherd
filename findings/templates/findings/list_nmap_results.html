@@ -130,14 +130,9 @@ $(document).ready(function () {
         ]
     });
 
-    // Apply the search
-    portTable.columns().every(function () {
-        var that = this;
-        $('input.column-search-input').on('keyup change', function () {
-            let columnIndex = $(this).parent().index();
-            portTable.column(columnIndex).search(this.value).draw();
-        });
-    });
+    // Find the second header row (filter row) and bind to its inputs/selects
+    var $filterRow = $('#table_list_ports thead tr:eq(1)');
+    applyDebouncedColumnSearch(portTable, 'input.column-search-input', 'select.column-search-input', 400, $filterRow);
 
     // Handle click on "Select all" control
     $('#select-all-items-dom').on('click', function () {

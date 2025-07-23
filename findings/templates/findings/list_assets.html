@@ -339,25 +339,16 @@ $(document).ready(function () {
     var monitoredTable = initializeDataTable('#table_list_assets', "/api/v1/project/{{ projectid }}/assets/monitored/", monitoredColumns);
     var ignoredTable = initializeDataTable('#table_list_ignored_assets', "/api/v1/project/{{ projectid }}/assets/ignored/", ignoredColumns);
 
-    // Function to apply search functionality to a DataTable
-    function applySearch(table, searchInputsSelector) {
-        table.columns().every(function () {
-            var that = this;
-            $(searchInputsSelector).on('keyup change', function () {
-                let columnIndex = $(this).parent().index();
-                table.column(columnIndex).search(this.value).draw();
-            });
-        });
-      // Apply the severity filter
-      $('#severity-filter').on('change', function () {
-        let selectedSeverity = $(this).val();
-        table.column(2).search(selectedSeverity).draw();
-      });
-    }
-
-    // Apply search functionality
-    applySearch(monitoredTable, 'input.column-search-input');
-    applySearch(ignoredTable, 'input.column-search-input');
+    // Find the second header row (filter row) and bind to its inputs/selects
+    var $filterRowMonitored = $('#table_list_assets thead tr:eq(1)');
+    var $filterRowIgnored = $('#table_list_ignored_assets thead tr:eq(1)');
+    applyDebouncedColumnSearch(monitoredTable, 'input.column-search-input', 'select.column-search-input', 400, $filterRowMonitored);
+    applyDebouncedColumnSearch(ignoredTable, 'input.column-search-input', 'select.column-search-input', 400, $filterRowIgnored);
+    // Apply the severity filter for monitoredTable
+    $('#severity-filter').on('change', function () {
+      let selectedSeverity = $(this).val();
+      monitoredTable.column(2).search(selectedSeverity).draw();
+    });
 
     // Function to handle "Select All" functionality
     function handleSelectAll(selectAllId, table) {
