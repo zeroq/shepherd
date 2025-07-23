@@ -522,6 +522,13 @@ def list_all_findings(request, projectid, format=None):
     ### create queryset
     active_domains = prj.activedomain_set.all().filter(monitor=True)
     queryset = Finding.objects.filter(domain__in=active_domains)
+    # Filter by reported status if provided
+    reported_param = request.query_params.get('reported', None)
+    if reported_param is not None:
+        if reported_param.lower() == 'reported':
+            queryset = queryset.filter(last_reported__isnull=False)
+        elif reported_param.lower() == 'not_reported':
+            queryset = queryset.filter(last_reported__isnull=True)
 
     # Get search parameters
     search_value = request.query_params.get('search[value]', None)

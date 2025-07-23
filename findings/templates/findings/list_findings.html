@@ -43,6 +43,14 @@
     // Monitored Findings
   </div>
   <div class="panel-body table-responsive">
+    <div class="form-group" style="margin-bottom:10px;">
+      <label for="reported-filter">Reported Status:</label>
+      <select id="reported-filter" class="form-control input-sm" style="width:auto; display:inline-block;">
+        <option value="not_reported" selected>Not Reported</option>
+        <option value="reported">Reported</option>
+        <option value="">All</option>
+      </select>
+    </div>
     <table id="table_list_findings" class="table table-condensed table-striped table-bordered" style="font-size: 0.9em;">
       <thead>
         <tr>
@@ -103,7 +111,13 @@ $(document).ready( function () {
             url: "/api/v1/project/{{ projectid }}/findings/all/",
             dataSrc: "results",
             type: "GET",
-            dataType: "json"
+            dataType: "json",
+            data: function (d) {
+                var reportedFilter = $('#reported-filter').val();
+                if (reportedFilter !== undefined && reportedFilter !== "") {
+                    d.reported = reportedFilter;
+                }
+            }
         },
         columns: [
             {'data': 'id', 'sName': 'Operations', 'aTargets': [ 0 ],
@@ -173,11 +187,16 @@ $(document).ready( function () {
     // Apply the search
     // Use the global debounced column search from base.html
     applyDebouncedColumnSearch(findingsTable, 'input.column-search', 'select.column-search');
-    
+
     // Apply the severity filter
     $('#severity-filter').on('change', function () {
         let selectedSeverity = $(this).val();
         findingsTable.column(6).search(selectedSeverity).draw();
+    });
+
+    // Server-side reported filter
+    $('#reported-filter').on('change', function () {
+        findingsTable.ajax.reload();
     });
 
     // checkbox stuff
