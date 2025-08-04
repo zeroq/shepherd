@@ -5,21 +5,9 @@ import html
 
 
 def asset_finding_get_or_create(asset_name, asset_id, vuln_obj, url, nucleus_project, request_header):
-    #rsp = requests.get(url+'/projects/3000003/assets/%s/findings' % (asset_id), headers=request_header, verify=True)
-    #findings_list = rsp.json()
-    #finding_exists = False
-    #if len(findings_list)>0:
-    #    for finding in findings_list:
-    #        print(finding)
-    #        if finding['finding_name'] == html.escape(vuln_obj.vulnerabilityName')): # cannot just distinguish by name
-    #            finding_exists = True
-    #            break
-    #if finding_exists is True:
-    #    return False, "Entry Exists"
 
     # Finding details
     finding_severity = vuln_obj.severity.capitalize()
-    print(finding_severity)
     if finding_severity == 'Info':
         finding_severity = 'Informational'
     finding_name = vuln_obj.name
@@ -60,7 +48,7 @@ def asset_finding_get_or_create(asset_name, asset_id, vuln_obj, url, nucleus_pro
     }
 
     rsp = requests.post(f'{url}/projects/{nucleus_project}/findings', headers=request_header, json=new_finding, verify=True)
-    print(json.dumps(rsp.json(), indent=4))
+    # print(json.dumps(rsp.json(), indent=4))
     return True, "Entry Created"
 
 def asset_get_or_create(asset_name, url, nucleus_project, request_header):

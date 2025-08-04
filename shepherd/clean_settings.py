@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_celery_beat',
     'rest_framework',
     'rest_framework.authtoken',
     'menu',
@@ -195,15 +196,20 @@ CACHES = {
 
 RATELIMIT_USE_CACHE = 'default'
 
+CELERY_BROKER_URL = 'redis://localhost:6379/0'  # or your broker
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'CET'
+
 # For Nginx proxy to Gunicorn
 # USE_X_FORWARDED_HOST = True
 # SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # RATELIMIT_IP_META_KEY = 'HTTP_X_FORWARDED_FOR'
 # RATELIMIT_TRUSTED_PROXIES = ['127.0.0.1', '::1']
 
-
-#### SSO
-# # OpenID Connect (OIDC) settings
+#### SSO - OpenID Connect (OIDC) settings
 # AUTHENTICATION_BACKENDS = [
 #     'accounts.auth.CustomOIDCBackend',
 #     'django.contrib.auth.backends.ModelBackend',

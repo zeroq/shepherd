@@ -279,7 +279,7 @@ def view_asset_reported(request, uuid):
 
 ### Nucleus stuffs
 @login_required
-def send_nucleus(request, uuid, findingid):
+def send_nucleus(request, findingid):
     """ send the details of the finding to Nucleus
     """
     if not request.user.has_perm('findings.change_finding'):

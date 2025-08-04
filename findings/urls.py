@@ -13,7 +13,7 @@ urlpatterns = [
     path('view/reported/<str:uuid>/', views.view_asset_reported, name='view_asset_reported'),
     path('view/<str:uuid>/', views.view_asset, name='view_asset'),
     path('asset/<str:uuid>/finding/<str:findingid>/delete/<str:reported>/', views.delete_finding, name='delete_finding'),
-    path('send/<str:uuid>/finding/<str:findingid>/nucleus/', views.send_nucleus, name='send_nucleus'),
+    path('send/nucleus/<str:findingid>/', views.send_nucleus, name='send_nucleus'),
 
     # Nmap stuffs
     path('nmap/results/', views.nmap_results, name='nmap_results'),

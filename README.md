@@ -18,7 +18,7 @@ python3 manage.py runserver 127.0.0.1:80
 
 ```bash
 # As root
-apt install nmap
+apt install nmap redis
 wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
 apt install ./google-chrome-stable_current_amd64.deb
 wget https://go.dev/dl/go1.24.4.linux-amd64.tar.gz -O /tmp/go1.24.4.linux-amd64.tar.gz
@@ -103,9 +103,54 @@ ExecStart=/opt/shepherd/venv/bin/gunicorn --access-logfile - --workers 3 --bind 
 WantedBy=multi-user.target
 ```
 
+## /etc/systemd/system/celery-beat.service
+```conf
+[Unit]
+Description=Celery Beat Service
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/shepherd
+Environment="PATH=/opt/shepherd/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/usr/local/go/bin:/var/www/go/bin"
+ExecStart=/opt/shepherd/venv/bin/celery -A shepherd beat -l INFO --scheduler django_celery_beat.schedulers:DatabaseScheduler
+
+[Install]
+WantedBy=multi-user.target
+```
+
+## /etc/systemd/system/celery-worker.service
+```conf
+[Unit]
+Description=Celery Worker Service
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/shepherd
+Environment="PATH=/opt/shepherd/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/usr/local/go/bin:/var/www/go/bin"
+ExecStart=/opt/shepherd/venv/bin/celery -A shepherd worker --loglevel=info
+
+[Install]
+WantedBy=multi-user.target
+```
+
+## Enable services
 ```bash
-systemctl start gunicorn
 systemctl enable gunicorn
+systemctl start gunicorn
+
+systemctl enable redis-server
+systemctl start redis-server
+
+systemctl enable celery-beat
+systemctl start celery-beat
+
+systemctl enable celery-worker
+systemctl start celery-worker
 ```
 
 ## SSL cert

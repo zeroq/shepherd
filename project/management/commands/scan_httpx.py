@@ -87,6 +87,10 @@ class Command(BaseCommand):
                         f"http://{active_domain.value}:{port.port}",
                         f"https://{active_domain.value}:{port.port}",
                     ]
+                elif "ssl" in port.banner:
+                    active_domain_urls += [
+                        f"https://{active_domain.value}:{port.port}",
+                    ]
             active_domain_urls = list(set(active_domain_urls))
             for url in active_domain_urls:
                 self.stdout.write(f"  {url}")

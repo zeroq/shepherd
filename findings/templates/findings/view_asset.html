@@ -182,33 +182,6 @@
 {% block javascript %}
 <script src="{% static 'js/bootbox.min.js' %}"></script>
 <script type="text/javascript" language="javascript" class="init">
-
-
-    // AJAX Send to nucleus
-    $(document).on("click", ".send-to-nucleus", function (e) {
-        e.preventDefault(); // Prevent the default link behavior
-    
-        var url = $(this).data("url"); // Get the URL from the data-url attribute
-        var title = $(this).data("display"); // Get the display name for feedback
-    
-        // Send the AJAX request
-        $.ajax({
-            url: url,
-            type: "POST",
-            headers: {
-                "X-CSRFToken": getCookie("csrftoken") // Include CSRF token
-            },
-            success: function (response) {
-                // Show success feedback
-                displayMessage("info", "Finding sent to Nucleus successfully.");
-            },
-            error: function (xhr) {
-                // Show error feedback
-                var error = JSON.parse(xhr.responseText);
-                displayMessage("danger", "Error: " + error.error);
-            }
-        });
-    });
     
     // Helper function to display messages dynamically
     function displayMessage(type, message) {

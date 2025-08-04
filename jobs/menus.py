@@ -4,7 +4,7 @@ from django.urls import reverse
 from menu import Menu, MenuItem
 from project.models import Job  # Add this import
 
-def top_keywords(request):
+def top_jobs(request):
     running_count = Job.objects.filter(status="running").count()
     icon_html = '<span class="glyphicon glyphicon-tasks" aria-hidden="true"></span>'
     if running_count > 0:
@@ -12,16 +12,13 @@ def top_keywords(request):
     return f'{icon_html} Jobs'
 
 sharing_children = (
-    MenuItem("Jobs",
-            reverse("jobs:jobs"),
-            weight=10
-        ),
+    MenuItem("Jobs", reverse("jobs:jobs"), weight=10),
+    MenuItem("Scheduled Jobs", "/admin/django_celery_beat/periodictask/", weight=15),
 )
 
-Menu.add_item("jobs", MenuItem(top_keywords,
+Menu.add_item("jobs", MenuItem(top_jobs,
     reverse("jobs:jobs"),
     weight=10,
+    children=sharing_children
     )
 )
-
-

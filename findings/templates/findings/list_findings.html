@@ -126,8 +126,8 @@ $(document).ready( function () {
                     var delete_url = "{% url 'api:delete_finding' projectid=0 findingid=0 %}"
                         .replace('project/0', 'project/{{ projectid }}')
                         .replace('delete/0', 'delete/' + full.id);
-                    var nucleus_url = "{% url 'findings:send_nucleus' uuid='00000000-0000-0000-0000-000000000000' findingid=0 %}"
-                        .replace('finding/0', 'finding/' + full.id)
+                    var nucleus_url = "{% url 'findings:send_nucleus' findingid=0 %}"
+                        .replace('nucleus/0', 'nucleus/' + full.id)
                     return '<div class="btn-group1">' +
                         '<input type="checkbox" name="id[]" value="' + $('<div/>').text(data).html() + '">&nbsp;&nbsp;' +
 

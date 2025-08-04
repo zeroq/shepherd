@@ -1,6 +1,9 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import Group, Permission
 from django.contrib.contenttypes.models import ContentType
+from django.contrib.auth import get_user_model
+import secrets
+import string
 
 class Command(BaseCommand):
     help = 'Set up user groups with read and write access'
@@ -31,5 +34,20 @@ class Command(BaseCommand):
         # Create "Read-Only" group
         read_only_group, created = Group.objects.get_or_create(name='Read Only')
         read_only_group.permissions.set(read_permissions)  # Assign all read-related permissions
-        self.stdout.write(self.style.SUCCESS('Read-Only group created or updated with all read-related permissions.'))
-        
+        self.stdout.write(self.style.SUCCESS('Read Only group created or updated with all read-related permissions.'))
+
+        # Create an admin user called "scheduler" if it doesn't exist
+
+        User = get_user_model()
+        if not User.objects.filter(username="scheduler").exists():
+            # Generate a random password
+            alphabet = string.ascii_letters + string.digits + string.punctuation
+            random_password = ''.join(secrets.choice(alphabet) for _ in range(20))
+            scheduler_user = User.objects.create_superuser(
+                username="scheduler",
+                email="",
+                password=random_password
+            )
+            self.stdout.write(self.style.SUCCESS(f'Admin user "scheduler" created with password: {random_password}'))
+        else:
+            self.stdout.write(self.style.WARNING('Admin user "scheduler" already exists.'))
