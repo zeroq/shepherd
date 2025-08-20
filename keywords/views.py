@@ -157,4 +157,37 @@ def scan_keywords(request):
             except Exception as e:
                 messages.error(request, f'Error: {e}')
 
+        if "porch-pirate" in request.POST:
+            messages.info(request, 'Porch-pirate scan against monitored keywords has been triggered in the background.')
+            try:
+                projectid = context['projectid']
+                def run_command():
+                    try:
+                        command = 'scan_porch-pirate'
+                        args = f'--projectid {projectid}'
+                        run_job(command, args, projectid, request.user)
+                    except Exception as e:
+                        print(f"Error running scan_porch-pirate: {e}")
+                thread = threading.Thread(target=run_command)
+                thread.start()
+            except Exception as e:
+                messages.error(request, f'Error: {e}')
+
+            if "swaggerhub" in request.POST:
+                messages.info(request, 'SwaggerHub scan against monitored keywords has been triggered in the background.')
+                try:
+                    projectid = context['projectid']
+                    def run_command():
+                        try:
+                            command = 'scan_swaggerhub'
+                            args = f'--projectid {projectid}'
+                            run_job(command, args, projectid, request.user)
+                        except Exception as e:
+                            print(f"Error running scan_swaggerhub: {e}")
+                    thread = threading.Thread(target=run_command)
+                    thread.start()
+                except Exception as e:
+                    messages.error(request, f'Error: {e}')
+
+
     return redirect(reverse('keywords:keywords'))

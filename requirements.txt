@@ -21,3 +21,5 @@ psycopg2-binary
 mozilla-django-oidc>=4.0.0
 django_celery_beat
 redis
+porch-pirate
+openai

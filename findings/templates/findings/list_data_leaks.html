@@ -15,7 +15,7 @@
         <div class="media-left">
         </div>
         <div class="media-body">
-            <h2 class="media-heading">Findings</h2>monitored findings ...
+            <h2 class="media-heading">Data leaks</h2>Data leaks ...
         </div>
     </div>
 </div>
@@ -29,10 +29,9 @@
     <div class="col-md-6">
       <div class="panel panel-default">
         <div class="panel-heading">// Selected Actions</div>
-        <div class="panel-body">
-          <button type="submit" name="btnignore" id="toggle-ignore-selected-findings" class="btn btn-primary btn-xs">Toggle ignore status for selected</button>&nbsp;
-          <button type="submit" name="btndelete" id="delete-selected-findings" class="btn btn-primary btn-xs confirm">Delete selected</button>&nbsp;
-          <button type="submit" name="btnreport" id="report-selected-findings" class="btn btn-primary btn-xs confirm">Report selected (Nucleus)</button>&nbsp;
+                <div class="panel-body">
+                    <button type="submit" name="btnignore" id="toggle-ignore-selected-findings" class="btn btn-primary btn-xs">Toggle ignore status for selected</button>&nbsp;
+                    <button type="submit" name="btndelete" id="delete-selected-findings" class="btn btn-primary btn-xs confirm">Delete selected</button>&nbsp;
         </div>
       </div>
     </div>
@@ -42,56 +41,38 @@
 <!-- Findings List Tabs -->
 <div class="panel panel-default">
   <div class="panel-heading">
-    // Findings
+    // Monitored Findings
   </div>
   <div class="panel-body table-responsive">
-    <div class="form-group" style="margin-bottom:10px;">
-            <label for="reported-filter">Reported Status:</label>
-            <select id="reported-filter" class="form-control input-sm" style="width:auto; display:inline-block;">
-                <option value="not_reported" selected>Not Reported</option>
-                <option value="reported">Reported</option>
-                <option value="">All</option>
-            </select>
-            &nbsp;&nbsp;
-            <label for="monitored-filter">Monitored Status:</label>
-            <select id="monitored-filter" class="form-control input-sm" style="width:auto; display:inline-block;">
+        <div class="form-group" style="margin-bottom:10px;">
+            <label for="selection-filter">Monitored Findings:</label>
+            <select id="selection-filter" class="form-control input-sm" style="width:auto; display:inline-block;">
                 <option value="monitored" selected>Monitored</option>
                 <option value="ignored">Ignored</option>
                 <option value="all">All</option>
             </select>
-    </div>
+        </div>
     <table id="table_list_findings" class="table table-condensed table-striped table-bordered" style="font-size: 0.9em;">
       <thead>
-        <tr>
+      <tr>
           <th><input type="checkbox" name="select_all" value="1" id="select-all-findings">&nbsp; Operations</th>
           <th>Domain Name</th>
-          <th>Vulnerability Name</th>
-          <th>Type</th>
+          <th>Keyword</th>
+          <th>Source</th>
+          <th>Name</th>
           <th>Description</th>
-          <th>CVE</th>
-          <th>Severity</th>
+          <th>URL</th>
           <th>Scan Date</th>
-          <th>Last Reported</th>
         </tr>
-        <tr>
+      <tr>
           <th></th>
           <th><input type="text" placeholder="Search Domain Name" class="column-search form-control input-sm"></th>
-          <th><input type="text" placeholder="Search Vulnerability Name" class="column-search form-control input-sm"></th>
-          <th><input type="text" placeholder="Search Type" class="column-search form-control input-sm"></th>
+          <th><input type="text" placeholder="Search Keyword" class="column-search form-control input-sm"></th>
+          <th><input type="text" placeholder="Search Source" class="column-search form-control input-sm"></th>
+          <th><input type="text" placeholder="Search Name" class="column-search form-control input-sm"></th>
           <th><input type="text" placeholder="Search Description" class="column-search form-control input-sm"></th>
-          <th><input type="text" placeholder="Search CVE" class="column-search form-control input-sm"></th>
-          <th>
-            <select id="severity-filter" class="form-control input-sm">
-              <option value="">All Severities</option>
-              <option value="info">Info</option>
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-              <option value="critical">Critical</option>
-            </select>
-          </th>
+          <th><input type="text" placeholder="Search URL" class="column-search form-control input-sm"></th>
           <th><input type="text" placeholder="Search Scan Date" class="column-search form-control input-sm"></th>
-          <th><input type="text" placeholder="Last reported" class="column-search form-control input-sm"></th>
         </tr>
       </thead>
     </table>
@@ -117,18 +98,14 @@ $(document).ready( function () {
         order: [[ 1, "asc" ]],
         ajax: {
             processing: true,
-            url: "/api/v1/project/{{ projectid }}/findings/all/",
+            url: "/api/v1/project/{{ projectid }}/findings/data_leaks/",
             dataSrc: "results",
             type: "GET",
             dataType: "json",
             data: function (d) {
-                var reportedFilter = $('#reported-filter').val();
-                if (reportedFilter !== undefined && reportedFilter !== "") {
-                    d.reported = reportedFilter;
-                }
-                var monitoredFilter = $('#monitored-filter').val();
-                if (monitoredFilter !== undefined && monitoredFilter !== "") {
-                    d.selection = monitoredFilter;
+                var selectionFilter = $('#selection-filter').val();
+                if (selectionFilter !== undefined && selectionFilter !== "") {
+                    d.selection = selectionFilter;
                 }
             }
         },
@@ -141,8 +118,6 @@ $(document).ready( function () {
                     var delete_url = "{% url 'api:delete_finding' projectid=0 findingid=0 %}"
                         .replace('project/0', 'project/{{ projectid }}')
                         .replace('delete/0', 'delete/' + full.id);
-                    var nucleus_url = "{% url 'findings:send_nucleus' findingid=0 %}"
-                        .replace('nucleus/0', 'nucleus/' + full.id)
                     return '<div class="btn-group1">' +
                         '<input type="checkbox" name="id[]" value="' + $('<div/>').text(data).html() + '">&nbsp;&nbsp;' +
                         '<a class="btn btn-xs toggle-ignore-finding" rel="tooltip" data-placement="right" data-original-title="Toggle ignore status" data-display="' + full.name + '" href="' + ignore_url + '">' +
@@ -150,9 +125,6 @@ $(document).ready( function () {
                         '</a> ' +
                         '<a class="btn btn-xs confirm" rel="tooltip" data-placement="right" data-original-title="Delete Entry" data-display="' + full.name + '" data-href="' + delete_url + '" href="#" data-method="DELETE">' +
                             '<span class="glyphicon glyphicon-trash" aria-hidden="true"></span>' +
-                        '</a>' +
-                        '<a class="btn btn-xs send-to-nucleus" rel="tooltip" data-placement="right" data-original-title="To Nucleus" data-display="' + full.name + '" data-url="' + nucleus_url + '" href="#">' +
-                            '<span class="glyphicon glyphicon-send" aria-hidden="true"></span>' +
                         '</a>' +
                         '</div>';
                 },
@@ -169,30 +141,22 @@ $(document).ready( function () {
                     $("div", nTd).tooltip();
                 },
             },
-            {'data': 'name', 'sName': 'Vulnerability Name', 'aTargets': [ 2 ]},
-            {'data': 'type', 'sName': 'Type', 'aTargets': [ 3 ]},
-            {'data': 'description', 'sName': 'Description', 'aTargets': [ 4 ]},
-            {'data': 'cve', 'sName': 'CVE', 'aTargets': [ 5 ]},
-            {'data': 'severity', 'sName': 'Severity', 'aTargets': [ 6 ]},
+            {'data': 'keyword', 'sName': 'Keyword', 'aTargets': [ 2 ]},
+            {'data': 'source', 'sName': 'Source', 'aTargets': [ 3 ]},
+            {'data': 'name', 'sName': 'Name', 'aTargets': [ 4 ]},
+            {'data': 'description', 'sName': 'Description', 'aTargets': [ 5 ]},
+            {'data': 'url', 'sName': 'URL', 'aTargets': [ 6 ],
+                'mRender': function (data, type, full) {
+                    if (!data) return '';
+                    return '<a href="' + $('<div/>').text(data).html() + '" target="_blank">' + $('<div/>').text(data).html() + '</a>';
+                }
+            },
             {'data': 'scan_date', 'sName': 'Scan Date', 'aTargets': [ 7 ],
                 'render': function(data, type, row) {
                 if (!data) return '';
-                // Use moment.js for formatting if available
                 if (window.moment) {
                     return moment(data).format('DD-MM-YYYY HH:mm');
                 }
-                // Fallback: just show the string
-                return data;
-                }
-            },
-            {'data': 'last_reported', 'sName': 'Last reported', 'aTargets': [ 8 ],
-                'render': function(data, type, row) {
-                if (!data) return '';
-                // Use moment.js for formatting if available
-                if (window.moment) {
-                    return moment(data).format('DD-MM-YYYY HH:mm');
-                }
-                // Fallback: just show the string
                 return data;
                 }
             },
@@ -209,12 +173,8 @@ $(document).ready( function () {
         findingsTable.column(6).search(selectedSeverity).draw();
     });
 
-    // Server-side reported filter
-    $('#reported-filter').on('change', function () {
-        findingsTable.ajax.reload();
-    });
-    // Server-side monitored filter
-    $('#monitored-filter').on('change', function () {
+    // Server-side selection filter
+    $('#selection-filter').on('change', function () {
         findingsTable.ajax.reload();
     });
 
@@ -253,55 +213,6 @@ $(document).ready( function () {
                     );
                 }
             } 
-        });
-    });
-
-    // confirm bootbox
-    $(document).on("click", ".confirm", function(e) {
-        e.preventDefault();
-        var title = $(this).attr('data-display');
-        var location = $(this).attr('data-href');
-        var method = $(this).attr('data-method');
-        var form = $(this).closest('form'); // Find the closest form element
-        var buttonName = $(this).attr('name'); // Get the button's name attribute
-
-        bootbox.confirm('Are you sure?', function(confirmed) {
-            if (confirmed) {
-                if (method && method.toUpperCase() === 'DELETE') {
-                    // If data-method is DELETE, send DELETE request via AJAX
-                    $.ajax({
-                        url: location,
-                        type: 'DELETE',
-                        headers: {
-                            'X-CSRFToken': getCookie('csrftoken')
-                        },
-                        success: function(response) {
-                            displayMessage('info', 'Entry deleted successfully.');
-                            findingsTable.ajax.reload();
-                        },
-                        error: function(xhr) {
-                            var error = xhr.responseText ? JSON.parse(xhr.responseText) : {error: 'Delete failed'};
-                            displayMessage('danger', 'Error: ' + (error.error || 'Delete failed'));
-                        }
-                    });
-                } else if (form.length) {
-                    $('<input>')
-                        .attr('type', 'hidden')
-                        .attr('name', 'action_url')
-                        .val(location)
-                        .appendTo(form);
-                    if (buttonName) {
-                        $('<input>')
-                            .attr('type', 'hidden')
-                            .attr('name', buttonName)
-                            .val('true')
-                            .appendTo(form);
-                    }
-                    form.submit();
-                } else {
-                    window.location.replace(location);
-                }
-            }
         });
     });
 
@@ -352,6 +263,58 @@ $(document).ready( function () {
                     }
                 }
             });
+        });
+    });
+
+    // confirm bootbox
+    $(document).on("click", ".confirm", function(e) {
+        e.preventDefault();
+        var title = $(this).attr('data-display');
+        var location = $(this).attr('data-href');
+        var method = $(this).attr('data-method');
+        var form = $(this).closest('form'); // Find the closest form element
+        var buttonName = $(this).attr('name'); // Get the button's name attribute
+
+        bootbox.confirm('Are you sure?', function(confirmed) {
+            if (confirmed) {
+                if (method && method.toUpperCase() === 'DELETE') {
+                    // If data-method is DELETE, send DELETE request via AJAX
+                    $.ajax({
+                        url: location,
+                        type: 'DELETE',
+                        headers: {
+                            'X-CSRFToken': getCookie('csrftoken')
+                        },
+                        success: function(response) {
+                            displayMessage('info', 'Entry deleted successfully.');
+                            // Optionally reload table or page
+                            findingsTable.ajax.reload();
+                        },
+                        error: function(xhr) {
+                            var error = xhr.responseText ? JSON.parse(xhr.responseText) : {error: 'Delete failed'};
+                            displayMessage('danger', 'Error: ' + (error.error || 'Delete failed'));
+                        }
+                    });
+                } else if (form.length) {
+                    // If it's part of a form, append the action URL and button name, then submit the form
+                    $('<input>')
+                        .attr('type', 'hidden')
+                        .attr('name', 'action_url')
+                        .val(location)
+                        .appendTo(form);
+                    if (buttonName) {
+                        $('<input>')
+                            .attr('type', 'hidden')
+                            .attr('name', buttonName)
+                            .val('true')
+                            .appendTo(form);
+                    }
+                    form.submit();
+                } else {
+                    // Otherwise, redirect as before
+                    window.location.replace(location);
+                }
+            }
         });
     });
 

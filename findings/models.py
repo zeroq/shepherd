@@ -1,5 +1,5 @@
 from django.db import models
-from project.models import ActiveDomain
+from project.models import ActiveDomain, Keyword
 
 # Create your models here.
 
@@ -24,7 +24,8 @@ class Port(models.Model):
 class Finding(models.Model):
     """class to describe a security finding
     """
-    domain = models.ForeignKey(ActiveDomain, on_delete=models.CASCADE)
+    domain = models.ForeignKey(ActiveDomain, on_delete=models.CASCADE, null=True)
+    keyword = models.ForeignKey(Keyword, on_delete=models.CASCADE, null=True)
     domain_name = models.CharField(max_length=2048, default='')
 
     # Finding details
@@ -35,6 +36,7 @@ class Finding(models.Model):
     description = models.TextField(default='')
     solution = models.TextField(default='')
     reference = models.CharField(max_length=2048, default='')
+    ignore = models.BooleanField(default=False)
 
     # Severity fields
     severity = models.CharField(max_length=50, default='')

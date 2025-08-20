@@ -38,6 +38,9 @@ class CustomPaginator(PageNumberPagination):
 
     def paginate_queryset(self, queryset, request, view=None):
         page_size = self.get_page_size(request)
+        # Ensure queryset is ordered to avoid UnorderedObjectListWarning
+        if hasattr(queryset, 'ordered') and not queryset.ordered:
+            queryset = queryset.order_by('pk')
         paginator = self.django_paginator_class(queryset, page_size)
         if request.query_params and 'start' in request.query_params:
             page_number = int(int(request.query_params['start'])/int(page_size))+1

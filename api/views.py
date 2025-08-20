@@ -18,6 +18,7 @@ from api.utils import get_ordering_vars
 
 from project.models import Project, Keyword, Suggestion, ActiveDomain, Job
 from findings.models import Finding, Port, Screenshot
+from django_celery_beat.models import PeriodicTask, IntervalSchedule, CrontabSchedule, ClockedSchedule
 
 # Create your views here.
 
@@ -521,7 +522,16 @@ def list_all_findings(request, projectid, format=None):
 
     ### create queryset
     active_domains = prj.activedomain_set.all().filter(monitor=True)
-    queryset = Finding.objects.filter(domain__in=active_domains)
+    queryset = Finding.objects.filter(domain__in=active_domains, source='nuclei')
+
+    # Filter by monitored/ignored/all status if provided
+    selection_param = request.query_params.get('selection', 'monitored')
+    if selection_param == 'monitored':
+        queryset = queryset.filter(ignore=False)
+    elif selection_param == 'ignored':
+        queryset = queryset.filter(ignore=True)
+    # 'all' returns all, no filter
+
     # Filter by reported status if provided
     reported_param = request.query_params.get('reported', None)
     if reported_param is not None:
@@ -595,6 +605,40 @@ def list_all_findings(request, projectid, format=None):
     serializer = FindingSerializer(instance=kwrds, many=True)
     return paginator.get_paginated_response(serializer.data)
 
+@api_view(['GET'])
+@authentication_classes((SessionAuthentication, ))
+@permission_classes((IsAuthenticated,))
+def list_data_leaks(request, projectid, format=None):
+    if not request.user.has_perm('findings.view_finding'):
+        return HttpResponseForbidden("You do not have permission to view this project.")
+    
+    paginator = CustomPaginator()
+
+    ### check if project exists
+    try:
+        prj = Project.objects.get(id=projectid)
+    except Project.DoesNotExist:
+        return JsonResponse({"status": True, "code": 200, "next": None, "previous": None, "count": 0, "iTotalRecords": 0, "iTotalDisplayRecords": 0, "results": []})
+
+    ### create queryset
+    data_leak_sources = ["porch-pirate", "swaggerhub"]
+    keywords = prj.keyword_set.all().filter(enabled=True)
+    queryset = Finding.objects.filter(source__in=data_leak_sources, keyword__in=keywords)
+
+    # Filter by selection (monitored/ignored/all)
+    selection_param = request.query_params.get('selection', 'monitored')
+    if selection_param == 'monitored':
+        queryset = queryset.filter(ignore=False)
+    elif selection_param == 'ignored':
+        queryset = queryset.filter(ignore=True)
+    # 'all' returns all, no filter
+
+    # Optionally, add other filters/searches here as needed
+
+    kwrds = paginator.paginate_queryset(queryset, request)
+    serializer = FindingSerializer(instance=kwrds, many=True)
+    return paginator.get_paginated_response(serializer.data)
+
 @api_view(['DELETE'])
 @authentication_classes((SessionAuthentication, ))
 @permission_classes((IsAuthenticated,))
@@ -610,12 +654,12 @@ def delete_finding(request, projectid, findingid):
 
     try:
         # Check if the finding exists and belongs to the project
-        finding = Finding.objects.get(id=findingid, domain__related_project=prj)
+        finding = Finding.objects.get(id=findingid)
         finding.delete()
         return JsonResponse({'message': 'Finding successfully deleted', 'status': 'success'}, status=200)
     except Finding.DoesNotExist:
         return JsonResponse({'message': 'Finding does not exist', 'status': 'failure'}, status=404)
-
+    
 ##### END FINDINGS ###########
 
 ##### JOBS ###############
@@ -650,9 +694,11 @@ def list_jobs(request, projectid):
     serializer = JobSerializer(instance=jobs, many=True)
     data = serializer.data
 
-    # Add username to each job in the response
+    # Remove 'output' field from each job in the response
     for job_obj, job_instance in zip(data, jobs):
         job_obj['username'] = getattr(job_instance, 'username', None)
+        if 'output' in job_obj:
+            del job_obj['output']
 
     return paginator.get_paginated_response(data)
 
@@ -756,3 +802,37 @@ def list_screenshots(request, projectid, format=None):
     data = serializer.data
 
     return paginator.get_paginated_response(data)
+
+@api_view(['GET'])
+@authentication_classes((SessionAuthentication,))
+@permission_classes((IsAuthenticated,))
+def list_scheduled_jobs(request):
+    if not request.user.has_perm('project.view_job'):
+        return HttpResponseForbidden("You do not have permission.")
+
+    # Fetch all periodic tasks (scheduled jobs)
+    scheduled_jobs = PeriodicTask.objects.all().select_related('interval', 'crontab', 'clocked')
+    # Use CustomPaginator for DataTables server-side pagination
+    paginator = CustomPaginator()
+    jobs_page = paginator.paginate_queryset(scheduled_jobs, request)
+    results = []
+    for job in jobs_page:
+        # Prepare schedule string
+        if job.interval:
+            schedule = str(job.interval)
+        elif job.crontab:
+            schedule = str(job.crontab)
+        elif job.clocked:
+            schedule = f"Once at {job.clocked.clocked_time}"
+        else:
+            schedule = "-"
+        results.append({
+            'name': job.name,
+            'task': job.task,
+            'schedule': schedule,
+            'enabled': job.enabled,
+            'last_run_at': job.last_run_at.isoformat() if job.last_run_at else '',
+            'description': getattr(job, 'description', ''),
+        })
+    # Return paginated response for DataTables
+    return paginator.get_paginated_response(results)

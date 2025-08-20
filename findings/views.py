@@ -10,11 +10,13 @@ from django.utils.timezone import make_aware
 from django.http import HttpResponseForbidden
 from project.models import Project, Suggestion, ActiveDomain
 from findings.models import Finding, Port
-from findings.utils import asset_get_or_create, asset_finding_get_or_create, ignore_asset
+from findings.utils import asset_get_or_create, asset_finding_get_or_create, ignore_asset, ignore_finding
 from django.http import JsonResponse
 import threading
 from jobs.utils import run_job
-
+from django.http import StreamingHttpResponse
+import csv
+from findings.models import Screenshot
 
 
 #### Asset stuffs
@@ -141,6 +143,23 @@ def ignore_asset_glyphicon(request, uuid):
         messages.error(request, 'Unknown Asset: %s' % uuid)
 
     return redirect(reverse('findings:assets'))
+
+@login_required
+def ignore_finding_glyphicon(request, findingid):
+    """move finding to ignore list
+    """
+    if not request.user.has_perm('findings.change_finding'):
+        return HttpResponseForbidden("You do not have permission to modify findings.")
+
+    context = {'projectid': request.session['current_project']['prj_id']}
+    prj = Project.objects.get(id=context['projectid'])
+
+    try:
+        ignore_finding(findingid)
+    except Finding.DoesNotExist:
+        messages.error(request, 'Unknown Finding: %s' % findingid)
+
+    return redirect(reverse('findings:data_leaks'))
 
 @login_required
 def delete_asset(request, uuid):
@@ -366,25 +385,40 @@ def all_findings(request):
         return HttpResponseForbidden("You do not have permission.")
     
     context = {'projectid': request.session['current_project']['prj_id']}
+
     if request.method == 'POST':
         # determine action
         if "btndelete" in request.POST:
             if not request.user.has_perm('findings.delete_finding'):
                 return HttpResponseForbidden("You do not have permission.")
             action = "delete"
+        elif "btnreport" in request.POST:
+            if not request.user.has_perm('findings.change_finding'):
+                return HttpResponseForbidden("You do not have permission.")
+            action = "report"
         else:
             messages.error(request, 'Unknown action received!')
             return redirect(reverse('findings:all_findings'))
         # get IDs of items
         id_lst = request.POST.getlist('id[]')
-        for item in id_lst:
-            if action == "delete":
+
+        if action == "delete":
+            for findingid in id_lst:
                 try:
-                    Finding.objects.get(id=item).delete()
+                    Finding.objects.get(id=findingid).delete()
                 except Finding.DoesNotExist:
-                    messages.error(request, 'Unknown Finding: %s' % item)
+                    messages.error(request, 'Unknown Finding: %s' % findingid)
                     continue  # take next item
-        messages.info(request, 'Selected findings deleted successfully.')
+            messages.info(request, 'Selected findings deleted successfully.')
+
+        if action == "report":
+            for findingid in id_lst:
+                try:
+                    send_nucleus(request, findingid)
+                except Finding.DoesNotExist:
+                    messages.error(request, 'Failed reporting Finding: %s' % findingid)
+                    continue  # take next item
+
         return redirect(reverse('findings:all_findings'))
     return render(request, 'findings/list_findings.html', context)
 
@@ -516,3 +550,79 @@ def httpx_results(request):
     }
 
     return render(request, 'findings/list_httpx_results.html', context)
+
+@login_required
+def export_technologies_csv(request):
+    """Export all Screenshot objects as CSV with technologies info."""
+    if not request.user.has_perm('findings.view_finding'):
+        return HttpResponseForbidden("You do not have permission.")
+
+    # Get current project id from session
+    projectid = request.session.get('current_project', {}).get('prj_id', None)
+    if not projectid:
+        return HttpResponseForbidden("No project selected.")
+    try:
+        prj = Project.objects.get(id=projectid)
+    except Project.DoesNotExist:
+        return HttpResponseForbidden("Project does not exist.")
+
+    # Get all screenshots for the project
+    domains = prj.activedomain_set.all()
+    screenshots = Port.objects.none()    
+    screenshots = Screenshot.objects.filter(domain__in=domains).order_by('-date')
+
+    # Prepare CSV response
+    def screenshot_row(s):
+        return [
+            s.url,
+            s.technologies,
+            s.title,
+            s.status_code,
+            s.webserver,
+            s.date.strftime('%Y-%m-%d %H:%M:%S') if s.date else '',
+        ]
+
+    class Echo:
+        def write(self, value):
+            return value
+
+    pseudo_buffer = Echo()
+    writer = csv.writer(pseudo_buffer)
+    header = ['URL', 'Technologies', 'Title', 'Status Code', 'Webserver', 'Date']
+    rows = (screenshot_row(s) for s in screenshots)
+    response = StreamingHttpResponse(
+        (writer.writerow(row) for row in ([header] + list(rows))),
+        content_type="text/csv"
+    )
+    response['Content-Disposition'] = 'attachment; filename="httpx_technologies.csv"'
+    return response
+
+@login_required
+def data_leaks(request):
+    if not request.user.has_perm('findings.view_finding'):
+        return HttpResponseForbidden("You do not have permission.")
+    
+    context = {'projectid': request.session['current_project']['prj_id']}
+
+    if request.method == 'POST':
+        # determine action
+        if "btndelete" in request.POST:
+            if not request.user.has_perm('findings.delete_finding'):
+                return HttpResponseForbidden("You do not have permission.")
+            action = "delete"
+        else:
+            messages.error(request, 'Unknown action received!')
+            return redirect(reverse('findings:all_findings'))
+        # get IDs of items
+        id_lst = request.POST.getlist('id[]')
+
+        if action == "delete":
+            for findingid in id_lst:
+                try:
+                    Finding.objects.get(id=findingid).delete()
+                except Finding.DoesNotExist:
+                    messages.error(request, 'Unknown Finding: %s' % findingid)
+                    continue  # take next item
+            messages.info(request, 'Selected findings deleted successfully.')
+
+    return render(request, 'findings/list_data_leaks.html', context)

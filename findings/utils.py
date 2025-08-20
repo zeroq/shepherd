@@ -1,4 +1,5 @@
 from project.models import Project, Suggestion, ActiveDomain
+from findings.models import Finding
 import requests
 import json
 import html
@@ -93,5 +94,14 @@ def ignore_asset(uuid, prj):
     s_obj.ignore = True
     a_obj.save()
     s_obj.save()
+
+    return
+
+def ignore_finding(findingid):
+    """move finding to ignore list
+    """
+    finding = Finding.objects.get(id=findingid)
+    finding.ignore = not finding.ignore
+    finding.save()
 
     return

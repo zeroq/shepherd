@@ -13,7 +13,8 @@ def top_jobs(request):
 
 sharing_children = (
     MenuItem("Jobs", reverse("jobs:jobs"), weight=10),
-    MenuItem("Scheduled Jobs", "/admin/django_celery_beat/periodictask/", weight=15),
+    # MenuItem("Scheduled Jobs", "/admin/django_celery_beat/periodictask/", weight=15),
+    MenuItem("Scheduled Jobs", reverse("jobs:scheduled_jobs"), weight=15),
 )
 
 Menu.add_item("jobs", MenuItem(top_jobs,

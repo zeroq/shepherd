@@ -41,13 +41,21 @@ class ActiveDomainSerializer(serializers.ModelSerializer):
 
 class FindingSerializer(serializers.ModelSerializer):
     asset = serializers.SerializerMethodField()
+    keyword = serializers.SerializerMethodField()
 
     class Meta:
         model = Finding
         fields = '__all__'
 
     def get_asset(self, obj):
-        return obj.domain.value
+        if obj.domain:
+            return obj.domain.value
+        return None
+
+    def get_keyword(self, obj):
+        if obj.keyword:
+            return obj.keyword.keyword
+        return None
 
 class JobSerializer(serializers.ModelSerializer):
     class Meta:

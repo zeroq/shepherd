@@ -99,6 +99,7 @@ class Command(BaseCommand):
                     "source": 'crtsh',
                     "active": True,
                     "creation_time": make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds"))),
+                    "last_seen_time": make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds"))),
                 }
 
                 # Check if domain or subdomain
@@ -123,7 +124,7 @@ class Command(BaseCommand):
                     if not 'crtsh' in sobj.source:
                         sobj.source = sobj.source + ", crtsh"
                     sobj.active = True
-                    sobj.creation_time = make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds")))
+                    sobj.last_seen_time = make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds")))
                     # Save the object
                     sobj.save()
 
@@ -148,7 +149,7 @@ class Command(BaseCommand):
                         if not 'crtsh' in sobj.source:
                             sobj.source = sobj.source + ", crtsh"
                         sobj.active = True
-                        sobj.creation_time = make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds")))
+                        sobj.last_seen_time = make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds")))
                         # Save the object
                         sobj.save()
 

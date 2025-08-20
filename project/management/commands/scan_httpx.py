@@ -113,7 +113,7 @@ class Command(BaseCommand):
                 httpx_path,
                 "-l", httpx_in_file,
                 "-ss",
-                "-st", "30",
+                "-st", "60",
                 "-no-screenshot-full-page",
                 "-td",
                 "-j",

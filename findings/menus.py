@@ -10,6 +10,7 @@ sharing_children = (
     MenuItem("Nmap", reverse("findings:nmap_results"), weight=15),
     MenuItem("Nuclei Findings", reverse("findings:all_findings"), weight=15),
     MenuItem("Httpx (Screenshots and Techs)", reverse("findings:httpx_results"), weight=15),
+    MenuItem("Data Leaks (porch-pirate, scribd..)", reverse("findings:data_leaks"), weight=15),
 )
 
 Menu.add_item("findings", MenuItem(top_assets,

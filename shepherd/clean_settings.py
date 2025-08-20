@@ -181,6 +181,10 @@ NUCLEUS_URL = ''
 NUCLEUS_KEY = ''
 NUCLEUS_PROJECT = ''
 
+# AI
+AI_API_KEY = ''
+AI_API_ENDPOINT = ''
+
 # Recent Findings Days
 RECENT_DAYS = 5
 

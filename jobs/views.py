@@ -34,3 +34,12 @@ def view_job(request, job_id):
     }
 
     return render(request, 'jobs/view_job.html', context)
+
+@login_required
+def scheduled_jobs(request):
+    if not request.user.has_perm('project.view_job'):
+        return HttpResponseForbidden("You do not have permission.")
+    
+    context = {'projectid': request.session['current_project']['prj_id']}
+
+    return render(request, 'jobs/list_scheduled_jobs.html', context)
