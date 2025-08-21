@@ -620,7 +620,8 @@ def list_data_leaks(request, projectid, format=None):
     except Project.DoesNotExist:
         return JsonResponse({"status": True, "code": 200, "next": None, "previous": None, "count": 0, "iTotalRecords": 0, "iTotalDisplayRecords": 0, "results": []})
 
-    ### create queryset
+
+    # create queryset
     data_leak_sources = ["porch-pirate", "swaggerhub"]
     keywords = prj.keyword_set.all().filter(enabled=True)
     queryset = Finding.objects.filter(source__in=data_leak_sources, keyword__in=keywords)
@@ -633,7 +634,43 @@ def list_data_leaks(request, projectid, format=None):
         queryset = queryset.filter(ignore=True)
     # 'all' returns all, no filter
 
-    # Optionally, add other filters/searches here as needed
+
+    # Global search
+    search_value = request.query_params.get('search[value]', None)
+    if search_value and len(search_value) > 1:
+        queryset = queryset.filter(
+            Q(domain_name__icontains=search_value) |
+            Q(keyword__keyword__icontains=search_value) |
+            Q(source__icontains=search_value) |
+            Q(name__icontains=search_value) |
+            Q(description__icontains=search_value) |
+            Q(url__icontains=search_value) |
+            Q(scan_date__icontains=search_value)
+        )
+
+    # Column-specific search
+    search_domain_name = request.query_params.get('columns[1][search][value]', None)
+    search_keyword = request.query_params.get('columns[2][search][value]', None)
+    search_source = request.query_params.get('columns[3][search][value]', None)
+    search_name = request.query_params.get('columns[4][search][value]', None)
+    search_description = request.query_params.get('columns[5][search][value]', None)
+    search_url = request.query_params.get('columns[6][search][value]', None)
+    search_scan_date = request.query_params.get('columns[7][search][value]', None)
+
+    if search_domain_name and len(search_domain_name) > 1:
+        queryset = queryset.filter(Q(domain_name__icontains=search_domain_name))
+    if search_keyword and len(search_keyword) > 1:
+        queryset = queryset.filter(Q(keyword__keyword__icontains=search_keyword))
+    if search_source and len(search_source) > 1:
+        queryset = queryset.filter(Q(source__icontains=search_source))
+    if search_name and len(search_name) > 1:
+        queryset = queryset.filter(Q(name__icontains=search_name))
+    if search_description and len(search_description) > 1:
+        queryset = queryset.filter(Q(description__icontains=search_description))
+    if search_url and len(search_url) > 1:
+        queryset = queryset.filter(Q(url__icontains=search_url))
+    if search_scan_date and len(search_scan_date) > 1:
+        queryset = queryset.filter(Q(scan_date__icontains=search_scan_date))
 
     kwrds = paginator.paginate_queryset(queryset, request)
     serializer = FindingSerializer(instance=kwrds, many=True)
