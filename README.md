@@ -18,7 +18,7 @@ python3 manage.py runserver 127.0.0.1:80
 
 ```bash
 # As root
-apt install nmap redis
+apt install nmap redis npm
 wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
 apt install ./google-chrome-stable_current_amd64.deb
 wget https://go.dev/dl/go1.24.4.linux-amd64.tar.gz -O /tmp/go1.24.4.linux-amd64.tar.gz
@@ -36,7 +36,14 @@ cd
 go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
 go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
 go install -v github.com/projectdiscovery/httpx/cmd/httpx@latest
-
+# AI capabilities
+cd ~
+touch ~/.bashrc
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+source ~/.bashrc
+nvm install node
+# Enter (y) and install PLaywright MCP
+npx @playwright/mcp@latest
 ```
 
 # For production

@@ -57,7 +57,28 @@ def import_shodan_task():
     run_job(command, args, project_id, user=scheduler_user)
     return "import_shodan completed"
 
-#@shared_task
+@shared_task
+def scan_porch_pirate_task():
+    command = 'scan_porch-pirate'
+    args = f'--projectid {project_id}'
+    run_job(command, args, project_id, user=scheduler_user)
+    return "scan_porch-pirate completed"
+
+@shared_task
+def scan_swaggerhub_task():
+    command = 'scan_swaggerhub'
+    args = f'--projectid {project_id}'
+    run_job(command, args, project_id, user=scheduler_user)
+    return "scan_swaggerhub completed"
+
+@shared_task
+def scan_ai_scribd_task():
+    command = 'scan_ai_scribd'
+    args = f'--projectid {project_id}'
+    run_job(command, args, project_id, user=scheduler_user)
+    return "scan_ai_scribd completed"
+
+@shared_task
 def import_fofa_task():
     command = 'import_fofa'
     args = f'--projectid {project_id}'

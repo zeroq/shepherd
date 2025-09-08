@@ -56,7 +56,7 @@
       <thead>
       <tr>
           <th><input type="checkbox" name="select_all" value="1" id="select-all-findings">&nbsp; Operations</th>
-          <th>Domain Name</th>
+          <!-- <th>Domain Name</th> -->
           <th>Keyword</th>
           <th>Source</th>
           <th>Name</th>
@@ -66,7 +66,7 @@
         </tr>
       <tr>
           <th></th>
-          <th><input type="text" placeholder="Search Domain Name" class="column-search form-control input-sm"></th>
+          <!-- <th><input type="text" placeholder="Search Domain Name" class="column-search form-control input-sm"></th> -->
           <th><input type="text" placeholder="Search Keyword" class="column-search form-control input-sm"></th>
           <th><input type="text" placeholder="Search Source" class="column-search form-control input-sm"></th>
           <th><input type="text" placeholder="Search Name" class="column-search form-control input-sm"></th>
@@ -132,15 +132,15 @@ $(document).ready( function () {
                     $("a", nTd).tooltip();
                 }
             },
-            {'data': 'domain_name', 'sName': 'Domain Name', 'aTargets': [ 1 ],
-                "mRender": function (data, type, full) {
-                    var select_url = "{% url 'findings:view_asset' uuid=0 %}".replace(0, full.domain);
-                    return '<div rel="tooltip" data-placement="left" data-original-title="Show details"><a href="'+select_url+'">'+data+'</a></div>';
-                },
-                "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
-                    $("div", nTd).tooltip();
-                },
-            },
+            // {'data': 'domain_name', 'sName': 'Domain Name', 'aTargets': [ 1 ],
+            //     "mRender": function (data, type, full) {
+            //         var select_url = "{% url 'findings:view_asset' uuid=0 %}".replace(0, full.domain);
+            //         return '<div rel="tooltip" data-placement="left" data-original-title="Show details"><a href="'+select_url+'">'+data+'</a></div>';
+            //     },
+            //     "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
+            //         $("div", nTd).tooltip();
+            //     },
+            // },
             {'data': 'keyword', 'sName': 'Keyword', 'aTargets': [ 2 ]},
             {'data': 'source', 'sName': 'Source', 'aTargets': [ 3 ]},
             {'data': 'name', 'sName': 'Name', 'aTargets': [ 4 ]},

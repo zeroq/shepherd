@@ -181,9 +181,9 @@ NUCLEUS_URL = ''
 NUCLEUS_KEY = ''
 NUCLEUS_PROJECT = ''
 
-# AI
-AI_API_KEY = ''
-AI_API_ENDPOINT = ''
+# Azure AI
+AZURE_OPENAI_ENDPOINT = ''
+AZURE_API_KEY = ''
 
 # Recent Findings Days
 RECENT_DAYS = 5

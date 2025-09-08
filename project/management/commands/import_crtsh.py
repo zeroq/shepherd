@@ -1,9 +1,4 @@
-import hmac
-import hashlib
-import sys
-import time
 import requests
-from urllib.parse import urlencode, quote_plus
 import json
 import dateparser
 from datetime import datetime, timezone
@@ -12,8 +7,7 @@ import tldextract
 
 from project.models import Project, Keyword, Suggestion
 
-from django.core.management.base import BaseCommand, CommandError
-from django.contrib.auth.models import User
+from django.core.management.base import BaseCommand
 from django.conf import settings
 from django.utils.timezone import make_aware
 
@@ -76,7 +70,8 @@ class Command(BaseCommand):
             results = json.loads(rsp.content)
         except Exception as error:
             print(error)
-            return
+            print(rsp.text)
+            return 0
 
         # Initialize list of domains that will contain results
         for item in results:

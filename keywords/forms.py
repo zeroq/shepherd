@@ -12,7 +12,7 @@ class AddKeywordForm(ModelForm):
         ('shodan_keyword', 'Shodan - query keyword'),
         ('porch-pirate_keyword', 'Porch-pirate - query keyword'),
         ('swaggerhub_keyword', 'SwaggerHub - query keyword'),
-        ('ai_scribd_keyword', 'OpenAI - Enable the ai search against Scribd for the given keyword'),
+        ('ai_scribd_keyword', 'ShepherdAI - Enable the ai search against Scribd for the given keyword'),
 
     ]
 

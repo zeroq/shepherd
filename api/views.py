@@ -622,7 +622,7 @@ def list_data_leaks(request, projectid, format=None):
 
 
     # create queryset
-    data_leak_sources = ["porch-pirate", "swaggerhub"]
+    data_leak_sources = ["porch-pirate", "swaggerhub", "ai_scribd"]
     keywords = prj.keyword_set.all().filter(enabled=True)
     queryset = Finding.objects.filter(source__in=data_leak_sources, keyword__in=keywords)
 
@@ -649,16 +649,16 @@ def list_data_leaks(request, projectid, format=None):
         )
 
     # Column-specific search
-    search_domain_name = request.query_params.get('columns[1][search][value]', None)
-    search_keyword = request.query_params.get('columns[2][search][value]', None)
-    search_source = request.query_params.get('columns[3][search][value]', None)
-    search_name = request.query_params.get('columns[4][search][value]', None)
-    search_description = request.query_params.get('columns[5][search][value]', None)
-    search_url = request.query_params.get('columns[6][search][value]', None)
-    search_scan_date = request.query_params.get('columns[7][search][value]', None)
+    # search_domain_name = request.query_params.get('columns[1][search][value]', None)
+    search_keyword = request.query_params.get('columns[1][search][value]', None)
+    search_source = request.query_params.get('columns[2][search][value]', None)
+    search_name = request.query_params.get('columns[3][search][value]', None)
+    search_description = request.query_params.get('columns[4][search][value]', None)
+    search_url = request.query_params.get('columns[5][search][value]', None)
+    search_scan_date = request.query_params.get('columns[6][search][value]', None)
 
-    if search_domain_name and len(search_domain_name) > 1:
-        queryset = queryset.filter(Q(domain_name__icontains=search_domain_name))
+    # if search_domain_name and len(search_domain_name) > 1:
+    #     queryset = queryset.filter(Q(domain_name__icontains=search_domain_name))
     if search_keyword and len(search_keyword) > 1:
         queryset = queryset.filter(Q(keyword__keyword__icontains=search_keyword))
     if search_source and len(search_source) > 1:

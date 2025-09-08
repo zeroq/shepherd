@@ -23,3 +23,5 @@ django_celery_beat
 redis
 porch-pirate
 openai
+openai-agents
+asyncio
