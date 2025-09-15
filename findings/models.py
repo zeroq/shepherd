@@ -37,6 +37,7 @@ class Finding(models.Model):
     solution = models.TextField(default='')
     reference = models.CharField(max_length=2048, default='')
     ignore = models.BooleanField(default=False)
+    comment = models.TextField(default='', blank=True, null=True)
 
     # Severity fields
     severity = models.CharField(max_length=50, default='')

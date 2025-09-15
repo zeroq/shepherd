@@ -552,9 +552,10 @@ def list_all_findings(request, projectid, format=None):
     search_name = request.query_params.get('columns[2][search][value]', None)
     search_type = request.query_params.get('columns[3][search][value]', None)
     search_description = request.query_params.get('columns[4][search][value]', None)
-    search_cve = request.query_params.get('columns[5][search][value]', None)
-    search_severity = request.query_params.get('columns[6][search][value]', None)
-    search_scan_date = request.query_params.get('columns[7][search][value]', None)
+    search_severity = request.query_params.get('columns[5][search][value]', None)  # CVE removed, severity moved to column 5
+    search_scan_date = request.query_params.get('columns[6][search][value]', None)
+    search_last_reported = request.query_params.get('columns[7][search][value]', None)  # Added last_reported
+    search_comment = request.query_params.get('columns[8][search][value]', None)  # Added comment
     # print(f"Search: {search_domain_name}, {search_port}, {search_banner}, {search_cpe}, {search_last_scan}")  # Debugging statement
 
     ### filter by search value
@@ -578,11 +579,6 @@ def list_all_findings(request, projectid, format=None):
             Q(description__icontains=search_description)
         )
 
-    if search_cve and len(search_cve) > 1:
-        queryset = queryset.filter(
-            Q(cve__icontains=search_cve)
-        )
-
     if search_severity and len(search_severity) > 1:
         queryset = queryset.filter(
             Q(severity__icontains=search_severity)
@@ -591,6 +587,16 @@ def list_all_findings(request, projectid, format=None):
     if search_scan_date and len(search_scan_date) > 1:
         queryset = queryset.filter(
             Q(scan_date__icontains=search_scan_date)
+        )
+
+    if search_last_reported and len(search_last_reported) > 1:
+        queryset = queryset.filter(
+            Q(last_reported__icontains=search_last_reported)
+        )
+
+    if search_comment and len(search_comment) > 1:
+        queryset = queryset.filter(
+            Q(comment__icontains=search_comment)
         )
 
     ### get variables
@@ -656,6 +662,7 @@ def list_data_leaks(request, projectid, format=None):
     search_description = request.query_params.get('columns[4][search][value]', None)
     search_url = request.query_params.get('columns[5][search][value]', None)
     search_scan_date = request.query_params.get('columns[6][search][value]', None)
+    search_comment = request.query_params.get('columns[7][search][value]', None)  # Added comment
 
     # if search_domain_name and len(search_domain_name) > 1:
     #     queryset = queryset.filter(Q(domain_name__icontains=search_domain_name))
@@ -671,6 +678,8 @@ def list_data_leaks(request, projectid, format=None):
         queryset = queryset.filter(Q(url__icontains=search_url))
     if search_scan_date and len(search_scan_date) > 1:
         queryset = queryset.filter(Q(scan_date__icontains=search_scan_date))
+    if search_comment and len(search_comment) > 1:
+        queryset = queryset.filter(Q(comment__icontains=search_comment))
 
     kwrds = paginator.paginate_queryset(queryset, request)
     serializer = FindingSerializer(instance=kwrds, many=True)
@@ -696,6 +705,33 @@ def delete_finding(request, projectid, findingid):
         return JsonResponse({'message': 'Finding successfully deleted', 'status': 'success'}, status=200)
     except Finding.DoesNotExist:
         return JsonResponse({'message': 'Finding does not exist', 'status': 'failure'}, status=404)
+
+
+@api_view(['POST'])
+@authentication_classes((SessionAuthentication, ))
+@permission_classes((IsAuthenticated,))
+def update_finding_comment(request, projectid, findingid):
+    """Update a finding's comment
+    """
+    if not request.user.has_perm('findings.change_finding'):
+        return HttpResponseForbidden("You do not have permission to modify findings.")
+    
+    try:
+        # Check if the project exists
+        prj = Project.objects.get(id=projectid)
+    except Project.DoesNotExist:
+        return JsonResponse({'message': 'Project does not exist', 'status': 'failure'}, status=404)
+    
+    try:
+        finding = Finding.objects.get(id=findingid)
+        comment = request.POST.get('comment', '')
+        finding.comment = comment
+        finding.save()
+        return JsonResponse({'message': 'Comment updated successfully', 'comment': comment, 'status': 'success'}, status=200)
+    except Finding.DoesNotExist:
+        return JsonResponse({'message': 'Finding not found', 'status': 'failure'}, status=404)
+    except Exception as e:
+        return JsonResponse({'message': str(e), 'status': 'failure'}, status=500)
     
 ##### END FINDINGS ###########
 

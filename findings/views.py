@@ -146,20 +146,18 @@ def ignore_asset_glyphicon(request, uuid):
 
 @login_required
 def ignore_finding_glyphicon(request, findingid):
-    """move finding to ignore list
+    """Toggle finding ignore status (AJAX endpoint)
     """
     if not request.user.has_perm('findings.change_finding'):
         return HttpResponseForbidden("You do not have permission to modify findings.")
 
-    context = {'projectid': request.session['current_project']['prj_id']}
-    prj = Project.objects.get(id=context['projectid'])
-
     try:
         ignore_finding(findingid)
+        return JsonResponse({'success': True, 'message': 'Ignore status toggled successfully.'})
     except Finding.DoesNotExist:
-        messages.error(request, 'Unknown Finding: %s' % findingid)
-
-    return redirect(reverse('findings:data_leaks'))
+        return JsonResponse({'success': False, 'error': 'Unknown Finding: %s' % findingid}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 @login_required
 def delete_asset(request, uuid):
@@ -230,7 +228,7 @@ def view_asset(request, uuid):
         messages.error(request, 'Unknown Asset: %s' % uuid)
         return redirect(reverse('findings:assets'))
     context = {
-        'projectid': request.session['current_project']['prj_id'],
+        # 'projectid': request.session['current_project']['prj_id'],
         'assetid': uuid,
         'asset': a_obj,
         'info_findings': a_obj.finding_set.filter(
@@ -396,6 +394,10 @@ def all_findings(request):
             if not request.user.has_perm('findings.change_finding'):
                 return HttpResponseForbidden("You do not have permission.")
             action = "report"
+        elif "btnignore" in request.POST:
+            if not request.user.has_perm('findings.change_finding'):
+                return HttpResponseForbidden("You do not have permission.")
+            action = "ignore"
         else:
             messages.error(request, 'Unknown action received!')
             return redirect(reverse('findings:all_findings'))
@@ -418,6 +420,15 @@ def all_findings(request):
                 except Finding.DoesNotExist:
                     messages.error(request, 'Failed reporting Finding: %s' % findingid)
                     continue  # take next item
+
+        if action == "ignore":
+            for findingid in id_lst:
+                try:
+                    ignore_finding(findingid)
+                except Finding.DoesNotExist:
+                    messages.error(request, 'Unknown Finding: %s' % findingid)
+                    continue  # take next item
+            messages.info(request, 'Ignore status toggled for selected findings.')
 
         return redirect(reverse('findings:all_findings'))
     return render(request, 'findings/list_findings.html', context)
@@ -610,9 +621,13 @@ def data_leaks(request):
             if not request.user.has_perm('findings.delete_finding'):
                 return HttpResponseForbidden("You do not have permission.")
             action = "delete"
+        elif "btnignore" in request.POST:
+            if not request.user.has_perm('findings.change_finding'):
+                return HttpResponseForbidden("You do not have permission.")
+            action = "ignore"
         else:
             messages.error(request, 'Unknown action received!')
-            return redirect(reverse('findings:all_findings'))
+            return redirect(reverse('findings:data_leaks'))
         # get IDs of items
         id_lst = request.POST.getlist('id[]')
 
@@ -624,5 +639,14 @@ def data_leaks(request):
                     messages.error(request, 'Unknown Finding: %s' % findingid)
                     continue  # take next item
             messages.info(request, 'Selected findings deleted successfully.')
+
+        if action == "ignore":
+            for findingid in id_lst:
+                try:
+                    ignore_finding(findingid)
+                except Finding.DoesNotExist:
+                    messages.error(request, 'Unknown Finding: %s' % findingid)
+                    continue  # take next item
+            messages.info(request, 'Ignore status toggled for selected findings.')
 
     return render(request, 'findings/list_data_leaks.html', context)

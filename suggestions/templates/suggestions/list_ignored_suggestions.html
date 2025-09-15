@@ -119,46 +119,14 @@ $(document).ready( function () {
             },
         ]
     });
-    // Handle click on "Select all" control
-    $('#select-all-items').on('click', function(){
-        // Get all rows with search applied
-        var rows = pTable.rows({ 'search': 'applied' }).nodes();
-        // Check/uncheck checkboxes for all rows in the table
-        $('input[type="checkbox"]', rows).prop('checked', this.checked);
+    // Initialize common standalone features
+    initializeStandaloneFeatures({
+        selectAllSelector: '#select-all-items',
+        tableSelector: '#table_list_suggestions'
     });
-    // Handle click on checkbox to set state of "Select all" control
-    $('#table_list_suggestions tbody').on('change', 'input[type="checkbox"]', function(){
-      // If checkbox is not checked
-      if(!this.checked){
-         var el = $('#select-all-items').get(0);
-         // If "Select all" control is checked and has 'indeterminate' property
-         if(el && el.checked && ('indeterminate' in el)){
-            // Set visual state of "Select all" control
-            // as 'indeterminate'
-            el.indeterminate = true;
-         }
-      }
-    });
-    $('#form-selected').on('submit', function(e){
-      var form = this;
-      console.log("TEST")
-      // Iterate over all checkboxes in the table
-      pTable.$('input[type="checkbox"]').each(function(){
-         // If checkbox doesn't exist in DOM
-         if(!$.contains(document, this)){
-            // If checkbox is checked
-            if(this.checked){
-               // Create a hidden element 
-               $(form).append(
-                  $('<input>')
-                     .attr('type', 'hidden')
-                     .attr('name', this.name)
-                     .val(this.value)
-               );
-            }
-         } 
-      });
-   });
+
+    // Setup form submission for DataTable checkboxes
+    setupFormSubmission(pTable);
 
 
 });

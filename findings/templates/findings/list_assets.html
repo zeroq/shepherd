@@ -350,38 +350,12 @@ $(document).ready(function () {
       monitoredTable.column(2).search(selectedSeverity).draw();
     });
 
-    // Function to handle "Select All" functionality
-    function handleSelectAll(selectAllId, table) {
-      $(selectAllId).on('click', function () {
-        var rows = table.rows({ 'search': 'applied' }).nodes();
-        $('input[type="checkbox"]', rows).prop('checked', this.checked);
-      });
-
-      $(table.table().body()).on('change', 'input[type="checkbox"]', function () {
-        if (!this.checked) {
-          var el = $(selectAllId).get(0);
-          if (el && el.checked && ('indeterminate' in el)) {
-            el.indeterminate = true;
-          }
-        }
-      });
-    }
-
-    // Handle "Select All" functionality
-    handleSelectAll('#select-all-items', monitoredTable);
-    handleSelectAll('#select-all-items-ignore', ignoredTable);
-
-    // Confirmation dialog for actions
-    $(document).on("click", ".confirm", function (e) {
-        e.preventDefault();
-        var title = $(this).attr('data-display');
-        var location = $(this).attr('data-href');
-        bootbox.confirm('Are you sure?', function (confirmed) {
-            if (confirmed) {
-                window.location.replace(location);
-            }
-        });
-    });
+    // Initialize common standalone features
+    initializeStandaloneFeatures();
+    
+    // Setup select all for multiple tables
+    setupStandaloneSelectAll('#select-all-items', '#table_monitored_assets');
+    setupStandaloneSelectAll('#select-all-items-ignore', '#table_ignored_assets');
 
     // Track if scan was triggered for selected assets
     var scanSelectedAssets = false;

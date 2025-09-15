@@ -401,51 +401,31 @@
     applySearch(subTable, '#table_list_second_level_domain_suggestions');
     applySearch(starredTable, '#table_list_starreddomain_suggestions');
 
-    function handleSelectAll(selectAllId, table) {
-      $(selectAllId).on('click', function () {
-        var rows = table.rows({ 'search': 'applied' }).nodes();
-        $('input[type="checkbox"]', rows).prop('checked', this.checked);
-      });
+    // Initialize common standalone features for multiple tables
+    initializeStandaloneFeatures();
+    
+    // Setup select all for each table
+    setupStandaloneSelectAll('#select-all-items-dom', '#table_list_domain_suggestions');
+    setupStandaloneSelectAll('#select-all-items-sub', '#table_list_second_level_domain_suggestions');
+    setupStandaloneSelectAll('#select-all-items-starred', '#table_list_starreddomain_suggestions');
 
-      $(table.table().body()).on('change', 'input[type="checkbox"]', function () {
-        if (!this.checked) {
-          var el = $(selectAllId).get(0);
-          if (el && el.checked && ('indeterminate' in el)) {
-            el.indeterminate = true;
-          }
-        }
-      });
-    }
-
-    handleSelectAll('#select-all-items-dom', domTable);
-    handleSelectAll('#select-all-items-sub', subTable);
-    handleSelectAll('#select-all-items-starred', starredTable);
-
+    // Setup form submission for multiple DataTables
     $('#form-selected').on('submit', function (e) {
       var form = this;
-      domTable.$('input[type="checkbox"]').each(function () {
-        if (!$.contains(document, this)) {
-          if (this.checked) {
-            $(form).append(
-              $('<input>')
-                .attr('type', 'hidden')
-                .attr('name', this.name)
-                .val(this.value)
-            );
+      // Use the common form submission logic for each table
+      [domTable, subTable, starredTable].forEach(function(table) {
+        table.$('input[type="checkbox"]').each(function () {
+          if (!$.contains(document, this)) {
+            if (this.checked) {
+              $(form).append(
+                $('<input>')
+                  .attr('type', 'hidden')
+                  .attr('name', this.name)
+                  .val(this.value)
+              );
+            }
           }
-        }
-      });
-      subTable.$('input[type="checkbox"]').each(function () {
-        if (!$.contains(document, this)) {
-          if (this.checked) {
-            $(form).append(
-              $('<input>')
-                .attr('type', 'hidden')
-                .attr('name', this.name)
-                .val(this.value)
-            );
-          }
-        }
+        });
       });
     });
 

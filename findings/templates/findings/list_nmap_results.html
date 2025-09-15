@@ -134,31 +134,16 @@ $(document).ready(function () {
     var $filterRow = $('#table_list_ports thead tr:eq(1)');
     applyDebouncedColumnSearch(portTable, 'input.column-search-input', 'select.column-search-input', 400, $filterRow);
 
-    // Handle click on "Select all" control
-    $('#select-all-items-dom').on('click', function () {
-        // Get all rows with search applied
-        var rows = portTable.rows({ 'search': 'applied' }).nodes();
-        // Check/uncheck checkboxes for all rows in the table
-        $('input[type="checkbox"]', rows).prop('checked', this.checked);
-        updateSelectedCount();
+    // Initialize common standalone features
+    initializeStandaloneFeatures({
+        selectAllSelector: '#select-all-items-dom',
+        tableSelector: '#table_list_ports'
     });
 
-    // Handle click on checkbox to set state of "Select all" control
-    $('#table_list_ports tbody').on('change', 'input[type="checkbox"]', function () {
-        // If checkbox is not checked
-        if (!this.checked) {
-            var el = $('#select-all-items-dom').get(0);
-            // If "Select all" control is checked and has 'indeterminate' property
-            if (el && el.checked && ('indeterminate' in el)) {
-                // Set visual state of "Select all" control
-                // as 'indeterminate'
-                el.indeterminate = true;
-            }
-        }
-        updateSelectedCount();
-    });
+    // Setup form submission for DataTable checkboxes
+    setupFormSubmission(portTable);
 
-    // Update the count of selected rows
+    // Custom functionality: Update selected count
     function updateSelectedCount() {
         var count = $('#table_list_ports tbody input[type="checkbox"]:checked').length;
         $('#selected-count').text(count + " row(s) selected");
@@ -169,44 +154,8 @@ $(document).ready(function () {
         updateSelectedCount();
     });
 
-    // submit
-    $('#form-selected').on('submit', function (e) {
-        var form = this;
-        // Iterate over all checkboxes in the table
-        portTable.$('input[type="checkbox"]').each(function () {
-            // If checkbox doesn't exist in DOM
-            if (!$.contains(document, this)) {
-                // If checkbox is checked
-                if (this.checked) {
-                    // Create a hidden element 
-                    $(form).append(
-                        $('<input>')
-                            .attr('type', 'hidden')
-                            .attr('name', this.name)
-                            .val(this.value)
-                    );
-                }
-            }
-        });
-    }); // end form-selected function
-
-    // confirm button
-    $(document).on("click", ".confirm", function (e) {
-        e.preventDefault();
-        var form = $('#form-selected');
-        var buttonName = $(this).attr('name');
-        var buttonValue = $(this).val();
-        bootbox.confirm('Are you sure you want to delete the selected items?', function (confirmed) {
-            if (confirmed) {
-                $('<input>').attr({
-                    type: 'hidden',
-                    name: buttonName,
-                    value: buttonValue
-                }).appendTo(form);
-                form.submit();
-            }
-        });
-    });
+    // Bind updateSelectedCount to checkbox changes
+    $(document).on('change', '#table_list_ports input[type="checkbox"]', updateSelectedCount);
 });
 </script>
 {% endblock%}

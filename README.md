@@ -104,7 +104,7 @@ User=www-data
 Group=www-data
 WorkingDirectory=/opt/shepherd
 Environment="PATH=/opt/shepherd/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/usr/local/go/bin:/var/www/go/bin"
-ExecStart=/opt/shepherd/venv/bin/gunicorn --access-logfile - --workers 3 --bind unix:/opt/shepherd/gunicorn.sock shepherd.wsgi:application
+ExecStart=/bin/bash -c "source /var/www/.bashrc && /opt/shepherd/venv/bin/gunicorn --access-logfile - --workers 3 --bind unix:/opt/shepherd/gunicorn.sock shepherd.wsgi:application"
 
 [Install]
 WantedBy=multi-user.target
@@ -121,7 +121,7 @@ User=www-data
 Group=www-data
 WorkingDirectory=/opt/shepherd
 Environment="PATH=/opt/shepherd/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/usr/local/go/bin:/var/www/go/bin"
-ExecStart=/opt/shepherd/venv/bin/celery -A shepherd beat -l INFO --scheduler django_celery_beat.schedulers:DatabaseScheduler
+ExecStart=/bin/bash -c "source /var/www/.bashrc && /opt/shepherd/venv/bin/celery -A shepherd beat -l INFO --scheduler django_celery_beat.schedulers:DatabaseScheduler"
 
 [Install]
 WantedBy=multi-user.target
@@ -139,7 +139,7 @@ User=www-data
 Group=www-data
 WorkingDirectory=/opt/shepherd
 Environment="PATH=/opt/shepherd/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/usr/local/go/bin:/var/www/go/bin"
-ExecStart=/opt/shepherd/venv/bin/celery -A shepherd worker --loglevel=info
+ExecStart=/bin/bash -c "source /var/www/.bashrc && /opt/shepherd/venv/bin/celery -A shepherd worker --loglevel=info"
 
 [Install]
 WantedBy=multi-user.target

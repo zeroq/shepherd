@@ -26,6 +26,7 @@ urlpatterns = [
     path('v1/project/<str:projectid>/findings/all/', views.list_all_findings, name='list_all_findings'),
     path('v1/project/<str:projectid>/findings/data_leaks/', views.list_data_leaks, name='list_data_leaks'),
     path('v1/project/<str:projectid>/findings/delete/<str:findingid>/', views.delete_finding, name='delete_finding'),
+    path('v1/project/<str:projectid>/findings/<str:findingid>/update_comment/', views.update_finding_comment, name='update_finding_comment'),
     path('v1/project/<str:projectid>/recent/<str:severity>/', views.list_recent_findings, name='list_recent_findings'),
 
     # Jobs

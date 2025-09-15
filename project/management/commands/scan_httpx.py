@@ -97,100 +97,146 @@ class Command(BaseCommand):
             
             httpx_urls += active_domain_urls
 
-        httpx_path = "httpx"
-        # Use tempfile for input and output files
-        with tempfile.NamedTemporaryFile(mode='w+', delete=True) as in_f, tempfile.NamedTemporaryFile(mode='w+', delete=True) as out_f:
-            httpx_in_file = in_f.name
-            httpx_out_file = out_f.name
-            for url in httpx_urls:
-                in_f.write(f"{url}\n")
-            in_f.flush()
+        self.stdout.write(f"Total URLs: {len(httpx_urls)}")
+        
+        # Split URLs into chunks of 20
+        chunk_size = 20
+        url_chunks = [httpx_urls[i:i + chunk_size] for i in range(0, len(httpx_urls), chunk_size)]
+        self.stdout.write(f"Processing {len(url_chunks)} chunk(s) of up to {chunk_size} URLs each")
 
-            self.stdout.write(f"URLs written to {httpx_in_file}")
-            self.stdout.write(f"Total URLs: {len(httpx_urls)}")
+        def process_httpx_chunk(chunk_index, url_chunk):
+            """Process a single chunk of URLs with httpx"""
+            httpx_path = "httpx"
+            
+            # Use tempfile for input and output files for this chunk
+            with tempfile.NamedTemporaryFile(mode='w+', delete=True, suffix=f'_chunk_{chunk_index}_in.txt') as in_f, tempfile.NamedTemporaryFile(mode='w+', delete=True, suffix=f'_chunk_{chunk_index}_out.json') as out_f:
+                
+                httpx_in_file = in_f.name
+                httpx_out_file = out_f.name
+                
+                # Write URLs to input file
+                for url in url_chunk:
+                    in_f.write(f"{url}\n")
+                in_f.flush()
 
-            command = [
-                httpx_path,
-                "-l", httpx_in_file,
-                "-ss",
-                "-st", "60",
-                "-no-screenshot-full-page",
-                "-td",
-                "-j",
-                "-o", httpx_out_file,
-            ]
+                self.stdout.write(f"Chunk {chunk_index + 1}: Processing {len(url_chunk)} URLs")
 
-            try:
-                result = subprocess.run(command, stdout=subprocess.DEVNULL, cwd="/var/www/")
-                self.stdout.write("Httpx scan completed successfully.")
-            except subprocess.CalledProcessError as e:
-                self.stdout.write("Error occurred while running Httpx:")
-                self.stdout.write(e.stderr)
-                return
+                command = [
+                    httpx_path,
+                    "-l", httpx_in_file,
+                    "-ss",
+                    "-st", "20",
+                    "-no-screenshot-full-page",
+                    "-td",
+                    "-j",
+                    "-o", httpx_out_file,
+                ]
 
-            # Store results in the DB
-            with open(httpx_out_file, 'r') as f:
-                for line in f:
-                    # Fields available:
-                    #     timestamp
-                    #     port
-                    #     url !
-                    #     input
-                    #     location
-                    #     title !
-                    #     scheme
-                    #     webserver !
-                    #     content_type
-                    #     method
-                    #     host !
-                    #     path
-                    #     time
-                    #     a
-                    #     tech !
-                    #     words
-                    #     lines
-                    #     status_code !
-                    #     content_length
-                    #     failed !
-                    #     headless_body !
-                    #     screenshot_bytes !
-                    #     stored_response_path
-                    #     screenshot_path
-                    #     screenshot_path_rel
-                    #     knowledgebase
-                    #     resolvers
-                    screenshot_json = json.loads(line)
-                    # for key in screenshot_json:
-                    #     if not key in ['screenshot_bytes', 'headless_body']:
-                    #         self.stdout.write(f"{key}: {screenshot_json[key]}")
-                    #     else:
-                    #         self.stdout.write(f"{key}: AAAAA....")
-                    # exit(0)
-                    # Extract domain from url and match to ActiveDomain
-                    parsed_url = urlparse(screenshot_json["url"])
-                    domain_value = parsed_url.hostname
-                    domain_obj = None
-                    if domain_value:
-                        domain_obj = ActiveDomain.objects.filter(value__iexact=domain_value).first()
-                        
-                    screenshot_defaults = {
-                        "domain": domain_obj,
-                        "technologies": ",".join(screenshot_json.get("tech", [])),
-                        "screenshot_base64": screenshot_json.get("screenshot_bytes", ""),
-                        "title": screenshot_json.get("title", ""),
-                        "webserver": screenshot_json.get("webserver", ""),
-                        "host_ip": screenshot_json.get("host", ""),
-                        "status_code": screenshot_json.get("status_code", None),
-                        "response_body": screenshot_json.get("headless_body", ""),
-                        "failed": screenshot_json.get("failed", False),
-                        "date": make_aware(datetime.now())
-                    }
-                    # Create or update Screenshot by url
-                    screenshot_obj, created = Screenshot.objects.update_or_create(
-                        url=screenshot_json["url"],
-                        defaults=screenshot_defaults,
-                    )
-                    domain_obj.lastscan_time = make_aware(datetime.now())
-                    domain_obj.save()
-                    self.stdout.write(f"Screenshot saved for url: {screenshot_json['url']}")
+                try:
+                    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd="/var/www/", check=True, text=True)
+                    self.stdout.write(f"Chunk {chunk_index + 1}: Httpx scan completed successfully.")
+                except subprocess.CalledProcessError as e:
+                    self.stdout.write(f"Chunk {chunk_index + 1}: Error occurred while running Httpx (exit code {e.returncode}):")
+                    if e.stderr:
+                        self.stdout.write(f"STDERR: {e.stderr}")
+                    if e.stdout:
+                        self.stdout.write(f"STDOUT: {e.stdout}")
+                    return []
+                except Exception as e:
+                    self.stdout.write(f"Chunk {chunk_index + 1}: Unexpected error running Httpx: {e}")
+                    return []
+
+                # Process results from this chunk
+                results = []
+                try:
+                    with open(httpx_out_file, 'r') as f:
+                        for line in f:
+                            if line.strip():  # Skip empty lines
+                                try:
+                                    screenshot_json = json.loads(line)
+                                    results.append(screenshot_json)
+                                except json.JSONDecodeError as e:
+                                    self.stdout.write(f"Chunk {chunk_index + 1}: Error parsing JSON line: {e}")
+                                    continue
+                except FileNotFoundError:
+                    self.stdout.write(f"Chunk {chunk_index + 1}: Output file not found")
+                
+                self.stdout.write(f"Chunk {chunk_index + 1}: Processed {len(results)} results")
+                return results
+
+        # Process chunks in parallel using ThreadPoolExecutor
+        all_results = []
+        with ThreadPoolExecutor(max_workers=20) as executor:
+            # Submit all chunks for processing
+            futures = [executor.submit(process_httpx_chunk, i, chunk) for i, chunk in enumerate(url_chunks)]
+            
+            # Collect results as they complete
+            for future in as_completed(futures):
+                try:
+                    chunk_results = future.result()
+                    all_results.extend(chunk_results)
+                except Exception as e:
+                    self.stdout.write(f"Error processing chunk: {e}")
+
+        self.stdout.write(f"Total results collected: {len(all_results)}")
+
+        # Store all results in the DB
+        for screenshot_json in all_results:
+            # Fields available:
+            #     timestamp
+            #     port
+            #     url !
+            #     input
+            #     location
+            #     title !
+            #     scheme
+            #     webserver !
+            #     content_type
+            #     method
+            #     host !
+            #     path
+            #     time
+            #     a
+            #     tech !
+            #     words
+            #     lines
+            #     status_code !
+            #     content_length
+            #     failed !
+            #     headless_body !
+            #     screenshot_bytes !
+            #     stored_response_path
+            #     screenshot_path
+            #     screenshot_path_rel
+            #     knowledgebase
+            #     resolvers
+            
+            # Extract domain from url and match to ActiveDomain
+            parsed_url = urlparse(screenshot_json["url"])
+            domain_value = parsed_url.hostname
+            domain_obj = None
+            if domain_value:
+                domain_obj = ActiveDomain.objects.filter(value__iexact=domain_value).first()
+                
+            screenshot_defaults = {
+                "domain": domain_obj,
+                "technologies": ",".join(screenshot_json.get("tech", [])),
+                "screenshot_base64": screenshot_json.get("screenshot_bytes", ""),
+                "title": screenshot_json.get("title", ""),
+                "webserver": screenshot_json.get("webserver", ""),
+                "host_ip": screenshot_json.get("host", ""),
+                "status_code": screenshot_json.get("status_code", None),
+                "response_body": screenshot_json.get("headless_body", ""),
+                "failed": screenshot_json.get("failed", False),
+                "date": make_aware(datetime.now())
+            }
+            # Create or update Screenshot by url
+            screenshot_obj, created = Screenshot.objects.update_or_create(
+                url=screenshot_json["url"],
+                defaults=screenshot_defaults,
+            )
+            if domain_obj:
+                domain_obj.lastscan_time = make_aware(datetime.now())
+                domain_obj.save()
+            self.stdout.write(f"Screenshot saved for url: {screenshot_json['url']}")
                     
