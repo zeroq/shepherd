@@ -8,7 +8,7 @@ from django.conf import settings
 from django.utils import timezone
 from django.utils.timezone import make_aware
 from django.http import HttpResponseForbidden
-from project.models import Project, Suggestion, ActiveDomain
+from project.models import Project, Suggestion, Asset
 from findings.models import Finding, Port
 from findings.utils import asset_get_or_create, asset_finding_get_or_create, ignore_asset, ignore_finding
 from django.http import JsonResponse
@@ -23,7 +23,7 @@ from findings.models import Screenshot
 @login_required
 def assets(request):
     # Check if the user has the "view_project" permission or is in the read-only users
-    if not request.user.has_perm('project.view_activedomain'):
+    if not request.user.has_perm('project.view_asset'):
         return HttpResponseForbidden("You do not have permission.")
     
     context = {'projectid': request.session['current_project']['prj_id']}
@@ -31,7 +31,7 @@ def assets(request):
 
     # check for POST request
     if request.method == 'POST':
-        if not request.user.has_perm('project.change_activedomain'):
+        if not request.user.has_perm('project.change_asset'):
             return HttpResponseForbidden("You do not have permission.")
         # determine action
         if "btnignore" in request.POST:
@@ -49,14 +49,14 @@ def assets(request):
             if action == "ignore":
                 try:
                     ignore_asset(uuid, prj)
-                except ActiveDomain.DoesNotExist:
+                except Asset.DoesNotExist:
                     messages.error(request, 'Unknown Asset: %s' % uuid)
                     continue # take next item
-                messages.info(request, 'Ignored Asset: %s' % ActiveDomain.objects.get(uuid=uuid).value)
+                messages.info(request, 'Ignored Asset: %s' % Asset.objects.get(uuid=uuid).value)
             elif action == "move":
                 try:
                     s_obj = Suggestion.objects.get(uuid=uuid)
-                    a_obj = ActiveDomain.objects.get(uuid=uuid)
+                    a_obj = Asset.objects.get(uuid=uuid)
                     # disable monitoring
                     s_obj.monitor = False
                     s_obj.save()
@@ -68,11 +68,11 @@ def assets(request):
                 messages.info(request, 'Moved Asset back to suggestions: %s' % s_obj.value)
             elif action == "delete":
                 try:
-                    a_obj = ActiveDomain.objects.get(uuid=uuid)
+                    a_obj = Asset.objects.get(uuid=uuid)
                     domain_to_delete = a_obj.value
                     a_obj.delete()
                     messages.info(request, 'Deleted Asset: %s' % domain_to_delete)
-                except ActiveDomain.DoesNotExist:
+                except Asset.DoesNotExist:
                     messages.error(request, 'Unknown Asset: %s' % uuid)
                     continue  # take next item
         # redirect to asset list
@@ -86,12 +86,12 @@ def assets(request):
 def move_asset(request, uuid):
     """move asset to suggestions
     """
-    if not request.user.has_perm('project.change_activedomain'):
+    if not request.user.has_perm('project.change_asset'):
         return HttpResponseForbidden("You do not have permission.")
     
     try:
         s_obj = Suggestion.objects.get(uuid=uuid)
-        a_obj = ActiveDomain.objects.get(uuid=uuid)
+        a_obj = Asset.objects.get(uuid=uuid)
     except Exception as error:
         messages.error(request, 'Unknown: %s' % error)
         return redirect(reverse('findings:assets'))
@@ -106,7 +106,7 @@ def move_asset(request, uuid):
 def move_all_assets(request):
     """move all assets back to suggestions
     """
-    if not request.user.has_perm('project.change_activedomain'):
+    if not request.user.has_perm('project.change_asset'):
         return HttpResponseForbidden("You do not have permission.")
     
     context = {'projectid': request.session['current_project']['prj_id']}
@@ -116,7 +116,7 @@ def move_all_assets(request):
         messages.error(request, 'Unknown Project: %s' % error)
         return redirect(reverse('findings:assets'))
     # disable monitoring
-    a_objs = prj_obj.activedomain_set.all()
+    a_objs = prj_obj.asset_set.all()
     for a_obj in a_objs:
         s_obj = Suggestion.objects.get(uuid=a_obj.uuid)
         s_obj.monitor = False
@@ -131,7 +131,7 @@ def move_all_assets(request):
 def ignore_asset_glyphicon(request, uuid):
     """move asset to ignore list
     """
-    if not request.user.has_perm('project.change_activedomain'):
+    if not request.user.has_perm('project.change_asset'):
         return HttpResponseForbidden("You do not have permission.")
 
     context = {'projectid': request.session['current_project']['prj_id']}
@@ -139,7 +139,7 @@ def ignore_asset_glyphicon(request, uuid):
     
     try:
         ignore_asset(uuid, prj)
-    except ActiveDomain.DoesNotExist:
+    except Asset.DoesNotExist:
         messages.error(request, 'Unknown Asset: %s' % uuid)
 
     return redirect(reverse('findings:assets'))
@@ -163,12 +163,12 @@ def ignore_finding_glyphicon(request, findingid):
 def delete_asset(request, uuid):
     """delete asset from monitoring (still in suggestions)
     """
-    if not request.user.has_perm('project.delete_activedomain'):
+    if not request.user.has_perm('project.delete_asset'):
         return HttpResponseForbidden("You do not have permission.")
     
     try:
         s_obj = Suggestion.objects.get(uuid=uuid)
-        a_obj = ActiveDomain.objects.get(uuid=uuid)
+        a_obj = Asset.objects.get(uuid=uuid)
     except Exception as error:
         messages.error(request, 'Unknown: %s' % error)
         return redirect(reverse('findings:assets'))
@@ -183,12 +183,12 @@ def delete_asset(request, uuid):
 def activate_asset(request, uuid):
     """move asset from ignore list back to active asset list
     """
-    if not request.user.has_perm('project.change_activedomain'):
+    if not request.user.has_perm('project.change_asset'):
         return HttpResponseForbidden("You do not have permission.")
     
     try:
-        a_obj = ActiveDomain.objects.get(uuid=uuid)
-    except ActiveDomain.DoesNotExist:
+        a_obj = Asset.objects.get(uuid=uuid)
+    except Asset.DoesNotExist:
         messages.error(request, 'Unknown Asset: %s' % uuid)
         return redirect(reverse('findings:assets'))
     a_obj.monitor = True
@@ -198,7 +198,7 @@ def activate_asset(request, uuid):
 @login_required
 def activate_all_assets(request):
     """Move all ignored assets back to active monitoring"""
-    if not request.user.has_perm('project.change_activedomain'):
+    if not request.user.has_perm('project.change_asset'):
         return HttpResponseForbidden("You do not have permission.")
 
     context = {'projectid': request.session['current_project']['prj_id']}
@@ -210,7 +210,7 @@ def activate_all_assets(request):
         return redirect(reverse('findings:ignored_assets'))
 
     # Update all ignored assets for the project to set monitor=True
-    prj_obj.activedomain_set.filter(monitor=False).update(monitor=True)
+    prj_obj.asset_set.filter(monitor=False).update(monitor=True)
 
     messages.info(request, 'All ignored assets have been reactivated.')
     return redirect(reverse('findings:assets'))
@@ -219,12 +219,12 @@ def activate_all_assets(request):
 def view_asset(request, uuid):
     """view asset details
     """
-    if not request.user.has_perm('project.view_activedomain'):
+    if not request.user.has_perm('project.view_asset'):
         return HttpResponseForbidden("You do not have permission.")
     
     try:
-        a_obj = ActiveDomain.objects.get(uuid=uuid)
-    except ActiveDomain.DoesNotExist:
+        a_obj = Asset.objects.get(uuid=uuid)
+    except Asset.DoesNotExist:
         messages.error(request, 'Unknown Asset: %s' % uuid)
         return redirect(reverse('findings:assets'))
     context = {
@@ -258,12 +258,12 @@ def view_asset(request, uuid):
 def view_asset_reported(request, uuid):
     """view asset already reported findings
     """
-    if not request.user.has_perm('project.view_activedomain'):
+    if not request.user.has_perm('project.view_asset'):
         return HttpResponseForbidden("You do not have permission.")
     
     try:
-        a_obj = ActiveDomain.objects.get(uuid=uuid)
-    except ActiveDomain.DoesNotExist:
+        a_obj = Asset.objects.get(uuid=uuid)
+    except Asset.DoesNotExist:
         messages.error(request, 'Unknown Asset: %s' % uuid)
         return redirect(reverse('findings:assets'))
     context = {
@@ -362,7 +362,7 @@ def recent_findings(request):
     # count 
     # severity findings
     five_days = datetime.now() - timedelta(days=settings.RECENT_DAYS) # X days ago
-    recent_active_domains = prj_obj.activedomain_set.all().filter(monitor=True, lastscan_time__gte=make_aware(five_days))
+    recent_active_domains = prj_obj.asset_set.all().filter(monitor=True, lastscan_time__gte=make_aware(five_days))
     context['num_info'] = Finding.objects.filter(last_seen__gte=make_aware(five_days), domain__in=recent_active_domains, 
     severity='info').count()
     context['num_low'] = Finding.objects.filter(last_seen__gte=make_aware(five_days), domain__in=recent_active_domains, 
@@ -441,8 +441,8 @@ def delete_finding(request, uuid, findingid, reported):
         return HttpResponseForbidden("You do not have permission.")
     
     try:
-        a_obj = ActiveDomain.objects.get(uuid=uuid)
-    except ActiveDomain.DoesNotExist:
+        a_obj = Asset.objects.get(uuid=uuid)
+    except Asset.DoesNotExist:
         messages.error(request, 'Unknown Asset: %s' % uuid)
         return redirect(reverse('findings:assets'))
     a_obj.finding_set.filter(id=findingid).delete() 
@@ -468,7 +468,7 @@ def scan_assets(request):
 
         # If scan_new_assets is set, override selected_uuids with all new asset UUIDs
         if scan_new_assets:
-            new_assets = ActiveDomain.objects.filter(related_project=project_id, lastscan_time__isnull=True)
+            new_assets = Asset.objects.filter(related_project=project_id, lastscan_time__isnull=True)
             selected_uuids = list(new_assets.values_list('uuid', flat=True))
 
         def scan_nmap():
@@ -578,7 +578,7 @@ def export_technologies_csv(request):
         return HttpResponseForbidden("Project does not exist.")
 
     # Get all screenshots for the project
-    domains = prj.activedomain_set.all()
+    domains = prj.asset_set.all()
     screenshots = Port.objects.none()    
     screenshots = Screenshot.objects.filter(domain__in=domains).order_by('-date')
 

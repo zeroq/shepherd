@@ -7,7 +7,7 @@ import dateparser
 from django.core.management.base import BaseCommand, CommandError
 from django.utils.timezone import make_aware
 from datetime import datetime
-from project.models import ActiveDomain, Project, Suggestion
+from project.models import Asset, Project, Suggestion
 from findings.models import Finding
 import tldextract
 

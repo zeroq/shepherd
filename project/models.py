@@ -55,14 +55,17 @@ class Suggestion(models.Model):
     def __str__(self):
         return "%s - %s" % (self.finding_type, self.value)
 
-class ActiveDomain(models.Model):
+class Asset(models.Model):
     """Active Domains for monitoring
     """
+    uuid = models.CharField(max_length=36, primary_key=True)
+
     related_keyword = models.ForeignKey("Keyword", on_delete=models.CASCADE, null=True, blank=True)
     related_project = models.ForeignKey("Project", on_delete=models.CASCADE)  # relation to the project
+
+    scope = models.CharField(max_length=100, default='external', blank=True, null=True)  # can be: external, internal
     finding_subtype = models.CharField(max_length=100, default='domain')  # can be: domain, subdomain
     value = models.CharField(max_length=2048, default='')
-    uuid = models.CharField(max_length=36, primary_key=True)
     source = models.CharField(max_length=200, default='')  # can be cert.sh for example
     creation_time = models.DateTimeField()  # when was it found to be created
     lastscan_time = models.DateTimeField(blank=True, null=True)  # when was it last scanned
@@ -104,7 +107,7 @@ class ActiveCertificate(models.Model):
 
 
 class RelatedIP(models.Model):
-    related_domains = models.ForeignKey("ActiveDomain", on_delete=models.CASCADE)
+    related_domains = models.ForeignKey("Asset", on_delete=models.CASCADE)
     ip = models.GenericIPAddressField()
 
 

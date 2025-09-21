@@ -1,12 +1,12 @@
 from django.db import models
-from project.models import ActiveDomain, Keyword
+from project.models import Asset, Keyword
 
 # Create your models here.
 
 class Port(models.Model):
     """class to describe open ports
     """
-    domain = models.ForeignKey(ActiveDomain, on_delete=models.CASCADE)
+    domain = models.ForeignKey(Asset, on_delete=models.CASCADE)
     domain_name = models.CharField(max_length=2048, default='')
     scan_date = models.DateTimeField(null=True)
     first_seen = models.DateTimeField(auto_now_add=True)
@@ -24,7 +24,7 @@ class Port(models.Model):
 class Finding(models.Model):
     """class to describe a security finding
     """
-    domain = models.ForeignKey(ActiveDomain, on_delete=models.CASCADE, null=True)
+    domain = models.ForeignKey(Asset, on_delete=models.CASCADE, null=True)
     keyword = models.ForeignKey(Keyword, on_delete=models.CASCADE, null=True)
     domain_name = models.CharField(max_length=2048, default='')
 
@@ -64,7 +64,7 @@ class Screenshot(models.Model):
     Model to store screenshots and related metadata for a URL.
     """
     url = models.CharField(max_length=2048, primary_key=True)
-    domain = models.ForeignKey(ActiveDomain, on_delete=models.CASCADE, null=True, default=None)
+    domain = models.ForeignKey(Asset, on_delete=models.CASCADE, null=True, default=None)
     technologies = models.CharField(max_length=2048, blank=True, default='')
     screenshot_base64 = models.TextField(blank=True, default='')  # base64-encoded image
     title = models.CharField(max_length=2048, blank=True, default='')

@@ -1,7 +1,7 @@
 
 from rest_framework import serializers
 
-from project.models import Job, Project, Keyword, Suggestion, ActiveDomain
+from project.models import Job, Project, Keyword, Suggestion, Asset
 from findings.models import Finding, Port, Screenshot
 
 class ProjectSerializer(serializers.ModelSerializer):
@@ -24,7 +24,7 @@ class PortSerializer(serializers.ModelSerializer):
         model = Port
         fields = '__all__'
 
-class ActiveDomainSerializer(serializers.ModelSerializer):
+class AssetSerializer(serializers.ModelSerializer):
     vuln_critical = serializers.IntegerField()
     vuln_high = serializers.IntegerField()
     vuln_medium = serializers.IntegerField()
@@ -33,7 +33,7 @@ class ActiveDomainSerializer(serializers.ModelSerializer):
     vulns = serializers.SerializerMethodField()
 
     class Meta:
-        model = ActiveDomain
+        model = Asset
         fields = '__all__'
 
     def get_vulns(self, obj):

@@ -34,7 +34,7 @@ class Command(BaseCommand):
         parser.add_argument(
             '--uuids',
             type=str,
-            help='Comma separated list of ActiveDomain UUIDs to process',
+            help='Comma separated list of Asset UUIDs to process',
             required=False,
         )
         parser.add_argument(
@@ -61,7 +61,7 @@ class Command(BaseCommand):
 
         for prj in projects:
             prj_items = []
-            domains_qs = prj.activedomain_set.filter(monitor=True)
+            domains_qs = prj.asset_set.filter(monitor=True)
             # Filter by uuids if provided
             if uuids_arg:
                 uuid_list = [u.strip() for u in uuids_arg.split(",") if u.strip()]

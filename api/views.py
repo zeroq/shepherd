@@ -13,10 +13,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 
 from api.pagination import CustomPaginator
-from api.serializer import JobSerializer, ProjectSerializer, KeywordSerializer, SuggestionSerializer, ActiveDomainSerializer, FindingSerializer, PortSerializer, ScreenshotSerializer
+from api.serializer import JobSerializer, ProjectSerializer, KeywordSerializer, SuggestionSerializer, AssetSerializer, FindingSerializer, PortSerializer, ScreenshotSerializer
 from api.utils import get_ordering_vars
 
-from project.models import Project, Keyword, Suggestion, ActiveDomain, Job
+from project.models import Project, Keyword, Suggestion, Asset, Job
 from findings.models import Finding, Port, Screenshot
 from django_celery_beat.models import PeriodicTask, IntervalSchedule, CrontabSchedule, ClockedSchedule
 
@@ -190,7 +190,7 @@ def list_suggestions(request, projectid, selection, vtype, format=None):
 @authentication_classes((SessionAuthentication,))
 @permission_classes((IsAuthenticated,))
 def list_assets(request, projectid, selection, format=None):
-    if not request.user.has_perm('project.view_activedomain'):
+    if not request.user.has_perm('project.view_asset'):
         return HttpResponseForbidden("You do not have permission to view this project.")
     
     paginator = CustomPaginator()
@@ -222,9 +222,9 @@ def list_assets(request, projectid, selection, format=None):
 
     ### create queryset
     if selection in ['monitored']:
-        queryset = prj.activedomain_set.filter(monitor=True)
+        queryset = prj.asset_set.filter(monitor=True)
     else:
-        queryset = prj.activedomain_set.filter(monitor=False)
+        queryset = prj.asset_set.filter(monitor=False)
 
     # Annotate vulnerabilities
     queryset = queryset.annotate(
@@ -285,7 +285,7 @@ def list_assets(request, projectid, selection, format=None):
 
     ### paginate queryset
     assets = paginator.paginate_queryset(queryset, request)
-    serializer = ActiveDomainSerializer(instance=assets, many=True)
+    serializer = AssetSerializer(instance=assets, many=True)
     return paginator.get_paginated_response(serializer.data)
 
 
@@ -392,7 +392,7 @@ def list_ports(request, projectid, format=None):
         return JsonResponse({"status": True, "code": 200, "next": None, "previous": None, "count": 0, "iTotalRecords": 0, "iTotalDisplayRecords": 0, "results": []})
 
     # Fetch all active domains associated with the project
-    active_domains = ActiveDomain.objects.filter(related_project=prj)
+    active_domains = Asset.objects.filter(related_project=prj)
 
     # Define queryset to filter ports by active domains
     queryset = Port.objects.filter(domain__in=active_domains)
@@ -485,7 +485,7 @@ def list_recent_findings(request, projectid, severity, format=None):
         search_value = None
     ### create queryset
     five_days = datetime.now() - timedelta(days=settings.RECENT_DAYS) # X days ago
-    recent_active_domains = prj.activedomain_set.all().filter(monitor=True, lastscan_time__gte=make_aware(five_days))
+    recent_active_domains = prj.asset_set.all().filter(monitor=True, lastscan_time__gte=make_aware(five_days))
     queryset = Finding.objects.filter(last_seen__gte=make_aware(five_days), domain__in=recent_active_domains, severity=severity)
     ### filter by search value
     if search_value and len(search_value)>1:
@@ -521,7 +521,7 @@ def list_all_findings(request, projectid, format=None):
         return JsonResponse({"status": True, "code": 200, "next": None, "previous": None, "count": 0, "iTotalRecords": 0, "iTotalDisplayRecords": 0, "results": []})
 
     ### create queryset
-    active_domains = prj.activedomain_set.all().filter(monitor=True)
+    active_domains = prj.asset_set.all().filter(monitor=True)
     queryset = Finding.objects.filter(domain__in=active_domains, source='nuclei')
 
     # Filter by monitored/ignored/all status if provided
@@ -795,7 +795,7 @@ def list_screenshots(request, projectid, format=None):
         })
 
     # Filtering and search
-    domains = prj.activedomain_set.all()
+    domains = prj.asset_set.all()
     queryset = Screenshot.objects.filter(domain__in=domains).order_by('-date')
 
     # DataTables search on columns

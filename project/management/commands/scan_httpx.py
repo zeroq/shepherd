@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 from django.core.management.base import BaseCommand, CommandError
 from django.utils.timezone import make_aware
 from datetime import datetime
-from project.models import ActiveDomain, Project
+from project.models import Asset, Project
 from findings.models import Screenshot
 from django.conf import settings
 import tempfile
@@ -24,7 +24,7 @@ class Command(BaseCommand):
         parser.add_argument(
             '--uuids',
             type=str,
-            help='Comma separated list of ActiveDomain UUIDs to process',
+            help='Comma separated list of Asset UUIDs to process',
             required=False,
         )
         parser.add_argument(
@@ -49,7 +49,7 @@ class Command(BaseCommand):
             screenshot_qs = Screenshot.objects.filter(screenshot_base64='').exclude(domain=None)
             # Get unique domain IDs from these screenshots
             domain_ids = screenshot_qs.values_list('domain_id', flat=True).distinct()
-            active_domains = ActiveDomain.objects.filter(uuid__in=domain_ids, monitor=True)
+            active_domains = Asset.objects.filter(uuid__in=domain_ids, monitor=True)
             if projectid:
                 active_domains = active_domains.filter(related_project_id=projectid)
             if uuids_arg:
@@ -59,11 +59,11 @@ class Command(BaseCommand):
             if projectid:
                 try:
                     project = Project.objects.get(id=projectid)
-                    active_domains = ActiveDomain.objects.filter(monitor=True, related_project=project)
+                    active_domains = Asset.objects.filter(monitor=True, related_project=project)
                 except Project.DoesNotExist:
                     raise CommandError(f"Project with ID {projectid} does not exist.")
             else:
-                active_domains = ActiveDomain.objects.filter(monitor=True)
+                active_domains = Asset.objects.filter(monitor=True)
 
             # Filter by uuids if provided
             if uuids_arg:
@@ -211,12 +211,12 @@ class Command(BaseCommand):
             #     knowledgebase
             #     resolvers
             
-            # Extract domain from url and match to ActiveDomain
+            # Extract domain from url and match to Asset
             parsed_url = urlparse(screenshot_json["url"])
             domain_value = parsed_url.hostname
             domain_obj = None
             if domain_value:
-                domain_obj = ActiveDomain.objects.filter(value__iexact=domain_value).first()
+                domain_obj = Asset.objects.filter(value__iexact=domain_value).first()
                 
             screenshot_defaults = {
                 "domain": domain_obj,

@@ -8,7 +8,7 @@ from django.utils import timezone
 from django.conf import settings
 from django.utils.html import escape
 import uuid as imported_uuid
-from project.models import Suggestion, ActiveDomain, Project
+from project.models import Suggestion, Asset, Project
 from jobs.utils import run_job
 from suggestions.forms import AddSuggestionForm
 import requests
@@ -73,10 +73,10 @@ def suggestions(request):
                 if s_obj.finding_type in ['certificate', 'domain']:
                     # check if entry already exists
                     try:
-                        m_obj = ActiveDomain.objects.get(uuid=s_obj.uuid)
-                    except ActiveDomain.DoesNotExist:
-                        # copy to activedomain table
-                        m_obj = ActiveDomain()
+                        m_obj = Asset.objects.get(uuid=s_obj.uuid)
+                    except Asset.DoesNotExist:
+                        # copy to asset table
+                        m_obj = Asset()
                         m_obj.related_keyword = s_obj.related_keyword
                         m_obj.related_project = s_obj.related_project
                         m_obj.value = s_obj.value
@@ -214,7 +214,7 @@ def delete_suggestion_ignored(request, uuid):
 def monitor_suggestion(request, uuid):
     """move a suggestion to the monitored asset list
     """
-    if not request.user.has_perm('project.add_activedomain'):
+    if not request.user.has_perm('project.add_asset'):
         return HttpResponseForbidden("You do not have permission.")
     
     try:
@@ -225,10 +225,10 @@ def monitor_suggestion(request, uuid):
     if s_obj.finding_type in ['certificate', 'domain']:
         # check if entry already exists
         try:
-            m_obj = ActiveDomain.objects.get(uuid=s_obj.uuid)
-        except ActiveDomain.DoesNotExist:
+            m_obj = Asset.objects.get(uuid=s_obj.uuid)
+        except Asset.DoesNotExist:
             # copy to activedomain table
-            m_obj = ActiveDomain()
+            m_obj = Asset()
             m_obj.related_keyword = s_obj.related_keyword
             m_obj.related_project = s_obj.related_project
             m_obj.value = s_obj.value
@@ -251,14 +251,14 @@ def monitor_suggestion(request, uuid):
 def monitor_all_unique_domains_derprecated(request):
     """Monitor all domains that are active and that do not redirect to another domain
     """
-    if not request.user.has_perm('project.add_activedomain'):
+    if not request.user.has_perm('project.add_asset'):
         return HttpResponseForbidden("You do not have permission.")
     
     context = {'projectid': request.session['current_project']['prj_id']}
     s_objs = Suggestion.objects.filter(redirect_to=None).exclude(active=False).exclude(ignore=True)
 
     for s_obj in s_objs:
-        m_obj, _ = ActiveDomain.objects.get_or_create(uuid=s_obj.uuid,
+        m_obj, _ = Asset.objects.get_or_create(uuid=s_obj.uuid,
             defaults = {
                 "related_keyword": s_obj.related_keyword,
                 "related_project": s_obj.related_project,
@@ -507,7 +507,7 @@ def scan_suggestions(request):
             s_objs = Suggestion.objects.filter(redirect_to=None, related_project__id=project_id, finding_type='domain').exclude(active=False).exclude(ignore=True)
 
             for s_obj in s_objs:
-                m_obj, _ = ActiveDomain.objects.get_or_create(uuid=s_obj.uuid,
+                m_obj, _ = Asset.objects.get_or_create(uuid=s_obj.uuid,
                     defaults = {
                         "related_keyword": s_obj.related_keyword,
                         "related_project": s_obj.related_project,

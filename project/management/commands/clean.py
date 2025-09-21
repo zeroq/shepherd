@@ -1,13 +1,13 @@
 from django.core.management.base import BaseCommand
-from project.models import ActiveDomain, Suggestion
+from project.models import Asset, Suggestion
 
 class Command(BaseCommand):
-    help = 'Delete all ActiveDomain objects from the database.'
+    help = 'Delete all Asset objects from the database.'
 
     def handle(self, *args, **options):
-        count = ActiveDomain.objects.count()
-        ActiveDomain.objects.all().delete()
-        self.stdout.write(self.style.SUCCESS(f"Deleted {count} ActiveDomain objects."))
+        count = Asset.objects.count()
+        Asset.objects.all().delete()
+        self.stdout.write(self.style.SUCCESS(f"Deleted {count} Asset objects."))
 
         sugg_count = Suggestion.objects.filter(source='file_upload').count()
         Suggestion.objects.filter(source='file_upload').delete()

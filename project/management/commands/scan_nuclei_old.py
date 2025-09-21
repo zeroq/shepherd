@@ -7,7 +7,7 @@ from datetime import datetime
 import uuid
 from PyNuclei import Nuclei
 
-from project.models import Project, Keyword, Suggestion, ActiveDomain
+from project.models import Project, Keyword, Suggestion, Asset
 from findings.models import Finding
 
 from django.core.management.base import BaseCommand, CommandError
@@ -83,7 +83,7 @@ class Command(BaseCommand):
         projects = Project.objects.all()
         for prj in projects:
             print(prj.projectname)
-            for ad in prj.activedomain_set.all():
+            for ad in prj.asset_set.all():
                 if ad.monitor is False:
                     continue
                 print(ad.value)

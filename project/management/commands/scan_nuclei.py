@@ -5,12 +5,12 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from django.core.management.base import BaseCommand, CommandError
 from django.utils.timezone import make_aware
 from datetime import datetime
-from project.models import ActiveDomain, Project
+from project.models import Asset, Project
 from findings.models import Finding
 
 
 class Command(BaseCommand):
-    help = 'Trigger a Nuclei scan against all ActiveDomains domains in a specific project and store the results as Findings objects'
+    help = 'Trigger a Nuclei scan against all Assets domains in a specific project and store the results as Findings objects'
 
     def add_arguments(self, parser):
         # Add an optional projectid argument
@@ -34,7 +34,7 @@ class Command(BaseCommand):
         parser.add_argument(
             '--uuids',
             type=str,
-            help='Comma separated list of ActiveDomain UUIDs to process',
+            help='Comma separated list of Asset UUIDs to process',
             required=False,
         )
         parser.add_argument(
@@ -60,11 +60,11 @@ class Command(BaseCommand):
         if projectid:
             try:
                 project = Project.objects.get(id=projectid)
-                active_domains = ActiveDomain.objects.filter(monitor=True, related_project=project)
+                active_domains = Asset.objects.filter(monitor=True, related_project=project)
             except Project.DoesNotExist:
                 raise CommandError(f"Project with ID {projectid} does not exist.")
         else:
-            active_domains = ActiveDomain.objects.filter(monitor=True)
+            active_domains = Asset.objects.filter(monitor=True)
 
         # Filter by uuids if provided
         if uuids_arg:
