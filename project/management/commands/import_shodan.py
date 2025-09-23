@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 import uuid
 import tldextract
 
-from project.models import Project, Keyword, Suggestion
+from project.models import Project, Keyword, Asset
 
 from django.core.management.base import BaseCommand, CommandError
 from django.contrib.auth.models import User
@@ -88,9 +88,10 @@ class Command(BaseCommand):
                     sugg = {
                         "related_keyword": kw,
                         "related_project": prj,
-                        "finding_type": 'domain',
+                        "type": 'domain',
                         "value": hostname,
                         "source": 'shodan',
+                        "scope": 'external',
                         "link": f"https://www.shodan.io/host/{hostname}",
                         "raw": item,
                         "creation_time": make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds"))),
@@ -99,12 +100,12 @@ class Command(BaseCommand):
                     # Check if domain or subdomain
                     parsed_obj = tldextract.extract(hostname)
                     if parsed_obj.subdomain:
-                        sugg["finding_subtype"] = 'subdomain'
+                        sugg["subtype"] = 'subdomain'
                     else:
-                        sugg["finding_subtype"] = 'domain'
+                        sugg["subtype"] = 'domain'
 
                     item_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, f"{hostname}:{prj.id}")
-                    sobj, created = Suggestion.objects.get_or_create(uuid=item_uuid, defaults=sugg)
+                    sobj, created = Asset.objects.get_or_create(uuid=item_uuid, defaults=sugg)
 
                     if not created:
                         if 'shodan' not in sobj.source:
@@ -120,7 +121,7 @@ class Command(BaseCommand):
                     #     sugg["finding_subtype"] = 'domain'
                     #     sugg["value"] = domain
                     #     domain_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, f"{domain}:{prj.id}")
-                    #     sobj, created = Suggestion.objects.get_or_create(uuid=domain_uuid, defaults=sugg)
+                    #     sobj, created = Asset.objects.get_or_create(uuid=domain_uuid, defaults=sugg)
                     #     if not created:
                     #         if 'shodan' not in sobj.source:
                     #             sobj.source = sobj.source + ", shodan"

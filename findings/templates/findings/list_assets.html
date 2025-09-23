@@ -145,66 +145,6 @@
 
 </form> <!-- close selection form -->
 
-
-<div class="col-md-6">
-  <div class="panel panel-default">
-    <div class="panel-heading">// General Actions</div>
-    <div class="panel-body">
-      <button type="button" class="btn btn-primary btn-xs" onclick="location.href='{% url 'findings:activate_all_assets' %}'">
-        Reactivate all entries
-      </button>
-    </div>
-  </div>
-</div>
-
-<form id="form-selected-ignore" action="" method="POST">
-    {% csrf_token %}
-  
-  <div class="container-fluid" style="padding-left:0; padding-right:0;">
-    <div class="row">
-      <div class="col-md-6">
-        <div class="panel panel-default">
-          <div class="panel-heading">// Selected Actions</div>
-          <div class="panel-body">
-            <button type="submit" name="btndelete" id="delete-selected" class="btn btn-primary btn-xs">Delete selected</button>&nbsp;
-            <button type="submit" name="btnmove" id="move-selected" class="btn btn-primary btn-xs">Move back to suggestions</button>&nbsp;
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  
-  <!-- Asset List Tabs -->
-  <div class="panel panel-default">
-    <div class="panel-heading">
-      // Ignored Assets
-    </div>
-    <div class="panel-body">
-        <table id="table_list_ignored_assets" class="table table-condensed table-striped table-bordered" style="font-size: 0.9em;">
-          <thead>
-            <tr>
-              <th><input type="checkbox" name="select_all" value="1" id="select-all-items-ignore">&nbsp; Operations</th>
-              <th>Value</th>
-              <th>Source</th>
-              <th>Description</th>
-              <th>Created</th>
-            </tr>
-          </thead>
-          <thead>
-            <tr>
-              <th></th>
-              <th><input type="text" placeholder="Search Value" class="column-search-input"></th>
-              <th><input type="text" placeholder="Search Source" class="column-search-input"></th>
-              <th><input type="text" placeholder="Search Description" class="column-search-input"></th>
-              <th><input type="text" placeholder="Search Created" class="column-search-input"></th>
-            </tr>
-          </thead>
-          </table>
-      </div>
-  </div>
-  
-</form> <!-- close selection form -->
-
 {% endspaceless%}
 {% endblock %}
 
@@ -264,7 +204,7 @@ $(document).ready(function () {
         {'data': 'vulns', 'sName': 'Vulnerabilities'},
         {'data': 'source', 'sName': 'Source'},
         {'data': 'description', 'sName': 'Description'},
-        {'data': 'lastscan_time', 'sName': 'Last Scan',
+        {'data': 'last_scan_time', 'sName': 'Last Scan',
           'render': function(data, type, row) {
             if (!data) return '';
             if (window.moment) {

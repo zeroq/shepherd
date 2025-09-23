@@ -40,7 +40,7 @@ class Command(BaseCommand):
         parser.add_argument(
             '--new-assets',
             action='store_true',
-            help='Only scan assets with empty lastscan_time',
+            help='Only scan assets with empty last_scan_time',
         )
 
     def handle(self, *args, **kwargs):
@@ -73,7 +73,7 @@ class Command(BaseCommand):
 
         # Filter by new_assets_only if set
         if new_assets_only:
-            active_domains = active_domains.filter(lastscan_time__isnull=True)
+            active_domains = active_domains.filter(last_scan_time__isnull=True)
 
         if not active_domains.exists():
             self.stdout.write("No active domains found to scan.")
@@ -134,7 +134,7 @@ class Command(BaseCommand):
                 finding_obj.last_seen = finding_obj.scan_date
                 finding_obj.save()
 
-            domain.lastscan_time = make_aware(datetime.now())
+            domain.last_scan_time = make_aware(datetime.now())
             domain.save()
             if len(findings):
                 self.stdout.write(f'Stored and deduplicated {len(findings)} findings for domain {domain.value}')

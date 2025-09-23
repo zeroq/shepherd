@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from project.models import Asset, Suggestion
+from project.models import Asset
 
 class Command(BaseCommand):
     help = 'Delete all Asset objects from the database.'
@@ -9,6 +9,7 @@ class Command(BaseCommand):
         Asset.objects.all().delete()
         self.stdout.write(self.style.SUCCESS(f"Deleted {count} Asset objects."))
 
-        sugg_count = Suggestion.objects.filter(source='file_upload').count()
-        Suggestion.objects.filter(source='file_upload').delete()
-        self.stdout.write(self.style.SUCCESS(f"Deleted {sugg_count} Suggestion objects with source 'file_upload'."))
+        # Clean up external assets from file uploads
+        file_upload_count = Asset.objects.filter(source='file_upload', scope='external').count()
+        Asset.objects.filter(source='file_upload', scope='external').delete()
+        self.stdout.write(self.style.SUCCESS(f"Deleted {file_upload_count} external Asset objects with source 'file_upload'."))

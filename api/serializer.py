@@ -1,7 +1,7 @@
 
 from rest_framework import serializers
 
-from project.models import Job, Project, Keyword, Suggestion, Asset
+from project.models import Job, Project, Keyword, Asset
 from findings.models import Finding, Port, Screenshot
 
 class ProjectSerializer(serializers.ModelSerializer):
@@ -16,7 +16,7 @@ class KeywordSerializer(serializers.ModelSerializer):
 
 class SuggestionSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Suggestion
+        model = Asset
         fields = '__all__'
 
 class PortSerializer(serializers.ModelSerializer):

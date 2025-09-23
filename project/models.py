@@ -60,18 +60,32 @@ class Asset(models.Model):
     """
     uuid = models.CharField(max_length=36, primary_key=True)
 
-    related_keyword = models.ForeignKey("Keyword", on_delete=models.CASCADE, null=True, blank=True)
-    related_project = models.ForeignKey("Project", on_delete=models.CASCADE)  # relation to the project
-
-    scope = models.CharField(max_length=100, default='external', blank=True, null=True)  # can be: external, internal
-    finding_subtype = models.CharField(max_length=100, default='domain')  # can be: domain, subdomain
     value = models.CharField(max_length=2048, default='')
     source = models.CharField(max_length=200, default='')  # can be cert.sh for example
-    creation_time = models.DateTimeField()  # when was it found to be created
-    lastscan_time = models.DateTimeField(blank=True, null=True)  # when was it last scanned
+    related_keyword = models.ForeignKey("Keyword", on_delete=models.CASCADE, null=True, blank=True)
+    related_project = models.ForeignKey("Project", on_delete=models.CASCADE)  # relation to the project
+    active = models.BooleanField(null=True)
     description = models.TextField(blank=True, default='', null=True)
     link = models.CharField(max_length=1024, default='', blank=True, null=True)
-    monitor = models.BooleanField(default=True) # monitor this item
+
+    type = models.CharField(max_length=100, default='domain')  # can be: domain, ip, url, certificate, starred_domain
+    subtype = models.CharField(max_length=100, default='domain')  # can be: domain, subdomain
+    scope = models.CharField(max_length=100, default='external', blank=True, null=True)  # can be: external, internal
+
+    creation_time = models.DateTimeField()  # when was it found to be created
+    last_seen_time = models.DateTimeField(blank=True, null=True)  # when was it last seen
+    last_scan_time = models.DateTimeField(blank=True, null=True)  # when was it last scanned
+
+    cert_valid = models.BooleanField(default=True)
+    cert_wildcard = models.BooleanField(default=False)
+
+    monitor = models.BooleanField(default=False) # monitor this item
+    ignore = models.BooleanField(default=False) # ignore these findings in the future (set to invisible and ignore if it shows up again)
+    
+    # Redirect field
+    redirects_to = models.ForeignKey("Asset", on_delete=models.SET_NULL, null=True, blank=True)
+    
+    raw = models.JSONField(null=True, default=None)
     
     def __str__(self):
         return "%s - %s" % (self.value, self.source)
@@ -85,7 +99,7 @@ class ActiveIP(models.Model):
     uuid = models.CharField(max_length=36, primary_key=True)
     source = models.CharField(max_length=200, default='')  # can be cert.sh for example
     creation_time = models.DateTimeField()  # when was it found to be created
-    lastscan_time = models.DateTimeField(blank=True, null=True)  # when was it last scanned
+    last_scan_time = models.DateTimeField(blank=True, null=True)  # when was it last scanned
     description = models.TextField(blank=True, default='', null=True)
     link = models.CharField(max_length=1024)
     monitor = models.BooleanField(default=True) # monitor this item

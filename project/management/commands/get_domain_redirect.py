@@ -5,14 +5,14 @@ import requests
 import tldextract
 from urllib.parse import urlparse
 from django.core.management.base import BaseCommand
-from project.models import Suggestion
+from project.models import Asset
 from datetime import datetime, timezone
 from django.utils.timezone import make_aware
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 class Command(BaseCommand):
-    help = "Check for domain redirections and update the redirect_to field in Suggestion objects."
+    help = "Check for domain redirections and update the redirects_to field in Asset objects."
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -35,25 +35,26 @@ class Command(BaseCommand):
 
         uuids_arg = kwargs.get('uuids')
 
-        # Filter suggestions where active is not 'False'
-        suggestions = Suggestion.objects.exclude(active=False).filter(**project_filter).filter(finding_type='domain')
+        # Filter assets where active is not 'False'
+        assets = Asset.objects.exclude(active=False).filter(**project_filter).filter(scope='external', type='domain')
 
         # Filter by uuids if provided
         if uuids_arg:
             uuid_list = [u.strip() for u in uuids_arg.split(",") if u.strip()]
-            suggestions = suggestions.filter(uuid__in=uuid_list)
+            assets = assets.filter(uuid__in=uuid_list)
 
-        def process_suggestion(suggestion, projectid):
-            domain = suggestion.value
+        def process_asset(asset, projectid):
+            domain = asset.value
             final_domain = self.check_redirect(domain)
 
-            final_suggestion = None
+            final_asset = None
             if final_domain and final_domain != domain:
 
-                # Create the suggestion details for the final domain
-                sugg = {
-                    "finding_type": "domain",
-                    "related_project": suggestion.related_project,
+                # Create the asset details for the final domain
+                asset_data = {
+                    "type": "domain",
+                    "scope": "external",
+                    "related_project": asset.related_project,
                     "source": "redirect",
                     "description": f"Redirected from {domain}",
                     "active": True,
@@ -63,37 +64,37 @@ class Command(BaseCommand):
                 # Check if domain or subdomain
                 parsed_obj = tldextract.extract(final_domain)
                 if parsed_obj.subdomain:
-                    sugg["finding_subtype"] = 'subdomain'
+                    asset_data["subtype"] = 'subdomain'
                 else:
-                    sugg["finding_subtype"] = 'domain'
+                    asset_data["subtype"] = 'domain'
 
-                # Create suggestion entry
+                # Create asset entry
                 final_domain_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, f"{final_domain}:{projectid}")
-                final_suggestion, created = Suggestion.objects.get_or_create(
+                final_asset, created = Asset.objects.get_or_create(
                     value = final_domain,
                     uuid = final_domain_uuid,
-                    defaults=sugg,
+                    defaults=asset_data,
                 )
 
                 if not created:
-                    final_suggestion.last_seen_time = make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds")))
-                    if not 'redirect' in final_suggestion.source:
-                        final_suggestion.source = final_suggestion.source + ", redirect"
-                    final_suggestion.save()
+                    final_asset.last_seen_time = make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds")))
+                    if not 'redirect' in final_asset.source:
+                        final_asset.source = final_asset.source + ", redirect"
+                    final_asset.save()
 
                 self.stdout.write(f"{domain} redirects to {final_domain}")
                 # exit(0)
             else:
                 self.stdout.write(f"{domain} does not redirect.")
 
-            # Update the redirect_to field
-            suggestion.redirect_to = final_suggestion
-            suggestion.save()
+            # Update the redirects_to field
+            asset.redirects_to = final_asset
+            asset.save()
 
-        # Parallelize the processing of suggestions
+        # Parallelize the processing of assets
         projectid = kwargs.get('projectid')
         with ThreadPoolExecutor(max_workers=10) as executor:
-            futures = [executor.submit(process_suggestion, suggestion, projectid) for suggestion in suggestions]
+            futures = [executor.submit(process_asset, asset, projectid) for asset in assets]
             for future in as_completed(futures):
                 future.result()  # Raise exceptions if any
 

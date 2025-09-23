@@ -40,7 +40,7 @@ class Command(BaseCommand):
         parser.add_argument(
             '--new-assets',
             action='store_true',
-            help='Only scan assets with empty lastscan_time',
+            help='Only scan assets with empty last_scan_time',
         )
 
     def handle(self, *args, **options):
@@ -68,7 +68,7 @@ class Command(BaseCommand):
                 domains_qs = domains_qs.filter(uuid__in=uuid_list)
             # Filter by new_assets_only if set
             if new_assets_only:
-                domains_qs = domains_qs.filter(lastscan_time__isnull=True)
+                domains_qs = domains_qs.filter(last_scan_time__isnull=True)
 
             for ad in domains_qs:
                 prj_items.append((ad.value, ad))
@@ -95,7 +95,7 @@ class Command(BaseCommand):
                         port_obj.cpe = port_entry['cpe']
                         port_obj.raw = port_entry
                         port_obj.save()
-                ad_obj.lastscan_time = make_aware(datetime.now())
+                ad_obj.last_scan_time = make_aware(datetime.now())
                 ad_obj.save()
                 self.stdout.write(f"[+] {open_ports_cnt} ports found for {ad_obj.value}")
 

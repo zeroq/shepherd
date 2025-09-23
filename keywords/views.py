@@ -6,9 +6,8 @@ from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 
-from project.models import Project, Keyword
+from project.models import Project, Keyword, Asset
 from keywords.forms import AddKeywordForm
-from project.models import Suggestion
 from django.core.management import call_command
 import threading
 from django.utils.html import escape
@@ -24,7 +23,7 @@ def keywords(request):
     add_keyword_form = AddKeywordForm()
     
     descriptions = (
-        Suggestion.objects.filter(related_project_id=project_id)
+        Asset.objects.filter(related_project_id=project_id)
         .exclude(description__isnull=True)
         .exclude(description__exact="")
         .filter(description__icontains="registrant")

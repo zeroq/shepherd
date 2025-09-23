@@ -30,7 +30,7 @@ class Command(BaseCommand):
         parser.add_argument(
             '--new-assets',
             action='store_true',
-            help='Only scan assets with empty lastscan_time',
+            help='Only scan assets with empty last_scan_time',
         )
         parser.add_argument(
             '--missing-screenshots',
@@ -71,7 +71,7 @@ class Command(BaseCommand):
                 active_domains = active_domains.filter(uuid__in=uuid_list)
             # Filter by new_assets_only if set
             if new_assets_only:
-                active_domains = active_domains.filter(lastscan_time__isnull=True)
+                active_domains = active_domains.filter(last_scan_time__isnull=True)
 
         httpx_urls = []
         for active_domain in active_domains:
@@ -133,7 +133,7 @@ class Command(BaseCommand):
                 ]
 
                 try:
-                    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd="/var/www/", check=True, text=True)
+                    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd="/tmp/", check=True, text=True)
                     self.stdout.write(f"Chunk {chunk_index + 1}: Httpx scan completed successfully.")
                 except subprocess.CalledProcessError as e:
                     self.stdout.write(f"Chunk {chunk_index + 1}: Error occurred while running Httpx (exit code {e.returncode}):")
@@ -236,7 +236,7 @@ class Command(BaseCommand):
                 defaults=screenshot_defaults,
             )
             if domain_obj:
-                domain_obj.lastscan_time = make_aware(datetime.now())
+                domain_obj.last_scan_time = make_aware(datetime.now())
                 domain_obj.save()
             self.stdout.write(f"Screenshot saved for url: {screenshot_json['url']}")
                     

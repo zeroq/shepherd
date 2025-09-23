@@ -8,7 +8,7 @@ import uuid
 import tldextract
 import base64
 
-from project.models import Project, Keyword, Suggestion
+from project.models import Project, Keyword, Asset
 
 from django.core.management.base import BaseCommand, CommandError
 from django.contrib.auth.models import User
@@ -80,17 +80,18 @@ class Command(BaseCommand):
             sugg = {
                 "related_keyword": kw,
                 "related_project": prj,
-                "finding_type": 'ip',
+                "type": 'ip',
                 "value": ip_str,
                 "source": 'fofa',
+                "scope": 'external',
                 "link": f"https://fofa.info/result?q={params['qbase64']}",
                 "raw": item,
                 "creation_time": make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds"))),
                 "last_seen_time": make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds"))),
             }
-            sugg["finding_subtype"] = 'host'
+            sugg["subtype"] = 'host'
             item_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, f"{ip_str}:{prj.id}")
-            sobj, created = Suggestion.objects.get_or_create(uuid=item_uuid, defaults=sugg)
+            sobj, created = Asset.objects.get_or_create(uuid=item_uuid, defaults=sugg)
 
             # Build description
             description_list = []

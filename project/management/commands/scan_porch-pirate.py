@@ -2,7 +2,7 @@ import html
 import tempfile
 from urllib.parse import urlencode, quote_plus
 import subprocess
-from project.models import Project, Keyword, Suggestion
+from project.models import Project, Keyword, Asset
 from findings.models import Finding
 import re
 import json

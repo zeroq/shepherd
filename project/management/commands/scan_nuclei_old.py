@@ -7,7 +7,7 @@ from datetime import datetime
 import uuid
 from PyNuclei import Nuclei
 
-from project.models import Project, Keyword, Suggestion, Asset
+from project.models import Project, Keyword, Asset
 from findings.models import Finding
 
 from django.core.management.base import BaseCommand, CommandError
@@ -126,7 +126,7 @@ class Command(BaseCommand):
                     f_obj.raw = f
                     f_obj.save()
                 # update last scan
-                ad.lastscan_time = now()
+                ad.last_scan_time = now()
                 ad.save()
 
     def run_nuclei(domain_tuple):

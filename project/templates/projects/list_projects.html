@@ -155,7 +155,7 @@ $(document).on("click", ".confirm", function(e) {
         e.preventDefault();
         var title = $(this).attr('data-display');
         var location = $(this).attr('data-href');
-        bootbox.confirm('Are you sure?<br/>(Delete Project: '+title+')', function(confirmed) {
+        bootbox.confirm('Are you sure?', function(confirmed) {
             if(confirmed)
             {
                 window.location.replace(location);

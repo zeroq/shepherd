@@ -8,7 +8,7 @@ from django.conf import settings
 from django.utils import timezone
 from django.utils.timezone import make_aware
 from django.http import HttpResponseForbidden
-from project.models import Project, Suggestion, Asset
+from project.models import Project, Asset
 from findings.models import Finding, Port
 from findings.utils import asset_get_or_create, asset_finding_get_or_create, ignore_asset, ignore_finding
 from django.http import JsonResponse
@@ -55,17 +55,14 @@ def assets(request):
                 messages.info(request, 'Ignored Asset: %s' % Asset.objects.get(uuid=uuid).value)
             elif action == "move":
                 try:
-                    s_obj = Suggestion.objects.get(uuid=uuid)
                     a_obj = Asset.objects.get(uuid=uuid)
-                    # disable monitoring
-                    s_obj.monitor = False
-                    s_obj.save()
-                    # delete active entry
-                    a_obj.delete()
+                    # disable monitoring (equivalent to moving back to suggestions)
+                    a_obj.monitor = False
+                    a_obj.save()
                 except Exception as error:
                     messages.error(request, 'Unknown: %s' % error)
                     continue # take next item
-                messages.info(request, 'Moved Asset back to suggestions: %s' % s_obj.value)
+                messages.info(request, 'Disabled monitoring for Asset: %s' % a_obj.value)
             elif action == "delete":
                 try:
                     a_obj = Asset.objects.get(uuid=uuid)
@@ -84,27 +81,25 @@ def assets(request):
 
 @login_required
 def move_asset(request, uuid):
-    """move asset to suggestions
+    """disable monitoring for asset (equivalent to moving back to suggestions)
     """
     if not request.user.has_perm('project.change_asset'):
         return HttpResponseForbidden("You do not have permission.")
     
     try:
-        s_obj = Suggestion.objects.get(uuid=uuid)
         a_obj = Asset.objects.get(uuid=uuid)
     except Exception as error:
         messages.error(request, 'Unknown: %s' % error)
         return redirect(reverse('findings:assets'))
     # disable monitoring
-    s_obj.monitor = False
-    s_obj.save()
-    # delete active entry
-    a_obj.delete()
+    a_obj.monitor = False
+    a_obj.save()
+    messages.info(request, f'Disabled monitoring for Asset: {a_obj.value}')
     return redirect(reverse('findings:assets'))
 
 @login_required
 def move_all_assets(request):
-    """move all assets back to suggestions
+    """disable monitoring for all assets (equivalent to moving back to suggestions)
     """
     if not request.user.has_perm('project.change_asset'):
         return HttpResponseForbidden("You do not have permission.")
@@ -115,16 +110,14 @@ def move_all_assets(request):
     except Exception as error:
         messages.error(request, 'Unknown Project: %s' % error)
         return redirect(reverse('findings:assets'))
-    # disable monitoring
+    # disable monitoring for all assets
     a_objs = prj_obj.asset_set.all()
+    asset_count = len(a_objs)
     for a_obj in a_objs:
-        s_obj = Suggestion.objects.get(uuid=a_obj.uuid)
-        s_obj.monitor = False
-        s_obj.save()
-        # delete active entry
-        a_obj.delete()
+        a_obj.monitor = False
+        a_obj.save()
 
-    messages.info(request, f'{len(a_objs)} assets moved back to suggestions')
+    messages.info(request, f'Disabled monitoring for {asset_count} assets')
     return redirect(reverse('findings:assets'))
 
 @login_required
@@ -161,22 +154,20 @@ def ignore_finding_glyphicon(request, findingid):
 
 @login_required
 def delete_asset(request, uuid):
-    """delete asset from monitoring (still in suggestions)
+    """delete asset completely
     """
     if not request.user.has_perm('project.delete_asset'):
         return HttpResponseForbidden("You do not have permission.")
     
     try:
-        s_obj = Suggestion.objects.get(uuid=uuid)
         a_obj = Asset.objects.get(uuid=uuid)
     except Exception as error:
         messages.error(request, 'Unknown: %s' % error)
         return redirect(reverse('findings:assets'))
-    # disable monitoring
-    s_obj.monitor = False
-    s_obj.save()
-    # delete active entry
+    # delete the asset completely
+    asset_value = a_obj.value
     a_obj.delete()
+    messages.info(request, f'Deleted Asset: {asset_value}')
     return redirect(reverse('findings:assets'))
 
 @login_required
@@ -362,7 +353,7 @@ def recent_findings(request):
     # count 
     # severity findings
     five_days = datetime.now() - timedelta(days=settings.RECENT_DAYS) # X days ago
-    recent_active_domains = prj_obj.asset_set.all().filter(monitor=True, lastscan_time__gte=make_aware(five_days))
+    recent_active_domains = prj_obj.asset_set.all().filter(monitor=True, last_scan_time__gte=make_aware(five_days))
     context['num_info'] = Finding.objects.filter(last_seen__gte=make_aware(five_days), domain__in=recent_active_domains, 
     severity='info').count()
     context['num_low'] = Finding.objects.filter(last_seen__gte=make_aware(five_days), domain__in=recent_active_domains, 
@@ -468,7 +459,7 @@ def scan_assets(request):
 
         # If scan_new_assets is set, override selected_uuids with all new asset UUIDs
         if scan_new_assets:
-            new_assets = Asset.objects.filter(related_project=project_id, lastscan_time__isnull=True)
+            new_assets = Asset.objects.filter(related_project=project_id, last_scan_time__isnull=True)
             selected_uuids = list(new_assets.values_list('uuid', flat=True))
 
         def scan_nmap():

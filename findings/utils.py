@@ -1,4 +1,4 @@
-from project.models import Project, Suggestion, Asset
+from project.models import Project, Asset
 from findings.models import Finding
 import requests
 import json
@@ -89,11 +89,9 @@ def ignore_asset(uuid, prj):
     """move asset to ignore list
     """
     a_obj = Asset.objects.get(uuid=uuid, related_project=prj)
-    s_obj = Suggestion.objects.get(uuid=uuid, related_project=prj)
     a_obj.monitor = False
-    s_obj.ignore = True
+    a_obj.ignore = True
     a_obj.save()
-    s_obj.save()
 
     return
 

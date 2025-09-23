@@ -7,7 +7,7 @@ import dateparser
 from django.core.management.base import BaseCommand, CommandError
 from django.utils.timezone import make_aware
 from datetime import datetime
-from project.models import Asset, Project, Suggestion
+from project.models import Asset, Project
 from findings.models import Finding
 import tldextract
 
@@ -37,18 +37,18 @@ class Command(BaseCommand):
         if projectid:
             try:
                 project = Project.objects.get(id=projectid)
-                domains = Suggestion.objects.filter(ignore=False, related_project=project)
+                domains = Asset.objects.filter(scope='external', ignore=False, related_project=project)
             except Project.DoesNotExist:
                 raise CommandError(f"Project with ID {projectid} does not exist.")
         else:
-            domains = Suggestion.objects.filter(ignore=False)
+            domains = Asset.objects.filter(scope='external', ignore=False)
 
         # Filter by uuids if provided
         if uuids_arg:
             uuid_list = [u.strip() for u in uuids_arg.split(",") if u.strip()]
             domains = domains.filter(uuid__in=uuid_list)
         else:
-            domains = domains.filter(finding_type='starred_domain')
+            domains = domains.filter(type='starred_domain')
             
 
         if not domains.exists():
@@ -91,12 +91,13 @@ class Command(BaseCommand):
                     subfinder_domain = json.loads(line)
                     subfinder_domain_name = subfinder_domain['host'].lower()
 
-                    # Create the suggestion details
+                    # Create the asset details
                     sugg = {
                         "related_project": prj,
-                        "finding_type": 'domain',
+                        "type": 'domain',
                         "value": subfinder_domain_name,
                         "source": 'subfinder',
+                        "scope": 'external',
                         "link": '',
                         "raw": subfinder_domain,
                         "creation_time": make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds"))),
@@ -105,13 +106,13 @@ class Command(BaseCommand):
                     # Check if domain or subdomain
                     parsed_obj = tldextract.extract(subfinder_domain_name)
                     if parsed_obj.subdomain:
-                        sugg["finding_subtype"] = 'subdomain'
+                        sugg["subtype"] = 'subdomain'
                     else:
-                        sugg["finding_subtype"] = 'domain'
+                        sugg["subtype"] = 'domain'
 
                     # Create suggestion entry
                     subfinder_domain_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, f"{subfinder_domain_name}:{prj.id}")
-                    sobj, created = Suggestion.objects.get_or_create(uuid=subfinder_domain_uuid, related_project=prj, defaults=sugg)
+                    sobj, created = Asset.objects.get_or_create(uuid=subfinder_domain_uuid, related_project=prj, defaults=sugg)
 
                     if created:
                         print(f"Add new suggestion: {subfinder_domain_name} to project {prj.projectname}")

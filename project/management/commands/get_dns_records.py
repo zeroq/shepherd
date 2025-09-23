@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from project.models import Suggestion
+from project.models import Asset
 import concurrent.futures
 import dns.resolver
 
@@ -27,40 +27,40 @@ class Command(BaseCommand):
 
         uuids_arg = kwargs.get('uuids')
 
-        suggestions = Suggestion.objects.filter(**project_filter).filter(finding_type='domain')
+        assets = Asset.objects.filter(**project_filter).filter(scope='external', type='domain')
         if uuids_arg:
             uuid_list = [u.strip() for u in uuids_arg.split(",") if u.strip()]
-            suggestions = suggestions.filter(uuid__in=uuid_list)
+            assets = assets.filter(uuid__in=uuid_list)
 
-        self.stdout.write(f"Checking DNS records for {suggestions.count()} active suggestions...")
+        self.stdout.write(f"Checking DNS records for {assets.count()} active assets...")
 
-        def check_dns(suggestion):
+        def check_dns(asset):
             record_types = ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS', 'SOA', 'PTR']
             try:
                 for record_type in record_types:
                     try:
-                        dns.resolver.resolve(suggestion.value, record_type)
-                        self.stdout.write(f"record found {record_type} for {suggestion.value}")
-                        return suggestion, True  # If any record type is resolved, mark as active
+                        dns.resolver.resolve(asset.value, record_type)
+                        self.stdout.write(f"record found {record_type} for {asset.value}")
+                        return asset, True  # If any record type is resolved, mark as active
                     except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN):
                         continue  # Try the next record type
-                return suggestion, False  # If no record types are resolved, mark as inactive
+                return asset, False  # If no record types are resolved, mark as inactive
             except Exception as e:
-                self.stderr.write(f"Error checking {suggestion.value}: {e}")
-                return suggestion, suggestion.active  # Keep the current status if an error occurs
+                self.stderr.write(f"Error checking {asset.value}: {e}")
+                return asset, asset.active  # Keep the current status if an error occurs
 
         with concurrent.futures.ThreadPoolExecutor() as executor:
-            future_to_suggestion = {executor.submit(check_dns, suggestion): suggestion for suggestion in suggestions}
-            for future in concurrent.futures.as_completed(future_to_suggestion):
-                suggestion, has_dns = future.result()
-                print(suggestion.value, has_dns)
+            future_to_asset = {executor.submit(check_dns, asset): asset for asset in assets}
+            for future in concurrent.futures.as_completed(future_to_asset):
+                asset, has_dns = future.result()
+                print(asset.value, has_dns)
                 if not has_dns:
-                    suggestion.active = False
-                    suggestion.save()
-                    self.stdout.write(f"Updated {suggestion.value}: active=False")
+                    asset.active = False
+                    asset.save()
+                    self.stdout.write(f"Updated {asset.value}: active=False")
                 else:
-                    suggestion.active = True
-                    suggestion.save()
-                    self.stdout.write(f"Updated {suggestion.value}: active=True")
+                    asset.active = True
+                    asset.save()
+                    self.stdout.write(f"Updated {asset.value}: active=True")
 
         self.stdout.write("DNS check completed.")

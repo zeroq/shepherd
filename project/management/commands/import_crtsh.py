@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 import uuid
 import tldextract
 
-from project.models import Project, Keyword, Suggestion
+from project.models import Project, Keyword, Asset
 
 from django.core.management.base import BaseCommand
 from django.conf import settings
@@ -85,13 +85,14 @@ class Command(BaseCommand):
                 if '@' in domain:
                     continue
 
-                # Create the suggestion details
+                # Create the asset details
                 sugg = {
                     "related_keyword": kw,
                     "related_project": prj,
-                    "finding_type": 'domain',
+                    "type": 'domain',
                     "value": domain,
                     "source": 'crtsh',
+                    "scope": 'external',
                     "active": True,
                     "creation_time": make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds"))),
                     "last_seen_time": make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds"))),
@@ -100,18 +101,18 @@ class Command(BaseCommand):
                 # Check if domain or subdomain
                 parsed_obj = tldextract.extract(domain)
                 if parsed_obj.subdomain:
-                    sugg["finding_subtype"] = 'subdomain'
+                    sugg["subtype"] = 'subdomain'
                 else:
-                    sugg["finding_subtype"] = 'domain'
+                    sugg["subtype"] = 'domain'
 
                 # Add starred domains
                 if '*' in domain:
-                    sugg["finding_type"] = 'starred_domain'
-                    sugg["finding_subtype"] = ''
+                    sugg["type"] = 'starred_domain'
+                    sugg["subtype"] = ''
 
-                # Create suggestion entry
+                # Create asset entry
                 domain_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, f"{domain}:{prj.id}")
-                sobj, created = Suggestion.objects.get_or_create(uuid=domain_uuid, defaults=sugg)
+                sobj, created = Asset.objects.get_or_create(uuid=domain_uuid, defaults=sugg)
 
                 # In case of update
                 if not created:
@@ -129,14 +130,14 @@ class Command(BaseCommand):
                 parsed_obj = tldextract.extract(domain)
                 if parsed_obj.subdomain:
 
-                    # Create a new suggestion
+                    # Create a new asset
                     domain = ".".join([parsed_obj.domain, parsed_obj.suffix])
-                    sugg["finding_subtype"] = 'domain'
+                    sugg["subtype"] = 'domain'
                     sugg["value"] = domain
 
-                    # Suggestion entry creation
+                    # Asset entry creation
                     domain_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, f"{domain}:{prj.id}")
-                    sobj, created = Suggestion.objects.get_or_create(uuid=domain_uuid, defaults=sugg)
+                    sobj, created = Asset.objects.get_or_create(uuid=domain_uuid, defaults=sugg)
 
                     # In case of update
                     if not created:

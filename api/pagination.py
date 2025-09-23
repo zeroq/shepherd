@@ -51,7 +51,8 @@ class CustomPaginator(PageNumberPagination):
         try:
             self.page = paginator.page(page_number)
         except:
-            self.page = 1
+            # If page number is invalid, default to page 1
+            self.page = paginator.page(1)
         self.request = request
         return list(self.page)
 

@@ -8,7 +8,7 @@ from django.utils import timezone
 from django.conf import settings
 from django.utils.html import escape
 import uuid as imported_uuid
-from project.models import Suggestion, Asset, Project
+from project.models import Asset, Project
 from jobs.utils import run_job
 from suggestions.forms import AddSuggestionForm
 import requests
@@ -25,7 +25,7 @@ from django.contrib.messages import get_messages, add_message, SUCCESS, ERROR
 def suggestions(request):
     """view all new and open suggestions
     """
-    if not request.user.has_perm('project.view_suggestion'):
+    if not request.user.has_perm('project.view_asset'):
         return HttpResponseForbidden("You do not have permission.")
     
     context = {'projectid': request.session['current_project']['prj_id'], 'suggestionform': AddSuggestionForm()}
@@ -33,15 +33,15 @@ def suggestions(request):
     if request.method == 'POST':
         # determine action
         if "btnmonitor" in request.POST:
-            if not request.user.has_perm('project.change_suggestion'):
+            if not request.user.has_perm('project.change_asset'):
                 return HttpResponseForbidden("You do not have permission.")
             action = "monitor"
         elif "btnignore" in request.POST:
-            if not request.user.has_perm('project.change_suggestion'):
+            if not request.user.has_perm('project.change_asset'):
                 return HttpResponseForbidden("You do not have permission.")
             action = "ignore"
         elif "btndelete" in request.POST:
-            if not request.user.has_perm('project.delete_suggestion'):
+            if not request.user.has_perm('project.delete_asset'):
                 return HttpResponseForbidden("You do not have permission.")
             action = "delete"
         else:
@@ -52,25 +52,25 @@ def suggestions(request):
         for item in id_lst:
             if action == "delete":
                 try:
-                    s_obj = Suggestion.objects.get(uuid=item).delete()
-                except Suggestion.DoesNotExist:
+                    s_obj = Asset.objects.get(uuid=item, scope='external').delete()
+                except Asset.DoesNotExist:
                     messages.error(request, 'Unknown Suggestion: %s' % item)
                     continue # take next item
             elif action == "ignore":
                 try:
-                    s_obj = Suggestion.objects.get(uuid=item)
+                    s_obj = Asset.objects.get(uuid=item, scope='external')
                     s_obj.ignore = True
                     s_obj.save()
-                except Suggestion.DoesNotExist:
+                except Asset.DoesNotExist:
                     messages.error(request, 'Unknown Suggestion: %s' % item)
                     continue # take next item
             elif action == "monitor":
                 try:
-                    s_obj = Suggestion.objects.get(uuid=item)
-                except Suggestion.DoesNotExist:
+                    s_obj = Asset.objects.get(uuid=item, scope='external')
+                except Asset.DoesNotExist:
                     messages.error(request, 'Unknown Suggestion: %s' % item)
                     continue # take next item
-                if s_obj.finding_type in ['certificate', 'domain']:
+                if s_obj.type in ['certificate', 'domain']:
                     # check if entry already exists
                     try:
                         m_obj = Asset.objects.get(uuid=s_obj.uuid)
@@ -91,15 +91,15 @@ def suggestions(request):
                     s_obj.save()
                     messages.info(request, 'Added %s to the monitoring' % s_obj.value)
                 else:
-                    messages.error(request, 'Unsupported finding type: %s' % s_obj.finding_type)
+                    messages.error(request, 'Unsupported finding type: %s' % s_obj.type)
                     continue
         # redirect to suggestion list
         return redirect(reverse('suggestions:suggestions'))
     else:
         prj = Project.objects.get(id=request.session['current_project']['prj_id'])
-        context['domain_count'] = prj.suggestion_set.filter(finding_type='domain', ignore=False).count()
-        context['secondleveldomain_count'] = prj.suggestion_set.filter(finding_type='domain', finding_subtype='domain', ignore=False).count()
-        context['starreddomain_count'] = prj.suggestion_set.filter(finding_type='starred_domain', ignore=False).count()
+        context['domain_count'] = prj.asset_set.filter(scope='external', type='domain', ignore=False).count()
+        context['secondleveldomain_count'] = prj.asset_set.filter(scope='external', type='domain', subtype='domain', ignore=False).count()
+        context['starreddomain_count'] = prj.asset_set.filter(scope='external', type='starred_domain', ignore=False).count()
         context['ip_count'] = 0
         context['activetab'] = 'domain'
     return render(request, 'suggestions/list_suggestions.html', context)
@@ -108,7 +108,7 @@ def suggestions(request):
 @login_required
 def manual_add_suggestion(request):
     """Manually add a suggestion with XSS prevention"""
-    if not request.user.has_perm('project.add_suggestion'):
+    if not request.user.has_perm('project.add_asset'):
         return HttpResponseForbidden("You do not have permission.")
     
     if request.method == 'POST':
@@ -126,10 +126,19 @@ def manual_add_suggestion(request):
             project_id = request.session['current_project']['prj_id']
             record.related_project_id = project_id
 
+            # Set scope to external for assets created from suggestions
+            record.scope = 'external'
+
             # Generate UUID and save the record
-            record.uuid = imported_uuid.uuid5(imported_uuid.NAMESPACE_DNS, "%s" % record.value)
+            record.uuid = str(imported_uuid.uuid5(imported_uuid.NAMESPACE_DNS, f"{record.value}:{project_id}"))
+            print(record.uuid)
             record.creation_time = timezone.now()
-            record.save()
+            
+            # Ensure redirects_to is explicitly None to avoid foreign key issues
+            record.redirects_to = None
+            
+            # Use force_insert to avoid potential update conflicts
+            record.save(force_insert=True)
 
             messages.info(request, "Suggestion successfully added")
         else:
@@ -143,7 +152,7 @@ def manual_add_suggestion(request):
 def ignored_suggestions(request):
     """view all ignored suggestions
     """
-    if not request.user.has_perm('project.view_suggestion'):
+    if not request.user.has_perm('project.view_asset'):
         return HttpResponseForbidden("You do not have permission.")
     
     context = {'projectid': request.session['current_project']['prj_id']}
@@ -151,11 +160,11 @@ def ignored_suggestions(request):
     if request.method == 'POST':
         # determine action "move" or "delete"
         if "btnmove" in request.POST:
-            if not request.user.has_perm('project.change_suggestion'):
+            if not request.user.has_perm('project.change_asset'):
                 return HttpResponseForbidden("You do not have permission.")
             action = 'move'
         elif "btndelete" in request.POST:
-            if not request.user.has_perm('project.delete_suggestion'):
+            if not request.user.has_perm('project.delete_asset'):
                 return HttpResponseForbidden("You do not have permission.")
             action = 'delete'
         else:
@@ -166,16 +175,16 @@ def ignored_suggestions(request):
         for item in id_lst:
             if action == 'delete':
                 try:
-                    s_obj = Suggestion.objects.get(uuid=item).delete()
-                except Suggestion.DoesNotExist:
+                    s_obj = Asset.objects.get(uuid=item, scope='external').delete()
+                except Asset.DoesNotExist:
                     messages.error(request, 'Unknown Suggestion: %s' % item)
                     continue
             elif action == 'move':
                 try:
-                    s_obj = Suggestion.objects.get(uuid=item)
+                    s_obj = Asset.objects.get(uuid=item, scope='external')
                     s_obj.ignore = False
                     s_obj.save()
-                except Suggestion.DoesNotExist:
+                except Asset.DoesNotExist:
                     messages.error(request, 'Unknown Suggestion: %s' % item)
                     continue
         # redirect to ignore list
@@ -186,12 +195,12 @@ def ignored_suggestions(request):
 def delete_suggestion(request, uuid):
     """remove a suggestion
     """
-    if not request.user.has_perm('project.delete_suggestion'):
+    if not request.user.has_perm('project.delete_asset'):
         return HttpResponseForbidden("You do not have permission.")
     
     try:
-        s_obj = Suggestion.objects.get(uuid=uuid).delete()
-    except Suggestion.DoesNotExist:
+        s_obj = Asset.objects.get(uuid=uuid, scope='external').delete()
+    except Asset.DoesNotExist:
         messages.error(request, 'Unknown Suggestion: %s' % uuid)
         return redirect(reverse('suggestions:suggestions'))
     return redirect(reverse('suggestions:suggestions'))
@@ -200,12 +209,12 @@ def delete_suggestion(request, uuid):
 def delete_suggestion_ignored(request, uuid):
     """remove a suggestion from ignored view
     """
-    if not request.user.has_perm('project.delete_suggestion'):
+    if not request.user.has_perm('project.delete_asset'):
         return HttpResponseForbidden("You do not have permission.")
     
     try:
-        s_obj = Suggestion.objects.get(uuid=uuid).delete()
-    except Suggestion.DoesNotExist:
+        s_obj = Asset.objects.get(uuid=uuid, scope='external').delete()
+    except Asset.DoesNotExist:
         messages.error(request, 'Unknown Suggestion: %s' % uuid)
         return redirect(reverse('suggestions:ignored_suggestions'))
     return redirect(reverse('suggestions:ignored_suggestions'))
@@ -218,34 +227,19 @@ def monitor_suggestion(request, uuid):
         return HttpResponseForbidden("You do not have permission.")
     
     try:
-        s_obj = Suggestion.objects.get(uuid=uuid)
-    except Suggestion.DoesNotExist:
+        s_obj = Asset.objects.get(uuid=uuid, scope='external')
+        if s_obj.type in ['certificate', 'domain']:
+            s_obj.monitor = True
+            s_obj.save()
+            messages.info(request, 'Added %s to the monitoring' % s_obj.value)
+            return redirect(reverse('suggestions:suggestions'))
+        else:
+            messages.error(request, 'Unsupported finding type: %s' % s_obj.type)
+            return redirect(reverse('suggestions:suggestions'))
+    except Asset.DoesNotExist:
         messages.error(request, 'Unknown Suggestion: %s' % uuid)
         return redirect(reverse('suggestions:suggestions'))
-    if s_obj.finding_type in ['certificate', 'domain']:
-        # check if entry already exists
-        try:
-            m_obj = Asset.objects.get(uuid=s_obj.uuid)
-        except Asset.DoesNotExist:
-            # copy to activedomain table
-            m_obj = Asset()
-            m_obj.related_keyword = s_obj.related_keyword
-            m_obj.related_project = s_obj.related_project
-            m_obj.value = s_obj.value
-            m_obj.uuid = imported_uuid.uuid5(imported_uuid.NAMESPACE_DNS, "%s" % m_obj.value)
-            m_obj.source = s_obj.source
-            m_obj.creation_time = s_obj.creation_time
-            m_obj.description = s_obj.description
-            m_obj.link = s_obj.link
-            m_obj.save()
-        # hide from suggestions
-        s_obj.monitor = True
-        s_obj.save()
-        messages.info(request, 'Added %s to the monitoring' % s_obj.value)
-        return redirect(reverse('suggestions:suggestions'))
-    # if nothing matches it is not supported
-    messages.error(request, 'Unsupported finding type: %s' % s_obj.finding_type)
-    return redirect(reverse('suggestions:suggestions'))
+        
 
 @login_required
 def monitor_all_unique_domains_derprecated(request):
@@ -255,7 +249,7 @@ def monitor_all_unique_domains_derprecated(request):
         return HttpResponseForbidden("You do not have permission.")
     
     context = {'projectid': request.session['current_project']['prj_id']}
-    s_objs = Suggestion.objects.filter(redirect_to=None).exclude(active=False).exclude(ignore=True)
+    s_objs = Asset.objects.filter(scope='external').exclude(active=False).exclude(ignore=True)
 
     for s_obj in s_objs:
         m_obj, _ = Asset.objects.get_or_create(uuid=s_obj.uuid,
@@ -285,8 +279,8 @@ def ignore_suggestion(request, uuid):
         return HttpResponseForbidden("You do not have permission.")
     
     try:
-        s_obj = Suggestion.objects.get(uuid=uuid)
-    except Suggestion.DoesNotExist:
+        s_obj = Asset.objects.get(uuid=uuid, scope='external')
+    except Asset.DoesNotExist:
         messages.error(request, 'Unknown Suggestion: %s' % uuid)
         return redirect(reverse('suggestions:suggestions'))
     s_obj.ignore = True
@@ -301,8 +295,8 @@ def reactivate_suggestion(request, uuid):
         return HttpResponseForbidden("You do not have permission.")
     
     try:
-        s_obj = Suggestion.objects.get(uuid=uuid)
-    except Suggestion.DoesNotExist:
+        s_obj = Asset.objects.get(uuid=uuid, scope='external')
+    except Asset.DoesNotExist:
         messages.error(request, 'Unknown Suggestion: %s' % uuid)
         return redirect(reverse('suggestions:ignored_suggestions'))
     s_obj.ignore = False
@@ -313,7 +307,7 @@ def reactivate_suggestion(request, uuid):
 def delete_all_suggestions(request):
     """delete all suggestions in given project
     """
-    if not request.user.has_perm('project.delete_suggestion'):
+    if not request.user.has_perm('project.delete_asset'):
         return HttpResponseForbidden("You do not have permission.")
     
     context = {'projectid': request.session['current_project']['prj_id']}
@@ -327,68 +321,8 @@ def delete_all_suggestions(request):
     return redirect(reverse('suggestions:suggestions'))
 
 @login_required
-def update_suggestions(request):
-    """update suggestions
-    """
-    if not request.user.has_perm('project.change_suggestion'):
-        return HttpResponseForbidden("You do not have permission.")
-    
-    context = {'projectid': request.session['current_project']['prj_id']}
-    try:
-        prj_obj = Project.objects.get(id=context['projectid'])
-    except Exception as error:
-        messages.error(request, 'Unknown Project: %s' % error)
-        return redirect(reverse('suggestions:suggestions'))
-    # run keywords of project against crt.sh
-    for kw in prj_obj.keyword_set.all():
-        if kw.enabled is False:
-            continue
-        url = 'https://crt.sh/?output=json&q=%s' % (kw)
-        rsp = requests.get(url)
-        result = json.loads(rsp.content)
-        for item in result:
-            item_uuid = imported_uuid.uuid5(imported_uuid.NAMESPACE_DNS, "%s" % item['common_name'])
-            try:
-                sobj = Suggestion.objects.get(uuid=item_uuid)
-                new_object = False
-            except Suggestion.DoesNotExist:
-                new_object = True
-            # ignore existing suggestions
-            if new_object is False:
-                continue
-            if item['common_name'].count('*')>0:
-                wildcard = True
-            else:
-                wildcard = False
-            # check if certificate is still valid
-            before = dateparser.parse(item['not_before'])
-            after = dateparser.parse(item['not_after'])
-            now = datetime.now()
-            valid = False
-            if before<=now<=after:
-                valid = True
-            # prepare suggestion object
-            sugg = {
-                'related_keyword': kw,
-                'related_project': prj_obj,
-                'finding_type': 'certificate',
-                'value': item['common_name'],
-                'uuid': item_uuid,
-                'source': 'crt.sh',
-                'description': item['issuer_name']+'|'+item['name_value'],
-                'creation_time': make_aware(dateparser.parse(item['entry_timestamp'])),
-                'link': '',
-                'cert_valid': valid,
-                'cert_wildcard': wildcard
-            }
-            # create suggestion entry
-            sobj = Suggestion.objects.create(**sugg)
-    messages.info(request, 'Suggestions Updated successfully')
-    return redirect(reverse('suggestions:suggestions'))
-
-@login_required
 def upload_suggestions(request):
-    if not request.user.has_perm('project.add_suggestion'):
+    if not request.user.has_perm('project.add_asset'):
         return HttpResponseForbidden("You do not have permission.")
         
     context = {'projectid': request.session['current_project']['prj_id']}
@@ -413,24 +347,25 @@ def upload_suggestions(request):
                         "related_project": prj_obj,
                         "value": domain,
                         "source": "file_upload",
-                        "finding_subtype": "domain",
-                        "finding_type": "domain",
+                        "subtype": "domain",
+                        "type": "domain",
+                        "scope": "external",
                         "creation_time": make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds"))),
                     }
 
                     # Check if Starred domain
                     if domain.startswith("*"):
-                        sugg_defaults["finding_type"] = "starred_domain"
+                        sugg_defaults["type"] = "starred_domain"
 
                     # Check if domain or subdomain
                     parsed_obj = tldextract.extract(domain)
                     if parsed_obj.subdomain:
-                        sugg_defaults["finding_subtype"] = 'subdomain'
+                        sugg_defaults["subtype"] = 'subdomain'
                     else:
-                        sugg_defaults["finding_subtype"] = 'domain'
+                        sugg_defaults["subtype"] = 'domain'
 
                     item_uuid = imported_uuid.uuid5(imported_uuid.NAMESPACE_DNS, f"{domain}:{prj_obj.id}")
-                    sobj, created = Suggestion.objects.get_or_create(uuid=item_uuid, defaults=sugg_defaults)
+                    sobj, created = Asset.objects.get_or_create(uuid=item_uuid, defaults=sugg_defaults)
 
                     if created:
                         created_cnt += 1
@@ -504,7 +439,7 @@ def scan_suggestions(request):
                 print(f"Error running get_domain_redirect: {e}")
 
         def monitor_all_unique_domains():
-            s_objs = Suggestion.objects.filter(redirect_to=None, related_project__id=project_id, finding_type='domain').exclude(active=False).exclude(ignore=True)
+            s_objs = Asset.objects.filter(scope='external', related_project__id=project_id, type='domain').exclude(active=False).exclude(ignore=True)
 
             for s_obj in s_objs:
                 m_obj, _ = Asset.objects.get_or_create(uuid=s_obj.uuid,
@@ -550,11 +485,11 @@ def scan_suggestions(request):
 @login_required
 def export_suggestions_csv(request):
     """Export all suggestions for the current project as a CSV file for download."""
-    if not request.user.has_perm('project.view_suggestion'):
+    if not request.user.has_perm('project.view_asset'):
         return HttpResponseForbidden("You do not have permission.")
 
     project_id = request.session['current_project']['prj_id']
-    suggestions = Suggestion.objects.filter(related_project__id=project_id)
+    suggestions = Asset.objects.filter(related_project__id=project_id, scope='external')
 
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = 'attachment; filename="suggestions.csv"'
@@ -562,8 +497,8 @@ def export_suggestions_csv(request):
     writer = csv.writer(response)
     # Write header
     writer.writerow([
-        'UUID', 'Value', 'Related Project', 'Related Keyword', 'Finding Type', 'Finding Subtype',
-        'Source', 'Description', 'Link', 'Creation Time', 'Active', 'Ignore', 'Monitor', 'Redirect To'
+        'UUID', 'Value', 'Related Project', 'Related Keyword', 'Type', 'Subtype',
+        'Source', 'Description', 'Link', 'Creation Time', 'Active', 'Ignore', 'Monitor', 'Redirects To', 'Scope'
     ])
     # Write data rows
     for s in suggestions:
@@ -572,8 +507,8 @@ def export_suggestions_csv(request):
             s.value,
             s.related_project.projectname if s.related_project else '',
             s.related_keyword.keyword if s.related_keyword else '',
-            s.finding_type,
-            s.finding_subtype,
+            s.type,
+            s.subtype,
             s.source,
             s.description,
             s.link,
@@ -581,6 +516,7 @@ def export_suggestions_csv(request):
             s.active,
             s.ignore,
             s.monitor,
-            s.redirect_to,
+            s.redirects_to.value if s.redirects_to else '',
+            s.scope,
         ])
     return response

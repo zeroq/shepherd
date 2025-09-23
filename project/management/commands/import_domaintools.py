@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 import uuid
 import tldextract
 
-from project.models import Project, Keyword, Suggestion
+from project.models import Project, Keyword, Asset
 
 from django.core.management.base import BaseCommand, CommandError
 from django.contrib.auth.models import User
@@ -160,13 +160,14 @@ class Command(BaseCommand):
             if '@' in item['domain']:
                 continue
 
-            # Create the suggestion details
+            # Create the asset details
             sugg = {
                 "related_keyword": kw,
                 "related_project": prj,
-                "finding_type": 'domain',
+                "type": 'domain',
                 "value": item['domain'],
                 "source": 'domaintools',
+                "scope": 'external',
                 "link": '',
                 "raw": item,
                 "creation_time": make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds"))),
@@ -175,13 +176,13 @@ class Command(BaseCommand):
             # Check if domain or subdomain
             parsed_obj = tldextract.extract(item['domain'])
             if parsed_obj.subdomain:
-                sugg["finding_subtype"] = 'subdomain'
+                sugg["subtype"] = 'subdomain'
             else:
-                sugg["finding_subtype"] = 'domain'
+                sugg["subtype"] = 'domain'
 
             # Create suggestion entry
             item_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, f"{item['domain']}:{prj.id}")
-            sobj, created = Suggestion.objects.get_or_create(uuid=item_uuid, defaults=sugg)
+            sobj, created = Asset.objects.get_or_create(uuid=item_uuid, defaults=sugg)
 
             # Build description
             description_list = []
@@ -222,12 +223,12 @@ class Command(BaseCommand):
             parsed_obj = tldextract.extract(item['domain'])
             if parsed_obj.subdomain:
 
-                # Create a new suggestion
+                # Create a new asset
                 domain = ".".join([parsed_obj.domain, parsed_obj.suffix])
-                sugg["finding_subtype"] = 'domain'
+                sugg["subtype"] = 'domain'
                 sugg["value"] = domain
                 domain_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, f"{domain}:{prj.id}")
-                sobj, created = Suggestion.objects.get_or_create(uuid=domain_uuid, defaults=sugg)
+                sobj, created = Asset.objects.get_or_create(uuid=domain_uuid, defaults=sugg)
 
                 if not created:
                     if str(item['active']) == "True":

@@ -1,7 +1,7 @@
 import html
 import tempfile
 import requests
-from project.models import Project, Keyword, Suggestion
+from project.models import Project, Keyword, Asset
 from findings.models import Finding
 import json
 

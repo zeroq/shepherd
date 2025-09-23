@@ -16,7 +16,7 @@ from api.pagination import CustomPaginator
 from api.serializer import JobSerializer, ProjectSerializer, KeywordSerializer, SuggestionSerializer, AssetSerializer, FindingSerializer, PortSerializer, ScreenshotSerializer
 from api.utils import get_ordering_vars
 
-from project.models import Project, Keyword, Suggestion, Asset, Job
+from project.models import Project, Keyword, Asset, Job
 from findings.models import Finding, Port, Screenshot
 from django_celery_beat.models import PeriodicTask, IntervalSchedule, CrontabSchedule, ClockedSchedule
 
@@ -90,7 +90,7 @@ def create_project(request, format=None):
 @authentication_classes((SessionAuthentication, ))
 @permission_classes((IsAuthenticated,))
 def list_suggestions(request, projectid, selection, vtype, format=None):
-    if not request.user.has_perm('project.view_suggestion'):
+    if not request.user.has_perm('project.view_asset'):
         return HttpResponseForbidden("You do not have permission to view this project.")
     
     paginator = CustomPaginator()
@@ -108,20 +108,18 @@ def list_suggestions(request, projectid, selection, vtype, format=None):
     search_creation_date = request.query_params.get('columns[5][search][value]', None)
     search_monitor = request.query_params.get('columns[6][search][value]', None)
     search_active = request.query_params.get('columns[7][search][value]', None)
-    # print(f"Search: {search_value}, {search_source}, {search_description}, {search_creation_date}, {search_active}, {search_monitor}")  # Debugging statement
-
     ### create queryset
     if selection in ['ignored']:
-        queryset = prj.suggestion_set.filter(ignore=True)
+        queryset = prj.asset_set.filter(scope='external', ignore=True)
     else:
-        queryset = prj.suggestion_set.filter(ignore=False)  # Do not display ignored suggestions
+        queryset = prj.asset_set.filter(scope='external', ignore=False)  # Do not display ignored suggestions
 
     if vtype in ['domain']:
-        queryset = queryset.filter(finding_type='domain')
+        queryset = queryset.filter(type='domain')
     elif vtype in ['starred_domain']:
-        queryset = queryset.filter(finding_type=vtype)
+        queryset = queryset.filter(type=vtype)
     elif vtype in ['second_level_domain']:
-        queryset = queryset.filter(finding_type='domain', finding_subtype='domain')
+        queryset = queryset.filter(type='domain', subtype='domain')
 
     ### filter by search value
     if search_value and len(search_value) > 1:
@@ -136,11 +134,10 @@ def list_suggestions(request, projectid, selection, vtype, format=None):
         queryset = queryset.filter(
             Q(description__icontains=search_description)
         )
-    ### Annotate the queryset with redirect_to.value
-    queryset = queryset.annotate(redirect_to_value=F('redirect_to__value'))
+    ### Don't use select_related as it causes performance issues with self-referencing FK
     if search_redirect_to and len(search_redirect_to) > 1:
         queryset = queryset.filter(
-            Q(redirect_to_value__icontains=search_redirect_to)
+            Q(redirects_to__value__icontains=search_redirect_to)
         )
     if search_creation_date and len(search_creation_date) > 1:
         queryset = queryset.filter(
@@ -161,8 +158,6 @@ def list_suggestions(request, projectid, selection, vtype, format=None):
         elif search_active.lower() == 'none':
             queryset = queryset.filter(active__isnull=True)
 
-    # print(f"Filtered queryset count: {queryset.count()}")  # Debugging statement
-
     ### get variables
     order_by_column, order_direction = get_ordering_vars(request.query_params,
                                                          default_column='creation_time',
@@ -170,14 +165,22 @@ def list_suggestions(request, projectid, selection, vtype, format=None):
     ### order queryset
     if order_by_column:
         queryset = queryset.order_by(f'{order_direction}{order_by_column}')
-
+    
     suggestions = paginator.paginate_queryset(queryset, request)
     serializer = SuggestionSerializer(instance=suggestions, many=True)
-
-    # Modify the serialized data to include the redirect_to_value
+    # Modify the serialized data to include the redirects_to_value
     serialized_data = serializer.data
+    
+    # Efficiently fetch redirect values for objects that have them
+    redirect_ids = [s.redirects_to_id for s in suggestions if s.redirects_to_id]
+    redirect_values = {}
+    if redirect_ids:
+        redirect_assets = Asset.objects.filter(uuid__in=redirect_ids).only('uuid', 'value')
+        redirect_values = {asset.uuid: asset.value for asset in redirect_assets}
+    
+    # Add redirect values to serialized data
     for item, suggestion in zip(serialized_data, suggestions):
-        item['redirect_to'] = suggestion.redirect_to_value
+        item['redirects_to'] = redirect_values.get(suggestion.redirects_to_id, None)
 
     return paginator.get_paginated_response(serialized_data)
 
@@ -216,15 +219,15 @@ def list_assets(request, projectid, selection, format=None):
         'vulns': request.query_params.get('columns[2][search][value]', None),
         'source': request.query_params.get('columns[3][search][value]', None),
         'description': request.query_params.get('columns[4][search][value]', None),
-        'lastscan_time': request.query_params.get('columns[5][search][value]', None),
+        'last_scan_time': request.query_params.get('columns[5][search][value]', None),
         'creation_time': request.query_params.get('columns[6][search][value]', None),
     }
 
     ### create queryset
     if selection in ['monitored']:
-        queryset = prj.asset_set.filter(monitor=True)
+        queryset = prj.asset_set.filter(monitor=True, ignore=False)
     else:
-        queryset = prj.asset_set.filter(monitor=False)
+        queryset = prj.asset_set.filter(monitor=False, ignore=False)
 
     # Annotate vulnerabilities
     queryset = queryset.annotate(
@@ -266,8 +269,8 @@ def list_assets(request, projectid, selection, format=None):
     if search_columns['description']:
         queryset = queryset.filter(description__icontains=search_columns['description'])
 
-    if search_columns['lastscan_time']:
-        queryset = queryset.filter(lastscan_time__icontains=search_columns['lastscan_time'])
+    if search_columns['last_scan_time']:
+        queryset = queryset.filter(last_scan_time__icontains=search_columns['last_scan_time'])
 
     if search_columns['creation_time']:
         queryset = queryset.filter(creation_time__icontains=search_columns['creation_time'])
@@ -392,7 +395,7 @@ def list_ports(request, projectid, format=None):
         return JsonResponse({"status": True, "code": 200, "next": None, "previous": None, "count": 0, "iTotalRecords": 0, "iTotalDisplayRecords": 0, "results": []})
 
     # Fetch all active domains associated with the project
-    active_domains = Asset.objects.filter(related_project=prj)
+    active_domains = Asset.objects.filter(related_project=prj, monitor=True)
 
     # Define queryset to filter ports by active domains
     queryset = Port.objects.filter(domain__in=active_domains)
@@ -459,50 +462,50 @@ def list_ports(request, projectid, format=None):
 
 ##### FINDINGS ###############
 
-@api_view(['GET'])
-@authentication_classes((SessionAuthentication, ))
-@permission_classes((IsAuthenticated,))
-def list_recent_findings(request, projectid, severity, format=None):
-    if not request.user.has_perm('findings.view_finding'):
-        return HttpResponseForbidden("You do not have permission to view this project.")
+# @api_view(['GET'])
+# @authentication_classes((SessionAuthentication, ))
+# @permission_classes((IsAuthenticated,))
+# def list_recent_findings(request, projectid, severity, format=None):
+#     if not request.user.has_perm('findings.view_finding'):
+#         return HttpResponseForbidden("You do not have permission to view this project.")
     
-    paginator = CustomPaginator()
-    if severity not in ['info', 'low', 'medium', 'high', 'critical']:
-        print("ERROR: wrong severity: %s" % severity)
-        severity = 'info'
-    ### check if project exists
-    try:
-        prj = Project.objects.get(id=projectid)
-    except Project.DoesNotExist:
-        return JsonResponse({"status": True, "code": 200, "next": None, "previous": None, "count": 0, "iTotalRecords": 0, "iTotalDisplayRecords": 0, "results": []})
-    ### get search parameters
-    if request.query_params:
-        if 'search[value]' in request.query_params:
-            search_value = request.query_params['search[value]']
-        else:
-            search_value = None
-    else:
-        search_value = None
-    ### create queryset
-    five_days = datetime.now() - timedelta(days=settings.RECENT_DAYS) # X days ago
-    recent_active_domains = prj.asset_set.all().filter(monitor=True, lastscan_time__gte=make_aware(five_days))
-    queryset = Finding.objects.filter(last_seen__gte=make_aware(five_days), domain__in=recent_active_domains, severity=severity)
-    ### filter by search value
-    if search_value and len(search_value)>1:
-        queryset = queryset.filter(
-            Q(vulnname__icontains=search_value)|
-            Q(description__icontains=search_value)
-        )
-    ### get variables
-    order_by_column, order_direction = get_ordering_vars(request.query_params,
-                                                         default_column='last_seen',
-                                                         default_direction='-')
-    ### order queryset
-    if order_by_column:
-        queryset = queryset.order_by('%s%s' % (order_direction, order_by_column))
-    kwrds = paginator.paginate_queryset(queryset, request)
-    serializer = FindingSerializer(instance=kwrds, many=True)
-    return paginator.get_paginated_response(serializer.data)
+#     paginator = CustomPaginator()
+#     if severity not in ['info', 'low', 'medium', 'high', 'critical']:
+#         print("ERROR: wrong severity: %s" % severity)
+#         severity = 'info'
+#     ### check if project exists
+#     try:
+#         prj = Project.objects.get(id=projectid)
+#     except Project.DoesNotExist:
+#         return JsonResponse({"status": True, "code": 200, "next": None, "previous": None, "count": 0, "iTotalRecords": 0, "iTotalDisplayRecords": 0, "results": []})
+#     ### get search parameters
+#     if request.query_params:
+#         if 'search[value]' in request.query_params:
+#             search_value = request.query_params['search[value]']
+#         else:
+#             search_value = None
+#     else:
+#         search_value = None
+#     ### create queryset
+#     five_days = datetime.now() - timedelta(days=settings.RECENT_DAYS) # X days ago
+#     recent_active_domains = prj.asset_set.all().filter(monitor=True, last_scan_time__gte=make_aware(five_days))
+#     queryset = Finding.objects.filter(last_seen__gte=make_aware(five_days), domain__in=recent_active_domains, severity=severity)
+#     ### filter by search value
+#     if search_value and len(search_value)>1:
+#         queryset = queryset.filter(
+#             Q(vulnname__icontains=search_value)|
+#             Q(description__icontains=search_value)
+#         )
+#     ### get variables
+#     order_by_column, order_direction = get_ordering_vars(request.query_params,
+#                                                          default_column='last_seen',
+#                                                          default_direction='-')
+#     ### order queryset
+#     if order_by_column:
+#         queryset = queryset.order_by('%s%s' % (order_direction, order_by_column))
+#     kwrds = paginator.paginate_queryset(queryset, request)
+#     serializer = FindingSerializer(instance=kwrds, many=True)
+#     return paginator.get_paginated_response(serializer.data)
 
 
 @api_view(['GET'])
@@ -629,7 +632,7 @@ def list_data_leaks(request, projectid, format=None):
 
     # create queryset
     data_leak_sources = ["porch-pirate", "swaggerhub", "ai_scribd"]
-    keywords = prj.keyword_set.all().filter(enabled=True)
+    keywords = prj.keyword_set.all()#.filter(enabled=True)
     queryset = Finding.objects.filter(source__in=data_leak_sources, keyword__in=keywords)
 
     # Filter by selection (monitored/ignored/all)
@@ -795,7 +798,7 @@ def list_screenshots(request, projectid, format=None):
         })
 
     # Filtering and search
-    domains = prj.asset_set.all()
+    domains = prj.asset_set.all().filter(monitor=True)
     queryset = Screenshot.objects.filter(domain__in=domains).order_by('-date')
 
     # DataTables search on columns
