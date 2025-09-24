@@ -241,35 +241,35 @@ def monitor_suggestion(request, uuid):
         return redirect(reverse('suggestions:suggestions'))
         
 
-@login_required
-def monitor_all_unique_domains_derprecated(request):
-    """Monitor all domains that are active and that do not redirect to another domain
-    """
-    if not request.user.has_perm('project.add_asset'):
-        return HttpResponseForbidden("You do not have permission.")
+# @login_required
+# def monitor_all_unique_domains_derprecated(request):
+#     """Monitor all domains that are active and that do not redirect to another domain
+#     """
+#     if not request.user.has_perm('project.add_asset'):
+#         return HttpResponseForbidden("You do not have permission.")
     
-    context = {'projectid': request.session['current_project']['prj_id']}
-    s_objs = Asset.objects.filter(scope='external').exclude(active=False).exclude(ignore=True)
+#     context = {'projectid': request.session['current_project']['prj_id']}
+#     s_objs = Asset.objects.filter(scope='external').exclude(active=False).exclude(ignore=True)
 
-    for s_obj in s_objs:
-        m_obj, _ = Asset.objects.get_or_create(uuid=s_obj.uuid,
-            defaults = {
-                "related_keyword": s_obj.related_keyword,
-                "related_project": s_obj.related_project,
-                "value": s_obj.value,
-                "source": s_obj.source,
-                "creation_time": s_obj.creation_time,
-                "description": s_obj.description,
-                "link": s_obj.link,
-                "monitor": True,
-            }
-        )
-        # hide from suggestions
-        s_obj.monitor = True
-        s_obj.save()
+#     for s_obj in s_objs:
+#         m_obj, _ = Asset.objects.get_or_create(uuid=s_obj.uuid,
+#             defaults = {
+#                 "related_keyword": s_obj.related_keyword,
+#                 "related_project": s_obj.related_project,
+#                 "value": s_obj.value,
+#                 "source": s_obj.source,
+#                 "creation_time": s_obj.creation_time,
+#                 "description": s_obj.description,
+#                 "link": s_obj.link,
+#                 "monitor": True,
+#             }
+#         )
+#         # hide from suggestions
+#         s_obj.monitor = True
+#         s_obj.save()
 
-    messages.info(request, f"Added {len(s_objs)} domains to the monitoring")
-    return redirect(reverse('suggestions:suggestions'))
+#     messages.info(request, f"Added {len(s_objs)} domains to the monitoring")
+#     return redirect(reverse('suggestions:suggestions'))
 
 @login_required
 def ignore_suggestion(request, uuid):
@@ -386,35 +386,35 @@ def upload_suggestions(request):
     return redirect(reverse('suggestions:suggestions'))
 
 
-@login_required
-def scan_redirects(request):
-    if not request.user.has_perm('project.change_suggestion'):
-        return HttpResponseForbidden("You do not have permission.")
+# @login_required
+# def scan_redirects(request):
+#     if not request.user.has_perm('project.change_suggestion'):
+#         return HttpResponseForbidden("You do not have permission.")
     
-    context = {'projectid': request.session['current_project']['prj_id']}
-    messages.info(request, 'Domain redirection scan against monitored suggested domains has been triggered in the background. (check jobs)')
+#     context = {'projectid': request.session['current_project']['prj_id']}
+#     messages.info(request, 'Domain redirection scan against monitored suggested domains has been triggered in the background. (check jobs)')
 
-    try:
-        # Get the project ID from the session
-        projectid = context['projectid']
+#     try:
+#         # Get the project ID from the session
+#         projectid = context['projectid']
 
-        # Define a function to run the command in a separate thread
-        def run_command():
-            try:
-                # call_command('get_domain_redirect', projectid=projectid)
-                command = 'get_domain_redirect'
-                args = f'--projectid {projectid}'
-                run_job(command, args, projectid, request.user)
-            except Exception as e:
-                print(f"Error running get_domain_redirect: {e}")
+#         # Define a function to run the command in a separate thread
+#         def run_command():
+#             try:
+#                 # call_command('get_domain_redirect', projectid=projectid)
+#                 command = 'get_domain_redirect'
+#                 args = f'--projectid {projectid}'
+#                 run_job(command, args, projectid, request.user)
+#             except Exception as e:
+#                 print(f"Error running get_domain_redirect: {e}")
 
-        # Start the thread
-        thread = threading.Thread(target=run_command)
-        thread.start()
+#         # Start the thread
+#         thread = threading.Thread(target=run_command)
+#         thread.start()
 
-    except Exception as e:
-        messages.error(request, f'Error: {e}')
-    return redirect(reverse('suggestions:suggestions'))
+#     except Exception as e:
+#         messages.error(request, f'Error: {e}')
+#     return redirect(reverse('suggestions:suggestions'))
 
 @login_required
 def scan_suggestions(request):
@@ -438,23 +438,19 @@ def scan_suggestions(request):
             except Exception as e:
                 print(f"Error running get_domain_redirect: {e}")
 
+        def scan_dns_records():
+            try:
+                command = 'get_dns_records'
+                args = f'--projectid {project_id}'
+                if selected_uuids:
+                    args += f' --uuids {",".join(selected_uuids)}'
+                run_job(command, args, project_id, request.user)
+            except Exception as e:
+                print(f"Error running get_dns_records: {e}")
+
         def monitor_all_unique_domains():
             s_objs = Asset.objects.filter(scope='external', related_project__id=project_id, type='domain').exclude(active=False).exclude(ignore=True)
-
             for s_obj in s_objs:
-                m_obj, _ = Asset.objects.get_or_create(uuid=s_obj.uuid,
-                    defaults = {
-                        "related_keyword": s_obj.related_keyword,
-                        "related_project": s_obj.related_project,
-                        "value": s_obj.value,
-                        "source": s_obj.source,
-                        "creation_time": s_obj.creation_time,
-                        "description": s_obj.description,
-                        "link": s_obj.link,
-                        "monitor": True,
-                    }
-                )
-                # hide from suggestions
                 s_obj.monitor = True
                 s_obj.save()
 
@@ -470,10 +466,15 @@ def scan_suggestions(request):
 
         def chained_jobs():
             # Run jobs sequentially: subfinder -> scan for redirection -> monitor not redirecting
+            # If scan for active status is selected, run it first AND last to ensure valid status of the domain assets
+            if "scan_dns_records" in request.POST:
+                scan_dns_records()
             if "subfinder_scan" in request.POST:
                 subfinder_scan()
             if "scan_for_redirection" in request.POST:
                 scan_redirect()
+            if "scan_dns_records" in request.POST:
+                scan_dns_records()
             if "monitor_not_redirecting" in request.POST:
                 monitor_all_unique_domains()
         thread = threading.Thread(target=chained_jobs)

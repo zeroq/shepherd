@@ -33,4 +33,8 @@ urlpatterns = [
 
     # Data leakage stuffs
     path('data_leaks/', views.data_leaks, name='data_leaks'),
+    
+    # Manual asset management
+    path('manual/add/', views.manual_add_asset, name='manual_add_asset'),
+    path('upload_assets/', views.upload_assets, name='upload_assets'),
 ]

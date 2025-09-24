@@ -3,19 +3,18 @@
 from django.urls import reverse
 from menu import Menu, MenuItem
 
-def top_keywords(request):
-    return '<span class="glyphicon" aria-hidden="true"></span> Keywords'
+def top_discovery(request):
+    return '<span class="glyphicon glyphicon-search" aria-hidden="true"></span> Discovery'
 
-sharing_children = (
-    MenuItem("Keywords",
-            reverse("keywords:keywords"),
-            weight=10
-        ),
+discovery_children = (
+    MenuItem("Discovery Keywords", reverse("keywords:keywords"), weight=10),
+    MenuItem("Asset Suggestions", reverse("suggestions:suggestions"), weight=20),
+    MenuItem("Assets Ignored ", reverse("suggestions:ignored_suggestions"), weight=30),
 )
 
-Menu.add_item("keywords", MenuItem(top_keywords,
-    reverse("keywords:keywords"),
+Menu.add_item("keywords", MenuItem(top_discovery,
+    "#",  # No direct URL for the parent menu
     weight=10,
-    children=sharing_children
+    children=discovery_children
     )
 )

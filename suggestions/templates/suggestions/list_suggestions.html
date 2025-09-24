@@ -20,7 +20,7 @@
     <div class="media-left">
     </div>
     <div class="media-body">
-      <h2 class="media-heading">External Assets</h2>all external assets discovered for monitoring ...
+      <h2 class="media-heading">Asset Suggestions</h2>Suggested assets that were discovered
     </div>
   </div>
 </div>
@@ -305,12 +305,22 @@
 
           <div class="form-group">
             <div class="form-check d-flex align-items-center" style="gap: 8px;">
+              <input type="checkbox" class="form-check-input" id="scan_dns_records" name="scan_dns_records" >
+              <label class="form-check-label mb-0" for="scan_dns_records" style="margin-bottom:0; margin-left:6px;">
+                Scan for active status
+              </label>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <div class="form-check d-flex align-items-center" style="gap: 8px;">
               <input type="checkbox" class="form-check-input" id="monitor_not_redirecting" name="monitor_not_redirecting">
               <label class="form-check-label mb-0" for="monitor_not_redirecting" style="margin-bottom:0; margin-left:6px;">
                 AutoMonitor the domains not redirecting (will be done after the scans if any selected)
               </label>
             </div>
           </div>
+
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>

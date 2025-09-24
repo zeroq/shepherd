@@ -1,4 +1,7 @@
 import tld
+import tldextract
+import dateparser
+import uuid as imported_uuid
 from datetime import datetime, timedelta
 from django.shortcuts import render, redirect
 from django.urls import reverse
@@ -7,16 +10,17 @@ from django.contrib.auth.decorators import login_required
 from django.conf import settings
 from django.utils import timezone
 from django.utils.timezone import make_aware
+from django.utils.html import escape
 from django.http import HttpResponseForbidden
 from project.models import Project, Asset
-from findings.models import Finding, Port
+from findings.models import Finding, Port, Screenshot
 from findings.utils import asset_get_or_create, asset_finding_get_or_create, ignore_asset, ignore_finding
+from findings.forms import AddAssetForm
 from django.http import JsonResponse
 import threading
 from jobs.utils import run_job
 from django.http import StreamingHttpResponse
 import csv
-from findings.models import Screenshot
 
 
 #### Asset stuffs
@@ -28,6 +32,9 @@ def assets(request):
     
     context = {'projectid': request.session['current_project']['prj_id']}
     prj = Project.objects.get(id=context['projectid'])
+    
+    # Add form for manual asset addition
+    context['assetform'] = AddAssetForm()
 
     # check for POST request
     if request.method == 'POST':
@@ -110,14 +117,19 @@ def move_all_assets(request):
     except Exception as error:
         messages.error(request, 'Unknown Project: %s' % error)
         return redirect(reverse('findings:assets'))
-    # disable monitoring for all assets
-    a_objs = prj_obj.asset_set.all()
-    asset_count = len(a_objs)
-    for a_obj in a_objs:
-        a_obj.monitor = False
-        a_obj.save()
 
-    messages.info(request, f'Disabled monitoring for {asset_count} assets')
+    def move_all_assets_task(prj_obj):
+        # disable monitoring for all assets
+        a_objs = prj_obj.asset_set.filter(monitor=True)
+        for a_obj in a_objs:
+            a_obj.monitor = False
+            a_obj.save()
+
+    # Start processing in a background thread
+    thread = threading.Thread(target=move_all_assets_task, args=(prj_obj,))
+    thread.start()
+    messages.success(request, f"All monitored assets are being disabled in the background. Please refresh the page after a while to see the results.")
+
     return redirect(reverse('findings:assets'))
 
 @login_required
@@ -641,3 +653,119 @@ def data_leaks(request):
             messages.info(request, 'Ignore status toggled for selected findings.')
 
     return render(request, 'findings/list_data_leaks.html', context)
+
+
+@login_required
+def manual_add_asset(request):
+    """Manually add an asset with XSS prevention"""
+    if not request.user.has_perm('project.add_asset'):
+        return HttpResponseForbidden("You do not have permission.")
+    
+    if request.method == 'POST':
+        form = AddAssetForm(request.POST)
+        if form.is_valid():
+            record = form.save(commit=False)
+
+            # Sanitize all fields to prevent XSS
+            record.value = escape(record.value)
+            record.description = escape(record.description) if record.description else None
+            record.source = escape(record.source) if record.source else None
+            record.link = escape(record.link) if record.link else None
+
+            # Set related_project to currently selected project
+            project_id = request.session['current_project']['prj_id']
+            record.related_project_id = project_id
+
+            # Set scope to external for assets created from suggestions
+            record.scope = 'external'
+            
+            # Set monitor to True for assets (unlike suggestions which are False by default)
+            record.monitor = True
+
+            # Generate UUID and save the record
+            record.uuid = str(imported_uuid.uuid5(imported_uuid.NAMESPACE_DNS, f"{record.value}:{project_id}"))
+            print(record.uuid)
+            record.creation_time = timezone.now()
+            
+            # Ensure redirects_to is explicitly None to avoid foreign key issues
+            record.redirects_to = None
+            
+            # Use force_insert to avoid potential update conflicts
+            record.save(force_insert=True)
+
+            messages.info(request, "Asset successfully added")
+        else:
+            # Print form errors to the console for debugging
+            print(form.errors)
+            messages.error(request, "Asset failed: %s" % form.errors.as_json(escape_html=False))
+    return redirect(reverse('findings:assets'))
+
+
+@login_required
+def upload_assets(request):
+    if not request.user.has_perm('project.add_asset'):
+        return HttpResponseForbidden("You do not have permission.")
+        
+    context = {'projectid': request.session['current_project']['prj_id']}
+    try:
+        prj_obj = Project.objects.get(id=context['projectid'])
+    except Exception as error:
+        messages.error(request, 'Unknown Project: %s' % error)
+        return redirect(reverse('findings:assets'))
+    
+    if request.method == "POST" and request.FILES.get("domain_file"):
+        domain_file = request.FILES["domain_file"]
+
+        # Read all lines into memory (small files) or save to temp file for large files
+        lines = [escape(line.decode("utf-8").strip().strip('.')) for line in domain_file]
+
+        def process_domains(lines, prj_obj, user):
+            created_cnt = 0
+            updated_cnt = 0
+            for domain in lines:
+                if domain:
+                    asset_defaults = {
+                        "related_project": prj_obj,
+                        "value": domain,
+                        "source": "file_upload",
+                        "subtype": "domain",
+                        "type": "domain",
+                        "scope": "external",
+                        "monitor": True,  # Set to True for assets (unlike suggestions)
+                        "creation_time": make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds"))),
+                    }
+
+                    # Check if Starred domain
+                    if domain.startswith("*"):
+                        asset_defaults["type"] = "starred_domain"
+
+                    # Check if domain or subdomain
+                    parsed_obj = tldextract.extract(domain)
+                    if parsed_obj.subdomain:
+                        asset_defaults["subtype"] = 'subdomain'
+                    else:
+                        asset_defaults["subtype"] = 'domain'
+
+                    item_uuid = imported_uuid.uuid5(imported_uuid.NAMESPACE_DNS, f"{domain}:{prj_obj.id}")
+                    sobj, created = Asset.objects.get_or_create(uuid=item_uuid, defaults=asset_defaults)
+
+                    if created:
+                        created_cnt += 1
+                    else:
+                        if not "file_upload" in sobj.source:
+                            sobj.source = sobj.source + ", file_upload"
+                        sobj.creation_time = make_aware(dateparser.parse(datetime.now().isoformat(sep=" ", timespec="seconds")))
+                        # Ensure assets are monitored (unlike suggestions)
+                        sobj.monitor = True
+                        sobj.save()
+                        updated_cnt += 1
+            # Optionally, you could log or notify admins here
+
+        # Start processing in a background thread
+        thread = threading.Thread(target=process_domains, args=(lines, prj_obj, request.user))
+        thread.start()
+        messages.success(request, "Domains are being uploaded in the background. Please refresh the page after a while to see the results.")
+    else:
+        messages.error(request, "No file provided or invalid request method.")
+
+    return redirect(reverse('findings:assets'))
