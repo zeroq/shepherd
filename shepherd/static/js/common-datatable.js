@@ -163,22 +163,45 @@ function setupSendToNucleus() {
 }
 
 // Common checkbox "Select all" functionality
-function setupSelectAllCheckboxes(table) {
+function setupSelectAllCheckboxes(table, selectAllId, tableId) {
+    selectAllId = selectAllId || '#select-all-findings';
+    tableId = tableId || '#table_list_findings';
+    
     // Handle click on "Select all" control
-    $('#select-all-findings').on('click', function(){
+    $(selectAllId).on('click', function(){
         var rows = table.rows({ 'search': 'applied' }).nodes();
         $('input[type="checkbox"]', rows).prop('checked', this.checked);
+        
+        // Update the select all checkbox state
+        updateSelectAllStateForTable(selectAllId, table);
     });
     
     // Handle click on checkbox to set state of "Select all" control
-    $('#table_list_findings tbody').on('change', 'input[type="checkbox"]', function(){
-        if(!this.checked){
-            var el = $('#select-all-findings').get(0);
-            if(el && el.checked && ('indeterminate' in el)){
-                el.indeterminate = true;
-            }
-        }
+    $(tableId + ' tbody').on('change', 'input[type="checkbox"]', function(){
+        updateSelectAllStateForTable(selectAllId, table);
     });
+}
+
+// Helper function to update select all checkbox state for DataTable
+function updateSelectAllStateForTable(selectAllSelector, table) {
+    var rows = table.rows({ 'search': 'applied' }).nodes();
+    var checkboxes = $('input[type="checkbox"]', rows);
+    var checkedCount = checkboxes.filter(':checked').length;
+    var totalCount = checkboxes.length;
+    
+    var selectAllCheckbox = $(selectAllSelector).get(0);
+    if (selectAllCheckbox) {
+        if (checkedCount === 0) {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = false;
+        } else if (checkedCount === totalCount) {
+            selectAllCheckbox.checked = true;
+            selectAllCheckbox.indeterminate = false;
+        } else {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = true;
+        }
+    }
 }
 
 // Common form submission handling for checkboxes
@@ -259,16 +282,37 @@ function setupStandaloneSelectAll(selectAllSelector, tableSelector) {
         var table = $(tableSelector).DataTable();
         var rows = table.rows({ 'search': 'applied' }).nodes();
         $('input[type="checkbox"]', rows).prop('checked', this.checked);
+        
+        // Update the select all checkbox state
+        updateSelectAllState(selectAllSelector, tableSelector);
     });
 
     $(document).on('change', tableSelector + ' tbody input[type="checkbox"]', function() {
-        if(!this.checked) {
-            var el = $(selectAllSelector).get(0);
-            if(el && el.checked && ('indeterminate' in el)) {
-                el.indeterminate = true;
-            }
-        }
+        updateSelectAllState(selectAllSelector, tableSelector);
     });
+}
+
+// Helper function to update select all checkbox state
+function updateSelectAllState(selectAllSelector, tableSelector) {
+    var table = $(tableSelector).DataTable();
+    var rows = table.rows({ 'search': 'applied' }).nodes();
+    var checkboxes = $('input[type="checkbox"]', rows);
+    var checkedCount = checkboxes.filter(':checked').length;
+    var totalCount = checkboxes.length;
+    
+    var selectAllCheckbox = $(selectAllSelector).get(0);
+    if (selectAllCheckbox) {
+        if (checkedCount === 0) {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = false;
+        } else if (checkedCount === totalCount) {
+            selectAllCheckbox.checked = true;
+            selectAllCheckbox.indeterminate = false;
+        } else {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = true;
+        }
+    }
 }
 
 // Standalone Confirm Dialog (for simple redirects)
@@ -307,7 +351,7 @@ function initializeCommonDataTableFeatures(table, options) {
     // Setup all common features
     setupToggleIgnoreFinding(table);
     setupConfirmDialog(table);
-    setupSelectAllCheckboxes(table);
+    setupSelectAllCheckboxes(table, options.selectAllId, options.tableId);
     setupFormSubmission(table);
     
     // Optional features

@@ -90,6 +90,23 @@ class Asset(models.Model):
     def __str__(self):
         return "%s - %s" % (self.value, self.source)
 
+class DNSRecord(models.Model):
+    """DNS records for assets
+    """
+    related_asset = models.ForeignKey("Asset", on_delete=models.CASCADE)
+    related_project = models.ForeignKey("Project", on_delete=models.CASCADE)
+    record_type = models.CharField(max_length=10)  # A, AAAA, CNAME, MX, TXT, NS, SOA, PTR
+    record_value = models.TextField()  # The actual DNS record value
+    ttl = models.IntegerField(null=True, blank=True)  # Time to live
+    creation_time = models.DateTimeField(auto_now_add=True)
+    last_checked = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = ['related_asset', 'record_type', 'record_value']
+    
+    def __str__(self):
+        return f"{self.related_asset.value} - {self.record_type}: {self.record_value[:50]}"
+
 class ActiveIP(models.Model):
     """Active IPs for monitoring
     """

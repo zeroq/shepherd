@@ -37,4 +37,7 @@ urlpatterns = [
     # Manual asset management
     path('manual/add/', views.manual_add_asset, name='manual_add_asset'),
     path('upload_assets/', views.upload_assets, name='upload_assets'),
+    
+    # DNS records
+    path('dns_records/', views.dns_records, name='dns_records'),
 ]

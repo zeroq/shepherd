@@ -13,10 +13,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 
 from api.pagination import CustomPaginator
-from api.serializer import JobSerializer, ProjectSerializer, KeywordSerializer, SuggestionSerializer, AssetSerializer, FindingSerializer, PortSerializer, ScreenshotSerializer
+from api.serializer import JobSerializer, ProjectSerializer, KeywordSerializer, SuggestionSerializer, AssetSerializer, FindingSerializer, PortSerializer, ScreenshotSerializer, DNSRecordSerializer
 from api.utils import get_ordering_vars
 
-from project.models import Project, Keyword, Asset, Job
+from project.models import Project, Keyword, Asset, Job, DNSRecord
 from findings.models import Finding, Port, Screenshot
 from django_celery_beat.models import PeriodicTask, IntervalSchedule, CrontabSchedule, ClockedSchedule
 
@@ -294,6 +294,83 @@ def list_assets(request, projectid, selection, format=None):
 
 ##### END ASSETS ###########
 
+##### DNS RECORDS ###############
+
+@api_view(['GET'])
+@authentication_classes((SessionAuthentication,))
+@permission_classes((IsAuthenticated,))
+def list_dns_records(request, projectid, format=None):
+    if not request.user.has_perm('project.view_asset'):
+        return HttpResponseForbidden("You do not have permission to view this project.")
+    
+    paginator = CustomPaginator()
+    ### check if project exists
+    try:
+        prj = Project.objects.get(id=projectid)
+    except Project.DoesNotExist:
+        return JsonResponse({
+            "status": True,
+            "code": 200,
+            "next": None,
+            "previous": None,
+            "count": 0,
+            "iTotalRecords": 0,
+            "iTotalDisplayRecords": 0,
+            "results": []
+        })
+
+    ### get search parameters
+    search_asset = request.query_params.get('columns[1][search][value]', None)
+    search_record_type = request.query_params.get('columns[2][search][value]', None)
+    search_record_value = request.query_params.get('columns[3][search][value]', None)
+    search_ttl = request.query_params.get('columns[4][search][value]', None)
+    search_last_checked = request.query_params.get('columns[5][search][value]', None)
+
+    ### create queryset - only for monitored assets
+    queryset = DNSRecord.objects.filter(
+        related_project=prj,
+        related_asset__monitor=True
+    ).select_related('related_asset')
+
+    ### filter by search parameters
+    if search_asset and len(search_asset) > 1:
+        queryset = queryset.filter(
+            Q(related_asset__value__icontains=search_asset)
+        )
+    if search_record_type and len(search_record_type) > 0:
+        queryset = queryset.filter(
+            Q(record_type__iexact=search_record_type)
+        )
+    if search_record_value and len(search_record_value) > 1:
+        queryset = queryset.filter(
+            Q(record_value__icontains=search_record_value)
+        )
+    if search_ttl and len(search_ttl) > 1:
+        queryset = queryset.filter(
+            Q(ttl__icontains=search_ttl)
+        )
+    if search_last_checked and len(search_last_checked) > 1:
+        queryset = queryset.filter(
+            Q(last_checked__icontains=search_last_checked)
+        )
+
+    ### get ordering variables
+    order_by_column, order_direction = get_ordering_vars(
+        request.query_params,
+        default_column='last_checked',
+        default_direction='-'
+    )
+    
+    ### order queryset
+    if order_by_column:
+        queryset = queryset.order_by(f'{order_direction}{order_by_column}')
+
+    dns_records = paginator.paginate_queryset(queryset, request)
+    serializer = DNSRecordSerializer(instance=dns_records, many=True)
+    return paginator.get_paginated_response(serializer.data)
+
+##### END DNS RECORDS ###########
+
 ##### KEYWORDS ###############
 
 @api_view(['GET'])
@@ -542,6 +619,11 @@ def list_all_findings(request, projectid, format=None):
             queryset = queryset.filter(last_reported__isnull=False)
         elif reported_param.lower() == 'not_reported':
             queryset = queryset.filter(last_reported__isnull=True)
+
+    # Filter by severity if provided
+    severity_param = request.query_params.get('severity', None)
+    if severity_param is not None and severity_param != "":
+        queryset = queryset.filter(severity__iexact=severity_param)
 
     # Get search parameters
     search_value = request.query_params.get('search[value]', None)

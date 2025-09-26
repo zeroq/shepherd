@@ -215,7 +215,9 @@ $(document).ready( function () {
         enableBulkIgnore: true,
         hasNucleus: false,
         hasCommentModal: true,
-        projectId: "{{ projectid }}"
+        projectId: "{{ projectid }}",
+        selectAllId: '#select-all-findings',
+        tableId: '#table_list_findings'
     });
 
     // Note: All common functionality (checkboxes, ignore, delete, comments) is now handled by common-datatable.js

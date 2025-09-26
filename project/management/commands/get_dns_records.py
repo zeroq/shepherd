@@ -1,7 +1,8 @@
 from django.core.management.base import BaseCommand
-from project.models import Asset
+from project.models import Asset, DNSRecord
 import concurrent.futures
 import dns.resolver
+from django.utils import timezone
 
 class Command(BaseCommand):
     help = "Check DNS records for all suggestions and update their active status"
@@ -38,21 +39,51 @@ class Command(BaseCommand):
 
         def check_dns(asset):
             record_types = ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS', 'SOA', 'PTR']
+            found_records = []
+            has_any_records = False
+            
             try:
                 for record_type in record_types:
                     try:
-                        dns.resolver.resolve(asset.value, record_type)
-                        self.stdout.write(f"record found {record_type} for {asset.value}")
-                        return asset, True  # If any record type is resolved, mark as active
+                        answers = dns.resolver.resolve(asset.value, record_type)
+                        for answer in answers:
+                            record_value = str(answer)
+                            ttl = answer.ttl if hasattr(answer, 'ttl') else None
+                            
+                            # Store the DNS record
+                            dns_record, created = DNSRecord.objects.get_or_create(
+                                related_asset=asset,
+                                related_project=asset.related_project,
+                                record_type=record_type,
+                                record_value=record_value,
+                                defaults={'ttl': ttl}
+                            )
+                            
+                            if not created:
+                                # Update existing record
+                                dns_record.ttl = ttl
+                                dns_record.last_checked = timezone.now()
+                                dns_record.save()
+                            
+                            found_records.append((record_type, record_value, ttl))
+                            self.stdout.write(f"Found {record_type} record for {asset.value}: {record_value}")
+                        
+                        has_any_records = True
+                        
                     except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN):
                         continue  # Try the next record type
-                return asset, False  # If no record types are resolved, mark as inactive
+                    except Exception as e:
+                        self.stderr.write(f"Error checking {record_type} for {asset.value}: {e}")
+                        continue
+                
+                return asset, has_any_records, found_records
+                
             except Exception as e:
                 self.stderr.write(f"Error checking {asset.value}: {e}")
-                return asset, asset.active  # Keep the current status if an error occurs
+                return asset, asset.active, []  # Keep the current status if an error occurs
 
         # Process in batches to reduce memory usage
-        batch_size = 100  # Process 100 assets at a time
+        batch_size = 1000  # Process 100 assets at a time
         processed = 0
         
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:  # Limit concurrent threads
@@ -70,16 +101,17 @@ class Command(BaseCommand):
                 
                 # Process results for this batch
                 for future in concurrent.futures.as_completed(future_to_asset):
-                    asset, has_dns = future.result()
-                    print(asset.value, has_dns)
+                    asset, has_dns, found_records = future.result()
+                    print(f"{asset.value}: {len(found_records)} records found, active={has_dns}")
+                    
                     if not has_dns:
                         asset.active = False
                         asset.save()
-                        self.stdout.write(f"Updated {asset.value}: active=False")
+                        self.stdout.write(f"Updated {asset.value}: active=False (no DNS records)")
                     else:
                         asset.active = True
                         asset.save()
-                        self.stdout.write(f"Updated {asset.value}: active=True")
+                        self.stdout.write(f"Updated {asset.value}: active=True ({len(found_records)} DNS records)")
                 
                 processed += len(batch_assets)
                 

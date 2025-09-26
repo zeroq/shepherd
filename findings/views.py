@@ -12,7 +12,7 @@ from django.utils import timezone
 from django.utils.timezone import make_aware
 from django.utils.html import escape
 from django.http import HttpResponseForbidden
-from project.models import Project, Asset
+from project.models import Project, Asset, DNSRecord
 from findings.models import Finding, Port, Screenshot
 from findings.utils import asset_get_or_create, asset_finding_get_or_create, ignore_asset, ignore_finding
 from findings.forms import AddAssetForm
@@ -769,3 +769,24 @@ def upload_assets(request):
         messages.error(request, "No file provided or invalid request method.")
 
     return redirect(reverse('findings:assets'))
+
+
+@login_required
+def dns_records(request):
+    """View DNS records for assets"""
+    if not request.user.has_perm('project.view_asset'):
+        return HttpResponseForbidden("You do not have permission.")
+    
+    context = {'projectid': request.session['current_project']['prj_id']}
+    prj = Project.objects.get(id=context['projectid'])
+    
+    # Get DNS records for the current project, only for monitored assets
+    dns_records = DNSRecord.objects.filter(
+        related_project=prj,
+        related_asset__monitor=True
+    ).select_related('related_asset').order_by('-last_checked')
+    
+    context['dns_records'] = dns_records
+    context['total_records'] = dns_records.count()
+    
+    return render(request, 'findings/list_dns_records.html', context)

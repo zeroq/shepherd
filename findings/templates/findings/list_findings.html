@@ -156,6 +156,10 @@ $(document).ready( function () {
                 if (monitoredFilter !== undefined && monitoredFilter !== "") {
                     d.selection = monitoredFilter;
                 }
+                var severityFilter = $('#severity-filter').val();
+                if (severityFilter !== undefined && severityFilter !== "") {
+                    d.severity = severityFilter;
+                }
             }
         },
         columns: [
@@ -232,10 +236,9 @@ $(document).ready( function () {
     // Use the global debounced column search from base.html
     applyDebouncedColumnSearch(findingsTable, 'input.column-search', 'select.column-search');
 
-    // Apply the severity filter
+    // Apply the severity filter (server-side)
     $('#severity-filter').on('change', function () {
-        let selectedSeverity = $(this).val();
-        findingsTable.column('severity:name').search(selectedSeverity).draw();
+        findingsTable.ajax.reload();
     });
 
     // Server-side reported filter
@@ -252,7 +255,9 @@ $(document).ready( function () {
         enableBulkIgnore: true,
         hasNucleus: true,
         hasCommentModal: true,
-        projectId: "{{ projectid }}"
+        projectId: "{{ projectid }}",
+        selectAllId: '#select-all-findings',
+        tableId: '#table_list_findings'
     });
 
 });

@@ -1,4 +1,4 @@
-from multiprocessing.pool import ThreadPool
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import nmap
 import csv
 from io import StringIO
@@ -57,10 +57,7 @@ class Command(BaseCommand):
         else:
             projects = Project.objects.all()
 
-        pool = ThreadPool(processes=10)  # Adjust the number of threads as needed
-
         for prj in projects:
-            prj_items = []
             domains_qs = prj.asset_set.filter(monitor=True)
             # Filter by uuids if provided
             if uuids_arg:
@@ -70,39 +67,19 @@ class Command(BaseCommand):
             if new_assets_only:
                 domains_qs = domains_qs.filter(last_scan_time__isnull=True)
 
-            for ad in domains_qs:
-                prj_items.append((ad.value, ad))
-            # Multi-Process results
-            prj_res = pool.map(self.port_lookup, prj_items)
-            # Loop through each active domain results
-            for entry in prj_res:
-                ad_obj = entry[-1]
-                port_list = entry[0]
-                open_ports_cnt = 0
-                for port_entry in port_list:
-                    if port_entry["status"] == "open":
-                        open_ports_cnt += 1
-                        content = {
-                            'domain': ad_obj,
-                            'port': port_entry['port'],
-                        }
-                        port_obj, _ = Port.objects.get_or_create(**content)
-                        port_obj.domain_name = ad_obj.value
-                        port_obj.scan_date = make_aware(datetime.now())
-                        port_obj.banner = port_entry['banner']
-                        port_obj.status = port_entry['status']
-                        port_obj.product = port_entry['product']
-                        port_obj.cpe = port_entry['cpe']
-                        port_obj.raw = port_entry
-                        port_obj.save()
-                ad_obj.last_scan_time = make_aware(datetime.now())
-                ad_obj.save()
-                self.stdout.write(f"[+] {open_ports_cnt} ports found for {ad_obj.value}")
+            if not domains_qs.exists():
+                self.stdout.write(f"No domains found to scan for project {prj.projectname}")
+                continue
 
-    def port_lookup(self, domain_tuple):
+            # Use ThreadPoolExecutor to run scans in parallel
+            with ThreadPoolExecutor(max_workers=10) as executor:
+                futures = [executor.submit(self.nmap_scan_domain, domain.value, domain) for domain in domains_qs]
+                for future in as_completed(futures):
+                    future.result()  # This will raise any exceptions caught during the scan
+
+    def nmap_scan_domain(self, webaddress, ad_obj):
+        self.stdout.write(f"Nmap scan starting for {webaddress}")
         try:
-            webaddress = domain_tuple[0]
-            self.stdout.write(f"Nmap scan starting for {webaddress}")
             port_list = []
             nm = nmap.PortScanner()
             nm.scan(
@@ -128,6 +105,30 @@ class Command(BaseCommand):
                 }
                 if pdict not in port_list:
                     port_list.append(pdict)
-            return (port_list, domain_tuple[1])
+            
+            # Process the results and save to database
+            open_ports_cnt = 0
+            for port_entry in port_list:
+                if port_entry["status"] == "open":
+                    open_ports_cnt += 1
+                    content = {
+                        'domain': ad_obj,
+                        'port': port_entry['port'],
+                    }
+                    port_obj, _ = Port.objects.get_or_create(**content)
+                    port_obj.domain_name = ad_obj.value
+                    port_obj.scan_date = make_aware(datetime.now())
+                    port_obj.banner = port_entry['banner']
+                    port_obj.status = port_entry['status']
+                    port_obj.product = port_entry['product']
+                    port_obj.cpe = port_entry['cpe']
+                    port_obj.raw = port_entry
+                    port_obj.save()
+            
+            ad_obj.last_scan_time = make_aware(datetime.now())
+            ad_obj.save()
+            self.stdout.write(f"[+] {open_ports_cnt} ports found for {ad_obj.value}")
+            
         except Exception as error:
-            self.stdout.write(error)
+            self.stderr.write(f"Exception scanning domain {webaddress}: {str(error)}")
+            

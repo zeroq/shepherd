@@ -1,5 +1,7 @@
 import subprocess
 import threading
+import time
+import gc
 from django.utils.timezone import now
 from project.models import Job, Project
 
@@ -21,11 +23,37 @@ def run_job(command, args, projectid, user=None):
             text=True,
             bufsize=1,
         )
-        output_lines = []
+        
+        # Collect output in chunks to reduce memory usage and database writes
+        output_buffer = []
+        buffer_size = 100  # Save to DB every 100 lines
+        flush_interval = 5.0  # Also flush every 4 seconds for small outputs
+        line_count = 0
+        last_flush_time = time.time()
+        
         for line in process.stdout:
-            output_lines.append(line)
-            job.output = ''.join(output_lines)
+            output_buffer.append(line)
+            line_count += 1
+            current_time = time.time()
+            
+            # Save to database in chunks to reduce memory pressure
+            # Flush if we have enough lines OR enough time has passed
+            if (line_count % buffer_size == 0 or 
+                (output_buffer and current_time - last_flush_time >= flush_interval)):
+                # Append new output to existing output
+                new_output = ''.join(output_buffer)
+                job.output = (job.output or '') + new_output
+                job.save(update_fields=['output'])
+                # Clear buffer to free memory
+                output_buffer = []
+                last_flush_time = current_time
+        
+        # Save any remaining output
+        if output_buffer:
+            new_output = ''.join(output_buffer)
+            job.output = (job.output or '') + new_output
             job.save(update_fields=['output'])
+            
         process.stdout.close()
         process.wait()
         # Defensive: ensure all output is captured
@@ -39,3 +67,15 @@ def run_job(command, args, projectid, user=None):
     finally:
         job.finished_at = now()
         job.save()
+        
+        # Explicit memory cleanup
+        try:
+            # Clear local variables to free memory
+            if 'output_buffer' in locals():
+                output_buffer.clear()
+            if 'process' in locals():
+                del process
+            # Force garbage collection
+            gc.collect()
+        except:
+            pass  # Don't let cleanup errors affect the job status

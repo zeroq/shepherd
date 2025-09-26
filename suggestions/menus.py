@@ -6,8 +6,14 @@ from menu import Menu, MenuItem
 def top_inventory(request):
     return '<span class="glyphicon glyphicon-list-alt" aria-hidden="true"></span> Inventory'
 
+inventory_children = (
+    MenuItem("Assets", reverse("findings:assets"), weight=10),
+    MenuItem("DNS Records", reverse("findings:dns_records"), weight=20),
+)
+
 Menu.add_item("suggestions", MenuItem(top_inventory,
-    reverse("findings:assets"),
-    weight=20
+    "#",  # No direct URL for the parent menu
+    weight=20,
+    children=inventory_children
     )
 )
