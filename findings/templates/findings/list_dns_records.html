@@ -44,9 +44,9 @@
         </tr>
         <tr>
           <th></th>
-          <th><input type="text" placeholder="Search Asset" class="column-search form-control input-sm"></th>
+          <th><input type="text" placeholder="Search Asset" class="column-search-input form-control input-sm"></th>
           <th>
-            <select id="record-type-filter" class="form-control input-sm">
+            <select id="record-type-filter" class="column-search-input form-control input-sm">
               <option value="">All Types</option>
               <option value="A">A</option>
               <option value="AAAA">AAAA</option>
@@ -58,9 +58,9 @@
               <option value="PTR">PTR</option>
             </select>
           </th>
-          <th><input type="text" placeholder="Search Value" class="column-search form-control input-sm"></th>
-          <th><input type="text" placeholder="Search TTL" class="column-search form-control input-sm"></th>
-          <th><input type="text" placeholder="Search Date" class="column-search form-control input-sm"></th>
+          <th><input type="text" placeholder="Search Value" class="column-search-input form-control input-sm"></th>
+          <th><input type="text" placeholder="Search TTL" class="column-search-input form-control input-sm"></th>
+          <th><input type="text" placeholder="Search Date" class="column-search-input form-control input-sm"></th>
         </tr>
       </thead>
       <tbody>
@@ -144,21 +144,9 @@ $(document).ready(function() {
     // Initialize the DNS records table
     var dnsTable = initializeDataTable('#table_list_dns_records', "/api/v1/project/{{ projectid }}/dns_records/");
 
-    // Column search functionality
-    $('.column-search').on('keyup', function() {
-        var column = dnsTable.column($(this).parent().index());
-        column.search(this.value).draw();
-    });
-
-    // Record type filter
-    $('#record-type-filter').on('change', function() {
-        var column = dnsTable.column(2); // Record type column
-        if (this.value) {
-            column.search(this.value, false, false).draw();
-        } else {
-            column.search('').draw();
-        }
-    });
+    // Find the second header row (filter row) and bind to its inputs/selects
+    var $filterRow = $('#table_list_dns_records thead tr:eq(1)');
+    applyDebouncedColumnSearch(dnsTable, 'input.column-search-input', 'select.column-search-input', 400, $filterRow);
 
     // Select all functionality
     $('#select-all-dns-records').on('change', function() {

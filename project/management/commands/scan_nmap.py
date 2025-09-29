@@ -3,6 +3,9 @@ import nmap
 import csv
 from io import StringIO
 from datetime import datetime
+import socket
+import dns.resolver
+from collections import defaultdict
 
 from project.models import Project
 from findings.models import Port
@@ -43,6 +46,23 @@ class Command(BaseCommand):
             help='Only scan assets with empty last_scan_time',
         )
 
+    def resolve_domain_to_ip(self, domain):
+        """Resolve domain name to IP address using DNS A record"""
+        try:
+            # Try A record first (IPv4)
+            answers = dns.resolver.resolve(domain, 'A')
+            return str(answers[0])
+        except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.resolver.Timeout):
+            try:
+                # Fallback to socket.gethostbyname
+                return socket.gethostbyname(domain)
+            except socket.gaierror:
+                self.stderr.write(f"Could not resolve domain {domain}")
+                return None
+        except Exception as e:
+            self.stderr.write(f"Error resolving domain {domain}: {e}")
+            return None
+
     def handle(self, *args, **options):
         projectid = options.get('projectid')
         uuids_arg = options.get('uuids')
@@ -71,11 +91,109 @@ class Command(BaseCommand):
                 self.stdout.write(f"No domains found to scan for project {prj.projectname}")
                 continue
 
-            # Use ThreadPoolExecutor to run scans in parallel
+            # Group domains by their resolved IP addresses
+            ip_to_domains = defaultdict(list)
+            unresolved_domains = []
+            
+            self.stdout.write(f"Resolving {domains_qs.count()} domains to IP addresses...")
+            
+            for domain in domains_qs:
+                ip = self.resolve_domain_to_ip(domain.value)
+                if ip:
+                    ip_to_domains[ip].append(domain)
+                    self.stdout.write(f"Resolved {domain.value} -> {ip}")
+                else:
+                    unresolved_domains.append(domain)
+                    self.stdout.write(f"Could not resolve {domain.value}")
+
+            # Scan each unique IP address only once
+            self.stdout.write(f"Scanning {len(ip_to_domains)} unique IP addresses...")
+            
             with ThreadPoolExecutor(max_workers=10) as executor:
-                futures = [executor.submit(self.nmap_scan_domain, domain.value, domain) for domain in domains_qs]
+                futures = []
+                for ip, domains_for_ip in ip_to_domains.items():
+                    future = executor.submit(self.nmap_scan_ip, ip, domains_for_ip)
+                    futures.append(future)
+                
                 for future in as_completed(futures):
                     future.result()  # This will raise any exceptions caught during the scan
+
+            # Handle unresolved domains separately (scan them directly)
+            if unresolved_domains:
+                self.stdout.write(f"Scanning {len(unresolved_domains)} unresolved domains directly...")
+                with ThreadPoolExecutor(max_workers=10) as executor:
+                    futures = [executor.submit(self.nmap_scan_domain, domain.value, domain) for domain in unresolved_domains]
+                    for future in as_completed(futures):
+                        future.result()  # This will raise any exceptions caught during the scan
+
+    def nmap_scan_ip(self, ip_address, domains_for_ip):
+        """Scan a single IP address and distribute results to all domains that point to it"""
+        self.stdout.write(f"Nmap scan starting for IP {ip_address} (affects {len(domains_for_ip)} domains)")
+        try:
+            port_list = []
+            nm = nmap.PortScanner()
+            nm.scan(
+                ip_address,
+                arguments='-F -Pn -sC -sV -T4 --version-light',
+            )
+
+            f = StringIO(nm.csv())
+            r = csv.reader(f, delimiter=';')
+            firstRow = None
+            for row in r:
+                # Skip the first row
+                if row[0] == 'host':
+                    firstRow = row
+                    continue
+                new_row = dict(zip(firstRow, row))
+                pdict = {
+                    'port': int(new_row['port']),
+                    'banner': new_row['name'] + '::' + new_row['extrainfo'] + '::' + new_row['version'],
+                    'status': new_row['state'],
+                    'product': new_row['product'],
+                    'cpe': new_row['cpe']
+                }
+                if pdict not in port_list:
+                    port_list.append(pdict)
+            
+            # Flush old port entries for all domains that point to this IP
+            for ad_obj in domains_for_ip:
+                old_ports_count = Port.objects.filter(domain=ad_obj).count()
+                if old_ports_count > 0:
+                    Port.objects.filter(domain=ad_obj).delete()
+                    self.stdout.write(f"Flushed {old_ports_count} old port entries for {ad_obj.value}")
+
+            # Process the results and save to database for each domain
+            open_ports_cnt = 0
+            for port_entry in port_list:
+                if port_entry["status"] == "open":
+                    open_ports_cnt += 1
+                    
+                    # Create port entries for all domains that point to this IP
+                    for ad_obj in domains_for_ip:
+                        port_obj = Port.objects.create(
+                            domain=ad_obj,
+                            domain_name=ad_obj.value,
+                            port=port_entry['port'],
+                            scan_date=make_aware(datetime.now()),
+                            banner=port_entry['banner'],
+                            status=port_entry['status'],
+                            product=port_entry['product'],
+                            cpe=port_entry['cpe'],
+                            raw=port_entry
+                        )
+            
+            # Update last_scan_time for all domains that point to this IP
+            for ad_obj in domains_for_ip:
+                ad_obj.last_scan_time = make_aware(datetime.now())
+                ad_obj.save()
+            
+            domain_names = [d.value for d in domains_for_ip]
+            self.stdout.write(f"[+] {open_ports_cnt} ports found for IP {ip_address} (domains: {', '.join(domain_names)})")
+            
+        except Exception as error:
+            domain_names = [d.value for d in domains_for_ip]
+            self.stderr.write(f"Exception scanning IP {ip_address} (domains: {', '.join(domain_names)}): {str(error)}")
 
     def nmap_scan_domain(self, webaddress, ad_obj):
         self.stdout.write(f"Nmap scan starting for {webaddress}")
@@ -106,24 +224,28 @@ class Command(BaseCommand):
                 if pdict not in port_list:
                     port_list.append(pdict)
             
+            # Flush old port entries for this domain
+            old_ports_count = Port.objects.filter(domain=ad_obj).count()
+            if old_ports_count > 0:
+                Port.objects.filter(domain=ad_obj).delete()
+                self.stdout.write(f"Flushed {old_ports_count} old port entries for {ad_obj.value}")
+
             # Process the results and save to database
             open_ports_cnt = 0
             for port_entry in port_list:
                 if port_entry["status"] == "open":
                     open_ports_cnt += 1
-                    content = {
-                        'domain': ad_obj,
-                        'port': port_entry['port'],
-                    }
-                    port_obj, _ = Port.objects.get_or_create(**content)
-                    port_obj.domain_name = ad_obj.value
-                    port_obj.scan_date = make_aware(datetime.now())
-                    port_obj.banner = port_entry['banner']
-                    port_obj.status = port_entry['status']
-                    port_obj.product = port_entry['product']
-                    port_obj.cpe = port_entry['cpe']
-                    port_obj.raw = port_entry
-                    port_obj.save()
+                    port_obj = Port.objects.create(
+                        domain=ad_obj,
+                        domain_name=ad_obj.value,
+                        port=port_entry['port'],
+                        scan_date=make_aware(datetime.now()),
+                        banner=port_entry['banner'],
+                        status=port_entry['status'],
+                        product=port_entry['product'],
+                        cpe=port_entry['cpe'],
+                        raw=port_entry
+                    )
             
             ad_obj.last_scan_time = make_aware(datetime.now())
             ad_obj.save()

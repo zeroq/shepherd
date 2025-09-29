@@ -329,7 +329,8 @@ def list_dns_records(request, projectid, format=None):
     ### create queryset - only for monitored assets
     queryset = DNSRecord.objects.filter(
         related_project=prj,
-        related_asset__monitor=True
+        related_asset__monitor=True,
+        related_asset__ignore=False,
     ).select_related('related_asset')
 
     ### filter by search parameters

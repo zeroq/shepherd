@@ -128,6 +128,13 @@ def scan_nuclei_task():
     return "scan_nuclei for new templates completed"
 
 @shared_task
+def scan_nuclei_new_assets_task():
+    command = 'scan_nuclei'
+    args = f'--projectid {project_id} --new-assets'
+    run_job(command, args, project_id, user=scheduler_user)
+    return "scan_nuclei for new templates completed"
+
+@shared_task
 def scan_nuclei_update_task():
     command = 'scan_nuclei'
     args = '--update'
