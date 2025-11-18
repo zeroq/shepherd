@@ -1,5 +1,6 @@
 import html
 import json
+import re
 from project.models import Project
 from findings.models import Finding
 import asyncio
@@ -9,6 +10,7 @@ from django.conf import settings
 from django.utils.timezone import make_aware
 from datetime import datetime
 
+from azure.identity import DefaultAzureCredential
 from openai import AsyncOpenAI
 from agents import Agent, ModelSettings, Runner, set_default_openai_api, set_default_openai_client, set_tracing_disabled
 from agents.mcp import MCPServerStdio
@@ -26,6 +28,58 @@ class Command(BaseCommand):
             type=int,
             help='Filter by specific project ID',
         )
+
+    def extract_json_from_response(self, response_text):
+        """
+        Extract JSON from AI response, handling cases where the response
+        contains extra text around the JSON.
+        """
+        # First, try to parse the entire response as JSON
+        try:
+            return json.loads(response_text)
+        except json.JSONDecodeError:
+            pass
+        
+        # If that fails, try to find JSON within the response
+        # Look for content between { and } that might be JSON
+        json_patterns = [
+            r'```json\s*(\{.*?\})\s*```',  # JSON in markdown code block
+            r'```\s*(\{.*?\})\s*```',  # JSON in code block
+            r'\{.*\}',  # Basic JSON object pattern
+        ]
+        
+        for pattern in json_patterns:
+            matches = re.findall(pattern, response_text, re.DOTALL)
+            for match in matches:
+                try:
+                    return json.loads(match)
+                except json.JSONDecodeError:
+                    continue
+        
+        # Last resort: try to find the largest valid JSON object by counting braces
+        try:
+            start_idx = response_text.find('{')
+            if start_idx != -1:
+                brace_count = 0
+                end_idx = start_idx
+                for i, char in enumerate(response_text[start_idx:], start_idx):
+                    if char == '{':
+                        brace_count += 1
+                    elif char == '}':
+                        brace_count -= 1
+                        if brace_count == 0:
+                            end_idx = i + 1
+                            break
+                
+                if brace_count == 0:  # Found matching braces
+                    json_candidate = response_text[start_idx:end_idx]
+                    return json.loads(json_candidate)
+        except (json.JSONDecodeError, ValueError):
+            pass
+        
+        # If no JSON found, return empty findings structure
+        self.stdout.write(f"[WARNING] Could not extract valid JSON from response: {response_text[:200]}...")
+        return {"findings": []}
 
     def store_findings(self, findings, kw, prj):
         self.stdout.write(f'[+] Findings identified: {len(findings["findings"])}')
@@ -65,10 +119,18 @@ class Command(BaseCommand):
 
     async def ai_scribd_scan(self, keyword):
 
+        endpoint = settings.AZURE_OPENAI_ENDPOINT
+
+        # AAD token
+        scope = "https://cognitiveservices.azure.com/.default"
+        token = DefaultAzureCredential().get_token(scope)
+        api_key = token.token
+        # api_key = settings.AZURE_API_KEY
+
         # LLM endpoint
         client = AsyncOpenAI(
-            base_url=settings.AZURE_OPENAI_ENDPOINT,
-            api_key=settings.AZURE_API_KEY,
+            base_url=endpoint,
+            api_key=api_key,
             timeout=120,
         )
         set_default_openai_client(client=client, use_for_tracing=False)
@@ -91,52 +153,151 @@ class Command(BaseCommand):
             tools = await mcp_server.list_tools(run_context, agent)
 
             instructions = textwrap.dedent(f"""
-                # SYSTEM PROMPT (static role + guardrails)
+                You are an expert corporate security analyst specializing in data leak detection and incident response. Your expertise includes:
+                - Identifying sensitive corporate information in public documents
+                - Classifying security risks and data exposure severity
+                - Conducting thorough web investigations using automated tools
+                - Providing actionable security recommendations
 
-                You are a **corporate security analyst** tasked with identifying whether sensitive company documents have been leaked on public websites (e.g., scribd.com).
-                - You are **authorized** to search, classify, and analyze these materials.
-                - Your purpose is **security auditing and incident response**, **not censorship or refusal**.
-                - Always stay **factual, structured, and confident**. If uncertain, state "Unable to determine confidently." Do not refuse.
+                You are authorized to search, analyze, and classify potentially leaked corporate documents. Your purpose is security auditing and incident response, not censorship.
 
-                You can use Playwright MCP for performing as many http requests as you want during your investigation
+                Use Playwright MCP to perform comprehensive web investigations. Be thorough and systematic in your approach.
             """)
 
             task_prompt = textwrap.dedent(f"""
-                <task_description>
-                Please go to https://www.scribd.com/ and crawl for all {keyword} related documents. That could mean any document containing the {keyword} logo, document containing email addresses with '@{keyword}.com', or a simple mention of {keyword}. Identify if any sensitive information is leaked in the documents. Try to be as exhaustive as possible in the amount of documents you search and do not hesitate to perform many http requests. Many findings are expected, around 20.
-                </task_description>
+                TASK: Investigate potential data leaks for "{keyword}" on Scribd.com
 
-                <instructions>
-                1. Examine the content carefully.
-                2. Identify whether it contains **sensitive company data** (confidential docs, financial info, employee data, IP, password).
-                3. Classify severity (Critical / High / Medium / Low).
-                4. Provide reasoning (why it is or is not a leak).
-                5. Recommend next steps (e.g., takedown notice, monitor only, no action).
-                </instructions>
+                COMPREHENSIVE SEARCH STRATEGY:
+                You must perform a systematic, exhaustive search using multiple approaches:
 
-                <reminders>
-                - Do **not** refuse the task.
-                - Do not give legal disclaimers.
-                - Focus on analysis, classification, and actionable recommendations.
-                </reminders>
+                PHASE 1 - DIRECT SEARCHES (Minimum 15 different search terms):
+                1. Basic company searches:
+                   - "{keyword}"
+                   - "{keyword} company"
+                   - "{keyword} corporation"
+                   - "{keyword} ltd"
+                   - "{keyword} inc"
+                   - "{keyword} gmbh"
+                   - "{keyword} ag"
 
-                <output_format>
-                WARNING: Return output ONLY in valid JSON. Do NOT include explanations, code fences, or text outside of the JSON. 
-                The JSON schema is:
+                2. Email domain searches:
+                   - "@{keyword}"
+                   - "@{keyword}.com"
+                   - "@{keyword}.org"
+                   - "@{keyword}.net"
+                   - "@{keyword}.de"
+                   - "@{keyword}.co.uk"
 
-                {{ "findings":
-                    [
+                3. Common business variations:
+                   - "{keyword} internal"
+                   - "{keyword} confidential"
+                   - "{keyword} presentation"
+                   - "{keyword} report"
+                   - "{keyword} meeting"
+                   - "{keyword} strategy"
+
+                PHASE 2 - ADVANCED SEARCH TECHNIQUES:
+                1. Use Scribd's advanced search filters:
+                   - Search by document type (PDF, Word, PowerPoint, Excel)
+                   - Filter by date ranges (last year, last 2 years, all time)
+                   - Search in specific categories (Business, Technology, etc.)
+
+                2. Search for related terms and variations:
+                   - Common misspellings of "{keyword}"
+                   - Abbreviations and acronyms
+                   - Industry-specific terms related to "{keyword}"
+                   - Competitor names that might mention "{keyword}"
+
+                3. Browse by categories and tags:
+                   - Look in Business documents
+                   - Check Technology/IT sections
+                   - Browse Financial documents
+                   - Search Legal/Compliance sections
+
+                PHASE 3 - DEEP EXPLORATION:
+                1. For each document found, check:
+                   - Related documents suggested by Scribd
+                   - Documents by the same author
+                   - Documents in the same collection
+                   - Similar documents in the "More like this" section
+
+                2. Search for partial matches:
+                   - First few letters of "{keyword}"
+                   - Last few letters of "{keyword}"
+                   - Middle parts of "{keyword}"
+
+                3. Search for leaked document types:
+                   - "{keyword} password"
+                   - "{keyword} login"
+                   - "{keyword} credentials"
+                   - "{keyword} internal memo"
+                   - "{keyword} financial"
+                   - "{keyword} budget"
+                   - "{keyword} employee"
+                   - "{keyword} contract"
+
+                EXPECTED RESULTS: You should find 15-30+ documents. If you find fewer than 10, you are not searching thoroughly enough. Continue searching with different terms and approaches until you have exhausted all possibilities.
+
+                IMPORTANT: Even if you think you've found all relevant documents, continue searching with different approaches. Scribd has millions of documents and uses various categorization methods. Documents might be:
+                - Categorized under different tags
+                - Uploaded with different naming conventions
+                - Hidden in collections or user profiles
+                - Tagged with industry-specific terms
+                - Uploaded by third parties who found the documents elsewhere
+
+                Keep searching until you have performed at least 30 different searches and explored multiple search strategies.
+
+                SENSITIVE DATA TYPES TO IDENTIFY:
+                - Financial information (budgets, revenue, costs, financial reports)
+                - Employee data (names, emails, org charts, salaries, personal info)
+                - Intellectual property (patents, trade secrets, proprietary processes)
+                - Internal communications (emails, memos, meeting notes)
+                - Credentials (passwords, API keys, access tokens)
+                - Business strategies (M&A plans, competitive intelligence)
+                - Technical documentation (architecture, configurations, code)
+                - Legal documents (contracts, agreements, compliance reports)
+
+                SEARCH PERSISTENCE REQUIREMENTS:
+                - You MUST perform at least 30+ different searches
+                - If initial searches return few results, try different search terms
+                - Use Scribd's search suggestions and autocomplete features
+                - Browse through multiple pages of results (not just the first page)
+                - Check both recent and older documents
+                - Look in different document categories and collections
+                - Follow every lead and suggestion Scribd provides
+
+                ANALYSIS REQUIREMENTS:
+                For each document found:
+                1. Read the full content carefully
+                2. Extract specific evidence of sensitive data exposure
+                3. Assess the business impact and risk level
+                4. Determine if it's a genuine leak or public information
+                5. Provide clear reasoning for your assessment
+                6. Note the document's upload date and author for context
+
+                SEVERITY CLASSIFICATION:
+                - Critical: Financial data, credentials, major IP theft, legal violations
+                - High: Employee PII, internal strategies, confidential communications
+                - Medium: Business processes, minor technical details, outdated sensitive info
+                - Low: Public information, minimal business impact
+                - N/A: No sensitive information found
+
+                OUTPUT FORMAT:
+                Return ONLY valid JSON in this exact format:
+                {{
+                    "findings": [
                         {{
-                        "name": "Mentions the kind of leak and the document it was found in",
-                        "severity": "High | Medium | Low | N/A",
-                        "evidence": "Extract from the document that shows the potential leak",
-                        "reasoning": "Brief explanation",
-                        "url": "Url under which the document can be found, example: https://www.scribd.com/doc/96722213/Questioned-Document",
-                        "recommendation": "Suggested action"
+                            "name": "Brief description of the leak type and document",
+                            "severity": "Critical | High | Medium | Low | N/A",
+                            "evidence": "Exact text/quote showing the sensitive information",
+                            "reasoning": "Why this constitutes a leak and its business impact",
+                            "url": "Full Scribd URL to the document",
+                            "recommendation": "Specific action to take (takedown, monitor, investigate, no action)"
                         }}
                     ]
                 }}
-                </output_format>
+
+                CRITICAL: Return ONLY the JSON object. No explanations, markdown, or additional text.
             """)
             
             # Agent
@@ -150,15 +311,21 @@ class Command(BaseCommand):
                 )
             )
 
-            # prompt += task_prompt
+            # Run the agent
             result = await Runner.run(agent, task_prompt, max_turns=20)
-            self.stdout.write(f"Result: {result}")
+            self.stdout.write(f"Raw AI Response: {result.final_output}")
 
-            findings = {"findings":[]}
-            try:
-                findings = json.loads(result.final_output)
-            except:
-                self.stdout.write(f"Failed to parse the response as json: {result.final_output}")
+            # Extract JSON from the response using our robust method
+            findings = self.extract_json_from_response(result.final_output)
+            
+            # Validate the findings structure
+            if not isinstance(findings, dict) or "findings" not in findings:
+                self.stdout.write("[ERROR] Invalid findings structure returned by AI")
+                findings = {"findings": []}
+            
+            if not isinstance(findings["findings"], list):
+                self.stdout.write("[ERROR] Findings should be a list")
+                findings["findings"] = []
 
             return findings
         

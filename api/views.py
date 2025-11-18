@@ -103,16 +103,18 @@ def list_suggestions(request, projectid, selection, vtype, format=None):
     ### get search parameters
     search_value = request.query_params.get('columns[1][search][value]', None)
     search_source = request.query_params.get('columns[2][search][value]', None)
-    search_description = request.query_params.get('columns[3][search][value]', None)
-    search_redirect_to = request.query_params.get('columns[4][search][value]', None)
-    search_creation_date = request.query_params.get('columns[5][search][value]', None)
-    search_monitor = request.query_params.get('columns[6][search][value]', None)
-    search_active = request.query_params.get('columns[7][search][value]', None)
+    search_scope = request.query_params.get('columns[3][search][value]', None)
+    search_description = request.query_params.get('columns[4][search][value]', None)
+    search_redirect_to = request.query_params.get('columns[5][search][value]', None)
+    search_creation_date = request.query_params.get('columns[6][search][value]', None)
+    search_monitor = request.query_params.get('columns[7][search][value]', None)
+    search_active = request.query_params.get('columns[8][search][value]', None)
+    
     ### create queryset
     if selection in ['ignored']:
-        queryset = prj.asset_set.filter(scope='external', ignore=True)
+        queryset = prj.asset_set.filter(ignore=True)
     else:
-        queryset = prj.asset_set.filter(scope='external', ignore=False)  # Do not display ignored suggestions
+        queryset = prj.asset_set.filter(ignore=False)  # Do not display ignored suggestions
 
     if vtype in ['domain']:
         queryset = queryset.filter(type='domain')
@@ -120,6 +122,14 @@ def list_suggestions(request, projectid, selection, vtype, format=None):
         queryset = queryset.filter(type=vtype)
     elif vtype in ['second_level_domain']:
         queryset = queryset.filter(type='domain', subtype='domain')
+    
+    # Filter by scope if provided
+    if search_scope and search_scope != "":
+        if search_scope.lower() == 'external':
+            queryset = queryset.filter(scope='external')
+        elif search_scope.lower() == 'internal':
+            queryset = queryset.filter(scope='internal')
+        # 'all' returns all, no additional filter
 
     ### filter by search value
     if search_value and len(search_value) > 1:
@@ -217,10 +227,11 @@ def list_assets(request, projectid, selection, format=None):
     search_columns = {
         'value': request.query_params.get('columns[1][search][value]', None),
         'vulns': request.query_params.get('columns[2][search][value]', None),
-        'source': request.query_params.get('columns[3][search][value]', None),
-        'description': request.query_params.get('columns[4][search][value]', None),
-        'last_scan_time': request.query_params.get('columns[5][search][value]', None),
-        'creation_time': request.query_params.get('columns[6][search][value]', None),
+        'scope': request.query_params.get('columns[3][search][value]', None),
+        'source': request.query_params.get('columns[4][search][value]', None),
+        'description': request.query_params.get('columns[5][search][value]', None),
+        'last_scan_time': request.query_params.get('columns[6][search][value]', None),
+        'creation_time': request.query_params.get('columns[7][search][value]', None),
     }
 
     ### create queryset
@@ -237,6 +248,14 @@ def list_assets(request, projectid, selection, format=None):
         vuln_medium=Count('finding', filter=Q(finding__severity='medium')),
         vuln_low=Count('finding', filter=Q(finding__severity='low'))
     )
+
+    # Filter by scope if provided
+    if search_columns['scope'] and search_columns['scope'] != "":
+        if search_columns['scope'].lower() == 'external':
+            queryset = queryset.filter(scope='external')
+        elif search_columns['scope'].lower() == 'internal':
+            queryset = queryset.filter(scope='internal')
+        # 'all' returns all, no additional filter
 
     ### filter by global search value
     if search_value and len(search_value) > 1:
@@ -361,6 +380,12 @@ def list_dns_records(request, projectid, format=None):
         default_column='last_checked',
         default_direction='-'
     )
+    
+    ### map frontend column names to database field names
+    if order_by_column == 'asset_value':
+        order_by_column = 'related_asset__value'
+    elif order_by_column == 'asset_uuid':
+        order_by_column = 'related_asset__uuid'
     
     ### order queryset
     if order_by_column:
@@ -766,6 +791,32 @@ def list_data_leaks(request, projectid, format=None):
         queryset = queryset.filter(Q(scan_date__icontains=search_scan_date))
     if search_comment and len(search_comment) > 1:
         queryset = queryset.filter(Q(comment__icontains=search_comment))
+
+    # Handle sorting
+    order_column = request.query_params.get('order[0][column]', None)
+    order_dir = request.query_params.get('order[0][dir]', 'asc')
+    
+    if order_column is not None:
+        # Map DataTable column indices to model fields
+        column_mapping = {
+            '0': 'id',  # Operations column (not sortable, but included for completeness)
+            '1': 'keyword__keyword',  # Keyword
+            '2': 'source',  # Source
+            '3': 'name',  # Name
+            '4': 'description',  # Description
+            '5': 'url',  # URL
+            '6': 'scan_date',  # Scan Date
+            '7': 'comment',  # Comment
+        }
+        
+        sort_field = column_mapping.get(order_column)
+        if sort_field:
+            if order_dir == 'desc':
+                sort_field = '-' + sort_field
+            queryset = queryset.order_by(sort_field)
+    else:
+        # Default sorting by scan_date descending
+        queryset = queryset.order_by('-scan_date')
 
     kwrds = paginator.paginate_queryset(queryset, request)
     serializer = FindingSerializer(instance=kwrds, many=True)

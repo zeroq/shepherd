@@ -336,7 +336,7 @@ def upload_suggestions(request):
         domain_file = request.FILES["domain_file"]
 
         # Read all lines into memory (small files) or save to temp file for large files
-        lines = [escape(line.decode("utf-8").strip().strip('.')) for line in domain_file]
+        lines = [escape(line.decode("utf-8").strip().strip('.').lower()) for line in domain_file]
 
         def process_domains(lines, prj_obj, user):
             created_cnt = 0

@@ -20,6 +20,18 @@ class Command(BaseCommand):
             help='Comma separated list of suggestion UUIDs to process',
             required=False,
         )
+        parser.add_argument(
+            '--flush-old-records',
+            action='store_true',
+            default=True,
+            help='Flush old DNS records before scanning (default: True)',
+        )
+        parser.add_argument(
+            '--no-flush-old-records',
+            action='store_false',
+            dest='flush_old_records',
+            help='Do not flush old DNS records before scanning',
+        )
 
     def handle(self, *args, **kwargs):
         project_filter = {}
@@ -27,6 +39,7 @@ class Command(BaseCommand):
             project_filter['related_project__id'] = kwargs['projectid']
 
         uuids_arg = kwargs.get('uuids')
+        flush_old_records = kwargs.get('flush_old_records', True)
 
         # Get total count without loading all objects
         assets_query = Asset.objects.filter(**project_filter).filter(scope='external', type='domain')
@@ -36,11 +49,20 @@ class Command(BaseCommand):
 
         total_count = assets_query.count()
         self.stdout.write(f"Checking DNS records for {total_count} active assets...")
+        if flush_old_records:
+            self.stdout.write("Old DNS records will be flushed before scanning new ones.")
 
         def check_dns(asset):
             record_types = ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS', 'SOA', 'PTR']
             found_records = []
             has_any_records = False
+            
+            # Flush old DNS records for this asset if requested
+            if flush_old_records:
+                old_records_count = DNSRecord.objects.filter(related_asset=asset).count()
+                if old_records_count > 0:
+                    DNSRecord.objects.filter(related_asset=asset).delete()
+                    self.stdout.write(f"Flushed {old_records_count} old DNS records for {asset.value}")
             
             try:
                 for record_type in record_types:

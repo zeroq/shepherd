@@ -69,6 +69,13 @@
             </label>
           </div>
 
+          <div class="form-check d-flex align-items-center" style="gap: 8px;">
+            <input type="checkbox" class="form-check-input" id="scan_playwright" name="scan_playwright">
+            <label class="form-check-label mb-0" for="scan_playwright" style="margin-bottom:0; margin-left:6px;">
+              Playwright (Screenshots) <span style="font-size:0.9em;color:#888;">(requires a prior Nmap scan if not existing yet)</span>
+            </label>
+          </div>
+
           <div class="form-group">
             <div class="form-check d-flex align-items-center" style="gap: 8px;">
               <input type="checkbox" class="form-check-input" id="scan_nuclei" name="scan_nuclei">
@@ -145,6 +152,7 @@
           <th><input type="checkbox" name="select_all" value="1" id="select-all-items">&nbsp; Operations</th>
           <th>Value</th>
           <th>Vulnerabilities</th>
+          <th>Scope</th>
           <th>Source</th>
           <th>Description</th>
           <th>Last Scan</th>
@@ -163,6 +171,13 @@
               <option value="medium">Medium</option>
               <option value="high">High</option>
               <option value="critical">Critical</option>
+            </select>
+          </th>
+          <th>
+            <select id="scope-filter" class="form-control input-sm">
+              <option value="">All Scopes</option>
+              <option value="external">External</option>
+              <option value="internal">Internal</option>
             </select>
           </th>
           <th><input type="text" placeholder="Search Source" class="column-search-input"></th>
@@ -234,6 +249,7 @@ $(document).ready(function () {
             },
         },
         {'data': 'vulns', 'sName': 'Vulnerabilities'},
+        {'data': 'scope', 'sName': 'Scope'},
         {'data': 'source', 'sName': 'Source'},
         {'data': 'description', 'sName': 'Description'},
         {'data': 'last_scan_time', 'sName': 'Last Scan',
@@ -291,6 +307,7 @@ $(document).ready(function () {
                 $("div", nTd).tooltip();
             },
         },
+        {'data': 'scope', 'sName': 'Scope'},
         {'data': 'source', 'sName': 'Source'},
         {'data': 'description', 'sName': 'Description'},
         {'data': 'creation_time', 'sName': 'Created',
@@ -320,6 +337,12 @@ $(document).ready(function () {
     $('#severity-filter').on('change', function () {
       let selectedSeverity = $(this).val();
       monitoredTable.column(2).search(selectedSeverity).draw();
+    });
+    
+    // Apply the scope filter for monitoredTable
+    $('#scope-filter').on('change', function () {
+      let selectedScope = $(this).val();
+      monitoredTable.column(3).search(selectedScope).draw();
     });
 
     // Initialize common standalone features

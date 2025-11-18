@@ -80,7 +80,7 @@ class Command(BaseCommand):
             return
 
         # Use ThreadPoolExecutor to run scans in parallel
-        with ThreadPoolExecutor(max_workers=20) as executor:
+        with ThreadPoolExecutor(max_workers=10) as executor:
             futures = [executor.submit(self.scan_domain, domain, nt_option) for domain in active_domains]
             for future in as_completed(futures):
                 future.result()  # This will raise any exceptions caught during the scan

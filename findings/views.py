@@ -498,6 +498,18 @@ def scan_assets(request):
             except Exception as e:
                 print(f"Error running scan_httpx: {e}")
 
+        def scan_playwright():
+            try:
+                command = 'scan_playwright'
+                args = f'--projectid {project_id}'
+                if selected_uuids:
+                    args += f' --uuids {",".join(selected_uuids)}'
+                if scan_new_assets:
+                    args += ' --new-assets'
+                run_job(command, args, project_id, request.user)
+            except Exception as e:
+                print(f"Error running scan_playwright: {e}")
+
         def scan_nuclei():
             try:
                 command = 'scan_nuclei'
@@ -532,6 +544,13 @@ def scan_assets(request):
                 scan_httpx()
             threads.append(threading.Thread(target=chained_jobs))
             messages.info(request, 'Nmap scan followed by a Httpx scan have been triggered in the background. (check jobs)')
+        # If both scan_nmap and scan_playwright are selected, run them sequentially in a single thread
+        elif "scan_nmap" in request.POST and "scan_playwright" in request.POST:
+            def chained_jobs():
+                scan_nmap()
+                scan_playwright()
+            threads.append(threading.Thread(target=chained_jobs))
+            messages.info(request, 'Nmap scan followed by a Playwright scan have been triggered in the background. (check jobs)')
         else:
             if "scan_nmap" in request.POST:
                 threads.append(threading.Thread(target=scan_nmap))
@@ -539,6 +558,9 @@ def scan_assets(request):
             if "scan_httpx" in request.POST:
                 threads.append(threading.Thread(target=scan_httpx))
                 messages.info(request, 'Httpx scan has been triggered in the background. (check jobs)')
+            if "scan_playwright" in request.POST:
+                threads.append(threading.Thread(target=scan_playwright))
+                messages.info(request, 'Playwright scan has been triggered in the background. (check jobs)')
 
         # Nuclei scans can always be parallelized
         if "scan_nuclei" in request.POST:

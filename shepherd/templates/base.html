@@ -126,20 +126,33 @@
         var $inputs = $scope ? $scope.find(inputSelector) : $(inputSelector);
         var $selects = $scope ? $scope.find(selectSelector) : $(selectSelector);
       
-        table.columns().every(function () {
-          var that = this;
-          $inputs.on('keyup', function () {
-            let columnIndex = $(this).parent().index();
-            let input = this;
-            clearTimeout(debounceTimers[columnIndex]);
-            debounceTimers[columnIndex] = setTimeout(function () {
-              table.column(columnIndex).search(input.value).draw();
-            }, delay);
-          });
-          $selects.on('change', function () {
-            let columnIndex = $(this).parent().index();
-            table.column(columnIndex).search(this.value).draw();
-          });
+        // Improved column index detection that works with multiple header rows
+        function getColumnIndex(element) {
+          var $element = $(element);
+          var $th = $element.closest('th');
+          if ($th.length) {
+            return $th.index();
+          }
+          // Fallback: find the column by looking at the table structure
+          var $row = $element.closest('tr');
+          if ($row.length) {
+            return $element.index();
+          }
+          return 0;
+        }
+      
+        $inputs.on('keyup', function () {
+          let columnIndex = getColumnIndex(this);
+          let input = this;
+          clearTimeout(debounceTimers[columnIndex]);
+          debounceTimers[columnIndex] = setTimeout(function () {
+            table.column(columnIndex).search(input.value).draw();
+          }, delay);
+        });
+        
+        $selects.on('change', function () {
+          let columnIndex = getColumnIndex(this);
+          table.column(columnIndex).search(this.value).draw();
         });
       }
     </script>

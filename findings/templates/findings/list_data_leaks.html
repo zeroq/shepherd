@@ -121,7 +121,7 @@ $(document).ready( function () {
     // Monitored findings
     var findingsTable = $('#table_list_findings').DataTable({
         processing: true, serverSide: true, pageLength: 25,
-        orderCellsTop: true,
+        orderCellsTop: false,
         oLanguage: { sProcessing: "<img src='{% static 'img/loading.gif' %}'>", },
         order: [[ 1, "asc" ]],
         ajax: {
@@ -172,17 +172,17 @@ $(document).ready( function () {
             //         $("div", nTd).tooltip();
             //     },
             // },
-            {'data': 'keyword', 'sName': 'Keyword', 'aTargets': [ 2 ]},
-            {'data': 'source', 'sName': 'Source', 'aTargets': [ 3 ]},
-            {'data': 'name', 'sName': 'Name', 'aTargets': [ 4 ]},
-            {'data': 'description', 'sName': 'Description', 'aTargets': [ 5 ]},
-            {'data': 'url', 'sName': 'URL', 'aTargets': [ 6 ],
+            {'data': 'keyword', 'sName': 'Keyword', 'aTargets': [ 1 ], 'bSortable': true},
+            {'data': 'source', 'sName': 'Source', 'aTargets': [ 2 ], 'bSortable': true},
+            {'data': 'name', 'sName': 'Name', 'aTargets': [ 3 ], 'bSortable': true},
+            {'data': 'description', 'sName': 'Description', 'aTargets': [ 4 ], 'bSortable': true},
+            {'data': 'url', 'sName': 'URL', 'aTargets': [ 5 ], 'bSortable': true,
                 'mRender': function (data, type, full) {
                     if (!data) return '';
                     return '<a href="' + $('<div/>').text(data).html() + '" target="_blank">' + $('<div/>').text(data).html() + '</a>';
                 }
             },
-            {'data': 'scan_date', 'sName': 'Scan Date', 'aTargets': [ 7 ],
+            {'data': 'scan_date', 'sName': 'Scan Date', 'aTargets': [ 6 ], 'bSortable': true,
                 'render': function(data, type, row) {
                 if (!data) return '';
                 if (window.moment) {
@@ -191,7 +191,7 @@ $(document).ready( function () {
                 return data;
                 }
             },
-            {'data': 'comment', 'sName': 'Comment', 'aTargets': [ 8 ]},
+            {'data': 'comment', 'sName': 'Comment', 'aTargets': [ 7 ], 'bSortable': true},
         ]
     });
 
@@ -199,10 +199,14 @@ $(document).ready( function () {
     // Use the global debounced column search from base.html
     applyDebouncedColumnSearch(findingsTable, 'input.column-search', 'select.column-search');
 
-    // Apply the severity filter
+    // Apply the severity filter (if it exists)
     $('#severity-filter').on('change', function () {
         let selectedSeverity = $(this).val();
-        findingsTable.column(6).search(selectedSeverity).draw();
+        // Find the severity column index dynamically
+        let severityColumnIndex = findingsTable.column(':contains("Severity")').index();
+        if (severityColumnIndex !== -1) {
+            findingsTable.column(severityColumnIndex).search(selectedSeverity).draw();
+        }
     });
 
     // Server-side selection filter

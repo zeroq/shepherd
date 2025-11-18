@@ -106,7 +106,7 @@ class Command(BaseCommand):
 
         def process_httpx_chunk(chunk_index, url_chunk):
             """Process a single chunk of URLs with httpx"""
-            httpx_path = "httpx"
+            httpx_path = settings.HTTPX_PATH
             
             # Use tempfile for input and output files for this chunk
             with tempfile.NamedTemporaryFile(mode='w+', delete=True, suffix=f'_chunk_{chunk_index}_in.txt') as in_f, tempfile.NamedTemporaryFile(mode='w+', delete=True, suffix=f'_chunk_{chunk_index}_out.json') as out_f:
@@ -125,7 +125,7 @@ class Command(BaseCommand):
                     httpx_path,
                     "-l", httpx_in_file,
                     "-ss",
-                    "-st", "20",
+                    "-st", "60",
                     "-no-screenshot-full-page",
                     "-td",
                     "-j",
@@ -166,7 +166,7 @@ class Command(BaseCommand):
 
         # Process chunks in parallel using ThreadPoolExecutor
         all_results = []
-        with ThreadPoolExecutor(max_workers=20) as executor:
+        with ThreadPoolExecutor(max_workers=10) as executor:
             # Submit all chunks for processing
             futures = [executor.submit(process_httpx_chunk, i, chunk) for i, chunk in enumerate(url_chunks)]
             

@@ -24,4 +24,6 @@ redis
 porch-pirate
 openai
 openai-agents
+azure-identity
 asyncio
+playwright

@@ -176,6 +176,9 @@ SHODAN_API_KEY = ""
 FOFA_EMAIL = ""
 FOFA_KEY = ""
 
+# HTTPX PATH
+HTTPX_PATH = ""
+
 # Nucleus API
 NUCLEUS_URL = ''
 NUCLEUS_KEY = ''
@@ -184,6 +187,15 @@ NUCLEUS_PROJECT = ''
 # Azure AI
 AZURE_OPENAI_ENDPOINT = ''
 AZURE_API_KEY = ''
+
+# Burp
+BURP_API_KEY = ""
+
+# ServiceNow CMDB
+SNOW_URL = "https://yourinstance.service-now.com"
+SNOW_USERNAME = "your_username"
+SNOW_PASSWORD = "your_password"
+SNOW_INTERNAL_DOMAIN = "corp.org"
 
 # Recent Findings Days
 RECENT_DAYS = 5
