@@ -114,4 +114,7 @@ class Command(BaseCommand):
                     return parsed_url.netloc  # Return the final domain
             except (socket.error, requests.RequestException):
                 continue  # Try the next scheme/port
+            except Exception as e:
+                self.stdout.write(f"Error checking url: {url}: {e}")
+                continue
         return None
