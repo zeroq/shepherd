@@ -20,9 +20,14 @@ class SuggestionSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class PortSerializer(serializers.ModelSerializer):
+    domain_uuid = serializers.SerializerMethodField()
+
     class Meta:
         model = Port
         fields = '__all__'
+
+    def get_domain_uuid(self, obj):
+        return obj.domain.uuid if obj.domain else None
 
 class AssetSerializer(serializers.ModelSerializer):
     vuln_critical = serializers.IntegerField()

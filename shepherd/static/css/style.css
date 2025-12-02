@@ -50,3 +50,117 @@
 .status-failed {
     color: red;
 }
+
+.asset-header h2 {
+    margin-bottom: 0;
+}
+
+.asset-header .asset-meta {
+    color: #888;
+    margin-top: 4px;
+}
+
+.detail-list {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+.detail-list li {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.detail-list li:last-child {
+    border-bottom: none;
+}
+
+.detail-label {
+    color: #777;
+    font-weight: 600;
+}
+
+.screenshot-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.screenshot-card {
+    border: 1px solid #e6e6e6;
+    border-radius: 6px;
+    width: 280px;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.screenshot-card.compact-card {
+    width: 320px;
+    margin: 0 auto;
+}
+
+.screenshot-preview {
+    border-bottom: 1px solid #e6e6e6;
+    background: #fafafa;
+}
+
+.screenshot-preview img {
+    width: 100%;
+    height: 170px;
+    object-fit: cover;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    transition: transform 0.2s ease;
+    cursor: zoom-in;
+}
+
+.screenshot-preview img:hover {
+    transform: scale(1.6);
+    z-index: 10;
+    position: relative;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.no-screenshot {
+    height: 170px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #999;
+    font-size: 0.9em;
+}
+
+.screenshot-meta {
+    padding: 12px 14px;
+}
+
+.screenshot-meta a {
+    word-break: break-all;
+}
+
+.screenshot-meta .meta-line {
+    display: block;
+    font-size: 0.85em;
+    color: #777;
+}
+
+.severity-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    text-transform: capitalize;
+    color: #fff;
+}
+
+.severity-critical { background-color: #b71c1c; }
+.severity-high { background-color: #d32f2f; }
+.severity-medium { background-color: #f57c00; }
+.severity-low { background-color: #388e3c; }
+.severity-info { background-color: #1976d2; }
+
+.findings-table td {
+    vertical-align: top;
+}

@@ -15,7 +15,7 @@
         <div class="media-left">
         </div>
         <div class="media-body">
-            <h2 class="media-heading">Assets inventory</h2>Monitored assets
+            <h2 class="media-heading">🌐 Assets Inventory</h2>
         </div>
     </div>
 </div>
@@ -28,7 +28,7 @@
       <!-- Add Asset Button -->
       <div class="action-section">
         <button type="button" class="btn btn-primary btn-xs" data-toggle="modal" data-target="#AssetModal">Add Domain</button>&nbsp;
-        <button type="button" class="btn btn-primary btn-xs confirm" onclick="location.href='{% url 'findings:move_all_assets' %}'">Move all assets back to suggestions</button>&nbsp;
+        <a class="btn btn-primary btn-xs confirm" href="{% url 'findings:move_all_assets' %}">Move all assets back to suggestions</a>&nbsp;
         <button type="button" class="btn btn-primary btn-xs" data-toggle="modal" data-target="#ScanAssetsModal">Scan all assets</button>&nbsp;
         <button type="button" class="btn btn-primary btn-xs" id="scan-new-assets-btn" data-toggle="modal" data-target="#ScanAssetsModal">Scan new assets</button>&nbsp;
       </div>
@@ -56,36 +56,50 @@
           {% csrf_token %}
 
           <div class="form-check d-flex align-items-center" style="gap: 8px;">
-            <input type="checkbox" class="form-check-input" id="scan_nmap" name="scan_nmap">
+            <input type="checkbox" class="form-check-input" id="scan_nmap" name="scan_nmap" checked>
             <label class="form-check-label mb-0" for="scan_nmap" style="margin-bottom:0; margin-left:6px;">
               Nmap
             </label>
           </div>
 
           <div class="form-check d-flex align-items-center" style="gap: 8px;">
-            <input type="checkbox" class="form-check-input" id="scan_httpx" name="scan_httpx">
+            <input type="checkbox" class="form-check-input" id="scan_httpx" name="scan_httpx" checked>
             <label class="form-check-label mb-0" for="scan_httpx" style="margin-bottom:0; margin-left:6px;">
               Httpx (screenshots) <span style="font-size:0.9em;color:#888;">(requires a prior Nmap scan if not existing yet)</span>
             </label>
           </div>
 
           <div class="form-check d-flex align-items-center" style="gap: 8px;">
-            <input type="checkbox" class="form-check-input" id="scan_playwright" name="scan_playwright">
+            <input type="checkbox" class="form-check-input" id="scan_playwright" name="scan_playwright" checked>
             <label class="form-check-label mb-0" for="scan_playwright" style="margin-bottom:0; margin-left:6px;">
               Playwright (Screenshots) <span style="font-size:0.9em;color:#888;">(requires a prior Nmap scan if not existing yet)</span>
             </label>
           </div>
 
+          <div class="form-check d-flex align-items-center" style="gap: 8px;">
+            <input type="checkbox" class="form-check-input" id="scan_shepherdai" name="scan_shepherdai" checked>
+            <label class="form-check-label mb-0" for="scan_shepherdai" style="margin-bottom:0; margin-left:6px;">
+              Shepherd AI (findings review)
+            </label>
+          </div>
+
+          <div class="form-check d-flex align-items-center" style="gap: 8px;">
+            <input type="checkbox" class="form-check-input" id="scan_burp" name="scan_burp" disabled>
+            <label class="form-check-label mb-0 text-muted" for="scan_burp" style="margin-bottom:0; margin-left:6px;">
+              Burp scan (coming soon)
+            </label>
+          </div>
+
           <div class="form-group">
             <div class="form-check d-flex align-items-center" style="gap: 8px;">
-              <input type="checkbox" class="form-check-input" id="scan_nuclei" name="scan_nuclei">
+              <input type="checkbox" class="form-check-input" id="scan_nuclei" name="scan_nuclei" checked>
               <label class="form-check-label mb-0" for="scan_nuclei" style="margin-bottom:0; margin-left:6px;">
                 Nuclei
               </label>
             </div>
 
             <div class="form-check d-flex align-items-center" style="gap: 8px; margin-left: 24px;">
-              <input type="checkbox" class="form-check-input" id="scan_nuclei_new_templates" name="scan_nuclei_new_templates">
+              <input type="checkbox" class="form-check-input" id="scan_nuclei_new_templates" name="scan_nuclei_new_templates" checked>
               <label class="form-check-label mb-0" for="scan_nuclei_new_templates" style="margin-bottom:0; margin-left:6px;">
                 New templates only <span style="font-size:0.9em;color:#888;">(only if Nuclei is selected)</span>
               </label>
@@ -129,7 +143,7 @@
   <div class="row">
     <div class="col-md-6">
       <div class="panel panel-default">
-        <div class="panel-heading">// Selected Actions</div>
+            <div class="panel-heading">// Selected Actions</div>
         <div class="panel-body">
           <button type="submit" name="btnignore" id="ignore-selected" class="btn btn-primary btn-xs">Ignore selected</button>&nbsp;
           <button type="submit" name="btnmove" id="move-selected" class="btn btn-primary btn-xs">Move back to suggestions</button>&nbsp;

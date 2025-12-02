@@ -560,6 +560,26 @@ def list_ports(request, projectid, format=None):
 
     return paginator.get_paginated_response(serializer.data)
 
+@api_view(['DELETE'])
+@authentication_classes((SessionAuthentication,))
+@permission_classes((IsAuthenticated,))
+def delete_port(request, projectid, portid):
+    if not request.user.has_perm('findings.delete_port'):
+        return HttpResponseForbidden("You do not have permission to delete ports.")
+
+    try:
+        Project.objects.get(id=projectid)
+    except Project.DoesNotExist:
+        return JsonResponse({'error': 'Project not found'}, status=404)
+
+    try:
+        port_obj = Port.objects.get(id=portid, domain__related_project__id=projectid)
+    except Port.DoesNotExist:
+        return JsonResponse({'error': 'Port not found'}, status=404)
+
+    port_obj.delete()
+    return JsonResponse({'success': True})
+
 ##### END PORTS ###############
 
 
@@ -628,7 +648,7 @@ def list_all_findings(request, projectid, format=None):
 
     ### create queryset
     active_domains = prj.asset_set.all().filter(monitor=True)
-    queryset = Finding.objects.filter(domain__in=active_domains, source='nuclei')
+    queryset = Finding.objects.filter(domain__in=active_domains)
 
     # Filter by monitored/ignored/all status if provided
     selection_param = request.query_params.get('selection', 'monitored')
@@ -656,17 +676,19 @@ def list_all_findings(request, projectid, format=None):
     if search_value and len(search_value) > 1:
         queryset = queryset.filter(
             Q(name__icontains=search_value)|
-            Q(description__icontains=search_value)
+            Q(description__icontains=search_value)|
+            Q(source__icontains=search_value)
         )
 
     search_domain_name = request.query_params.get('columns[1][search][value]', None)
     search_name = request.query_params.get('columns[2][search][value]', None)
     search_type = request.query_params.get('columns[3][search][value]', None)
     search_description = request.query_params.get('columns[4][search][value]', None)
-    search_severity = request.query_params.get('columns[5][search][value]', None)  # CVE removed, severity moved to column 5
-    search_scan_date = request.query_params.get('columns[6][search][value]', None)
-    search_last_reported = request.query_params.get('columns[7][search][value]', None)  # Added last_reported
-    search_comment = request.query_params.get('columns[8][search][value]', None)  # Added comment
+    search_source = request.query_params.get('columns[5][search][value]', None)
+    search_severity = request.query_params.get('columns[6][search][value]', None)
+    search_scan_date = request.query_params.get('columns[7][search][value]', None)
+    search_last_reported = request.query_params.get('columns[8][search][value]', None)
+    search_comment = request.query_params.get('columns[9][search][value]', None)
     # print(f"Search: {search_domain_name}, {search_port}, {search_banner}, {search_cpe}, {search_last_scan}")  # Debugging statement
 
     ### filter by search value
@@ -688,6 +710,11 @@ def list_all_findings(request, projectid, format=None):
     if search_description and len(search_description) > 1:
         queryset = queryset.filter(
             Q(description__icontains=search_description)
+        )
+
+    if search_source and len(search_source) > 1:
+        queryset = queryset.filter(
+            Q(source__icontains=search_source)
         )
 
     if search_severity and len(search_severity) > 1:

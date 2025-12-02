@@ -272,7 +272,7 @@ class Command(BaseCommand):
                             # Get page content (first 50000 chars to avoid huge responses)
                             try:
                                 content = await page.content()
-                                result["response_body"] = content[:50000] if content else ""
+                                result["response_body"] = content[:100000] if content else ""
                                 
                                 # Try to detect technologies from HTML
                                 technologies = self.detect_technologies(content)

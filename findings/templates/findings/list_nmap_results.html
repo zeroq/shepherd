@@ -15,7 +15,7 @@
         <div class="media-left">
         </div>
         <div class="media-body">
-            <h2 class="media-heading">Nmap Results</h2>ports information...
+            <h2 class="media-heading">🛰️ Nmap Results</h2>
         </div>
     </div>
 </div>
@@ -102,16 +102,37 @@ $(document).ready(function () {
                 'data': 'id', 'sName': 'Operations', 'aTargets': [0],
                 'bSortable': false,
                 "mRender": function (data, type, full) {
-                    var delete_url = "{% url 'api:delete_port' projectid=projectid %}".replace('projectid', '{{ projectid }}');
-                    return '<div class="btn-group1">' +
-                        '<input type="checkbox" name="id[]" value="' + $('<div/>').text(data).html() + '">&nbsp;&nbsp;' +
-                        '</div>';
+                    var delete_url_template = "{% url 'api:delete_port' projectid=projectid portid='__PORT__' %}";
+                    var delete_url = delete_url_template.replace('__PORT__', data);
+                    return '';
+                    // return '<div class="btn-group1">' +
+                    //     '<input type="checkbox" name="id[]" value="' + $('<div/>').text(data).html() + '">&nbsp;&nbsp;' +
+                    //     '<a href="#" class="btn btn-xs confirm" rel="tooltip" data-placement="right" ' +
+                    //         'data-original-title="Delete Port" data-display="' + $('<div/>').text(full.domain_name || data).html() + '" ' +
+                    //         'data-href="' + delete_url + '" data-method="DELETE">' +
+                    //         '<span class="glyphicon glyphicon-trash" aria-hidden="true"></span>' +
+                    //     '</a>' +
+                    //     '</div>';
                 },
                 "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
                     $("a", nTd).tooltip();
                 }
             },
-            { 'data': 'domain_name', 'sName': 'Domain', 'aTargets': [1] },
+            {
+                'data': 'domain_name',
+                'sName': 'Domain',
+                'aTargets': [1],
+                'render': function(data, type, row) {
+                    if (!data) {
+                        return '';
+                    }
+                    if (row.domain_uuid) {
+                        var url = "{% url 'findings:view_asset' uuid='__UUID__' %}".replace('__UUID__', row.domain_uuid);
+                        return '<a href="' + url + '">' + $('<div/>').text(data).html() + '</a>';
+                    }
+                    return $('<div/>').text(data).html();
+                }
+            },
             { 'data': 'port', 'sName': 'Port', 'aTargets': [2] },
             { 'data': 'banner', 'sName': 'Banner', 'aTargets': [3] },
             { 'data': 'cpe', 'sName': 'CPE', 'aTargets': [4] },
@@ -133,6 +154,9 @@ $(document).ready(function () {
     // Find the second header row (filter row) and bind to its inputs/selects
     var $filterRow = $('#table_list_ports thead tr:eq(1)');
     applyDebouncedColumnSearch(portTable, 'input.column-search-input', 'select.column-search-input', 400, $filterRow);
+
+    // Enable confirm dialog for delete buttons
+    setupConfirmDialog(portTable);
 
     // Initialize common standalone features
     initializeStandaloneFeatures({

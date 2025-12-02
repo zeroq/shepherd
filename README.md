@@ -58,6 +58,10 @@ cd /opt/shepherd
 python3 -m venv venv
 source venv/bin/activate
 pip3 install -r requirements.txt
+
+# As www-data
+sudo -u www-data bash
+source venv/bin/activate
 playwright install
 
 # Psql

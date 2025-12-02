@@ -58,6 +58,13 @@ def import_shodan_task():
     return "import_shodan completed"
 
 @shared_task
+def import_snow_cmdb_task():
+    command = 'import_snow_cmdb'
+    args = f'--projectid {project_id}'
+    run_job(command, args, project_id, user=scheduler_user)
+    return "import_snow_cmdb completed"
+
+@shared_task
 def scan_porch_pirate_task():
     command = 'scan_porch-pirate'
     args = f'--projectid {project_id}'
@@ -119,6 +126,20 @@ def scan_httpx_task():
     args = f'--projectid {project_id}'
     run_job(command, args, project_id, user=scheduler_user)
     return "scan_httpx completed"
+
+@shared_task
+def scan_playwright_task():
+    command = 'scan_playwright'
+    args = f'--projectid {project_id}'
+    run_job(command, args, project_id, user=scheduler_user)
+    return "scan_playwright completed"
+
+@shared_task
+def scan_shepherdai_task():
+    command = 'scan_shepherdai'
+    args = f'--projectid {project_id}'
+    run_job(command, args, project_id, user=scheduler_user)
+    return "scan_shepherdai completed"
 
 @shared_task
 def scan_nuclei_task():

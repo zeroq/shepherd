@@ -21,7 +21,7 @@ urlpatterns = [
 
     # ports APIs
     path('v1/project/<str:projectid>/ports/', views.list_ports, name='list_ports'),
-    path('v1/project/<str:projectid>/ports/delete/', views.list_ports, name='delete_port'),
+    path('v1/project/<str:projectid>/ports/<str:portid>/delete/', views.delete_port, name='delete_port'),
 
     # Findings APIs
     path('v1/project/<str:projectid>/findings/all/', views.list_all_findings, name='list_all_findings'),

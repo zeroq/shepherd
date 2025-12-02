@@ -1,220 +1,173 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block header %}
-<style>
-#table_list_projects tbody tr.selected td {background-color:#B0BED9}
-#table_list_projects tbody tr.odd.selected td {background-color:#acbad4}
-</style>
-{% endblock %}
+{% block header %}{% endblock %}
 
 {% block content %}
 {% spaceless %}
-<div class="page-header">
-    <div class="media">
-        <div class="media-left">
+<div class="page-header asset-header">
+    <h2 class="media-heading">{{ asset.value }}</h2>
+    <p class="asset-meta">Asset UUID: <code>{{ asset.uuid }}</code></p>
+</div>
+{% if messages %}
+    {% for message in messages %}
+        <div {% if message.tags %} class="alert alert-{{ message.tags }}"{% endif %}>{{ message }}</div>
+    {% endfor %}
+{% endif %}
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="panel panel-default">
+            <div class="panel-heading">// Asset Overview</div>
+            <div class="panel-body">
+                <ul class="detail-list">
+                    <li><span class="detail-label">Source</span><span>{{ asset.source|default:"-" }}</span></li>
+                    <li><span class="detail-label">Created</span><span>{{ asset.creation_time|date:"Y-m-d H:i" }}</span></li>
+                    <li><span class="detail-label">Last Scan</span><span>{{ asset.last_scan_time|date:"Y-m-d H:i" }}</span></li>
+                    <li><span class="detail-label">Monitored</span><span>{{ asset.monitor|yesno:"Yes,No" }}</span></li>
+                </ul>
+            </div>
         </div>
-        <div class="media-body">
-            <h2 class="media-heading">Asset</h2>UUID: {{ assetid }}
+    </div>
+    <div class="col-md-6">
+        <div class="panel panel-default">
+            <div class="panel-heading">// Open Services</div>
+            <div class="panel-body table-responsive">
+                {% if ports %}
+                <table class="table table-condensed table-striped" style="font-size: 0.9em;">
+                    <thead>
+                        <tr>
+                            <th>Port</th>
+                            <th>Banner</th>
+                            <th>Product</th>
+                            <th>Last Scan</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for port in ports %}
+                        <tr>
+                            <td>{{ port.port }}</td>
+                            <td>{{ port.banner|default:"-" }}</td>
+                            <td>{{ port.product|default:"-" }}</td>
+                            <td>{{ port.scan_date|date:"Y-m-d H:i" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                    <p class="text-muted">No services discovered on this asset yet.</p>
+                {% endif %}
+            </div>
         </div>
     </div>
 </div>
-{% if messages %}{% for message in messages %}<div {% if message.tags %} class="alert alert-{{ message.tags }}"{% endif %}>{{ message }}</div>{% endfor %}{% endif %}
-<div>
-    <h4>Details</h4>
-    <table id="details" class="table table-condensed">
-        <tbody>
-            <tr>
-                <td>
-        <table id="asset_details" class="table table-condensed table-bordered" style="font-size: 0.9em;">
-        <tbody>
-            <tr>
-                <td>Name:</td><td>{{ asset.value }}</td>
-            </tr>
-            <tr>
-                <td>UUID:</td><td>{{ asset.uuid }}</td>
-            </tr>
-            <tr>
-                <td>Source:</td><td>{{ asset.source }}</td>
-            </tr>
-            <tr>
-                <td>Created:</td><td>{{ asset.creation_time }}</td>
-            </tr>
-            <tr>
-                <td>Last Scan:</td><td>{{ asset.last_scan_time }}</td>
-            </tr>
-        </tbody>
-        </table>
-                </td>
-                <td>
-        <table id="port_details" class="table table-condensed table-bordered" style="font-size: 0.9em;">
+
+{% if dns_records %}
+<div class="panel panel-default">
+    <div class="panel-heading">// DNS Records</div>
+    <div class="panel-body table-responsive">
+        <table class="table table-condensed table-striped" style="font-size: 0.9em;">
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Value</th>
+                    <th>TTL</th>
+                    <th>Last Checked</th>
+                </tr>
+            </thead>
             <tbody>
-            {% for port in asset.port_set.all %}
-            <tr>
-                <td>Port</td><td>{{ port.port }}</td>
-                <td>Banner</td><td>{{ port.banner }}</td>
-                <td>Product</td><td>{{ port.product }}</td>
-                <td>Last Scan</td><td>{{ port.scan_date }}</td>
-            </tr>
-            {% endfor %}
+                {% for record in dns_records %}
+                <tr>
+                    <td>{{ record.record_type }}</td>
+                    <td style="word-break: break-all;">{{ record.record_value }}</td>
+                    <td>{{ record.ttl|default:"-" }}</td>
+                    <td>{{ record.last_checked|date:"Y-m-d H:i" }}</td>
+                </tr>
+                {% endfor %}
             </tbody>
         </table>
-                </td>
-            </tr>
-        </tbody>
-    </table>
-</div>
-<div>
-    <div>
-        <button type="button" class="btn btn-primary btn-xs" onclick="location.href='{% url 'findings:view_asset_reported' uuid=asset.uuid %}'">Show reported entries</button><br/><br/>
     </div>
 </div>
-<div>
-{% if critical_findings|length > 0 %}
-    <h4>Critical Findings</h4>
-        <table class="table table-condensed table-striped table-bordered" style="font-size: 0.8em;">
-        <thead>
-            <th>Vulnerability</th>
-            <th>Severity</th>
-            <th>Scan Date</th>
-            <th>Description</th>
-        </thead>
-        <tbody>
-            {% for entry in critical_findings %}
-            <tr>
-                <td>{{ entry.name }}</td>
-                <td>{{ entry.severity }}</td>
-                <td>{{ entry.scan_date }}</td>
-                <td>{{ entry.description }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-        </table>
 {% endif %}
-{% if high_findings|length > 0 %}
-    <h4>High Findings</h4>
-        <table class="table table-condensed table-striped table-bordered" style="font-size: 0.8em;">
-        <thead>
-            <th>Vulnerability</th>
-            <th>Severity</th>
-            <th>Scan Date</th>
-            <th>Description</th>
-        </thead>
-        <tbody>
-            {% for entry in high_findings %}
-            <tr>
-                <td>{{ entry.name }}</td>
-                <td>{{ entry.severity }}</td>
-                <td>{{ entry.scan_date }}</td>
-                <td>{{ entry.description }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-        </table>
-{% endif %}
-{% if medium_findings|length > 0 %}
-    <h4>Medium Findings</h4>
-        <table class="table table-condensed table-striped table-bordered" style="font-size: 0.8em;">
-        <thead>
-            <th>Vulnerability</th>
-            <th>Severity</th>
-            <th>Scan Date</th>
-            <th>Description</th>
-        </thead>
-        <tbody>
-            {% for entry in medium_findings %}
-            <tr>
-                <td>{{ entry.name }}</td>
-                <td>{{ entry.severity }}</td>
-                <td>{{ entry.scan_date }}</td>
-                <td>{{ entry.description }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-        </table>
-{% endif %}
-{% if low_findings|length > 0 %}
-    <h4>Low Findings</h4>
-        <table class="table table-condensed table-striped table-bordered" style="font-size: 0.8em;">
-        <thead>
-            <th>Vulnerability</th>
-            <th>Severity</th>
-            <th>Scan Date</th>
-            <th>Description</th>
-        </thead>
-        <tbody>
-            {% for entry in low_findings %}
-            <tr>
-                <td>{{ entry.name }}</td>
-                <td>{{ entry.severity }}</td>
-                <td>{{ entry.scan_date }}</td>
-                <td>{{ entry.description }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-        </table>
-{% endif %}
-{% if info_findings|length > 0 %}
-    <h4>Informative Findings</h4>
-        <table class="table table-condensed table-striped table-bordered" style="font-size: 0.8em;">
-        <thead>
-            <th>Vulnerability</th>
-            <th>Severity</th>
-            <th>Scan Date</th>
-            <th>Description</th>
-        </thead>
-        <tbody>
-            {% for entry in info_findings %}
-            <tr>
-                <td>{{ entry.name }}</td>
-                <td>{{ entry.severity }}</td>
-                <td>{{ entry.scan_date }}</td>
-                <td>{{ entry.description }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-        </table>
-{% endif %}
+
+<div class="panel panel-default">
+    <div class="panel-heading">// Screenshots</div>
+    <div class="panel-body">
+        {% if screenshots %}
+            <div class="screenshot-grid">
+                {% for shot in screenshots %}
+                <div class="screenshot-card">
+                    <div class="screenshot-preview">
+                        {% if shot.screenshot_base64 %}
+                            <a href="{{ shot.url }}" target="_blank" rel="noopener">
+                                <img src="data:image/png;base64,{{ shot.screenshot_base64 }}" alt="Screenshot of {{ shot.url }}">
+                            </a>
+                        {% else %}
+                            <div class="no-screenshot">Screenshot not available</div>
+                        {% endif %}
+                    </div>
+                    <div class="screenshot-meta">
+                        <div>
+                            <a href="{{ shot.url }}" target="_blank" rel="noopener">{{ shot.url }}</a>
+                        </div>
+                        <div class="text-muted small">
+                            {{ shot.date|date:"Y-m-d H:i" }}
+                            {% if shot.status_code %} · HTTP {{ shot.status_code }}{% endif %}
+                        </div>
+                        {% if shot.title %}
+                            <div class="text-muted small">{{ shot.title }}</div>
+                        {% endif %}
+                        {% if shot.webserver %}
+                            <div class="text-muted small">{{ shot.webserver }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-muted">No screenshots captured for this asset yet.</p>
+        {% endif %}
+    </div>
 </div>
-{% endspaceless%}
-{% endblock%}
 
-{% block javascript %}
-<script src="{% static 'js/bootbox.min.js' %}"></script>
-<script type="text/javascript" language="javascript" class="init">
-    
-    // Helper function to display messages dynamically
-    function displayMessage(type, message) {
-        var alertDiv = $('<div>')
-            .addClass('alert alert-' + type)
-            .text(message);
-
-        // Append the message to the top of the page or a specific container
-        $('.page-header').after(alertDiv);
-
-        // Automatically remove the message after 5 seconds
-        setTimeout(function () {
-            alertDiv.fadeOut(function () {
-                $(this).remove();
-            });
-        }, 5000);
-    }
-
-    // Helper function to get CSRF token
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== "") {
-            const cookies = document.cookie.split(";");
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === name + "=") {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
-    }
-
-</script>
-{% endblock%}
+<div class="panel panel-default">
+    <div class="panel-heading">// Findings</div>
+    <div class="panel-body table-responsive">
+        {% if findings %}
+            <table class="table table-condensed table-striped table-bordered findings-table">
+                <thead>
+                    <tr>
+                        <th>Vulnerability</th>
+                        <th>Severity</th>
+                        <th>Reported</th>
+                        <th>Scan Date</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for entry in findings %}
+                    <tr>
+                        <td>{{ entry.name }}</td>
+                        <td>
+                            <span class="severity-badge severity-{{ entry.severity|lower }}">{{ entry.severity|title }}</span>
+                        </td>
+                        <td>
+                            {% if entry.reported %}
+                                <span class="label label-success">Yes</span>
+                            {% else %}
+                                <span class="label label-default">No</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ entry.scan_date|date:"Y-m-d H:i" }}</td>
+                        <td>{{ entry.description|default:"-"|truncatewords:40 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="text-muted">No findings recorded for this asset.</p>
+        {% endif %}
+    </div>
+</div>
+{% endspaceless %}
+{% endblock %}

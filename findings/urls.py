@@ -10,11 +10,10 @@ urlpatterns = [
     path('delete/<str:uuid>/', views.delete_asset, name='delete_asset'),
     path('activate/all/', views.activate_all_assets, name='activate_all_assets'),
     path('activate/<str:uuid>/', views.activate_asset, name='activate_asset'),
-    path('view/reported/<str:uuid>/', views.view_asset_reported, name='view_asset_reported'),
     path('view/<str:uuid>/', views.view_asset, name='view_asset'),
 
     # Asset stuffs
-    path('asset/<str:uuid>/finding/<str:findingid>/delete/<str:reported>/', views.delete_finding, name='delete_finding'),
+    path('asset/<str:uuid>/finding/<str:findingid>/delete/', views.delete_finding, name='delete_finding'),
     path('asset/ignore/<str:uuid>/', views.ignore_asset_glyphicon, name='ignore_asset_glyphicon'),
 
     # Nucleus stuffs

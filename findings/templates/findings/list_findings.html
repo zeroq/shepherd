@@ -15,7 +15,7 @@
         <div class="media-left">
         </div>
         <div class="media-body">
-            <h2 class="media-heading">Findings</h2>monitored findings ...
+            <h2 class="media-heading">🛡️ Findings</h2>
         </div>
     </div>
 </div>
@@ -60,7 +60,7 @@
                 <option value="all">All</option>
             </select>
     </div>
-    <table id="table_list_findings" class="table table-condensed table-striped table-bordered" style="font-size: 0.9em;">
+    <table id="table_list_findings" class="table table-condensed table-striped table-bordered findings-table" style="font-size: 0.9em;">
       <thead>
         <tr>
           <th><input type="checkbox" name="select_all" value="1" id="select-all-findings">&nbsp; Operations</th>
@@ -68,6 +68,7 @@
           <th>Vulnerability Name</th>
           <th>Type</th>
           <th>Description</th>
+          <th>Source</th>
           <th>Severity</th>
           <th>Scan Date</th>
           <th>Last Reported</th>
@@ -79,6 +80,7 @@
           <th><input type="text" placeholder="Search Vulnerability Name" class="column-search form-control input-sm"></th>
           <th><input type="text" placeholder="Search Type" class="column-search form-control input-sm"></th>
           <th><input type="text" placeholder="Search Description" class="column-search form-control input-sm"></th>
+          <th><input type="text" placeholder="Search Source" class="column-search form-control input-sm"></th>
           <th>
             <select id="severity-filter" class="form-control input-sm">
               <option value="">All Severities</option>
@@ -205,8 +207,22 @@ $(document).ready( function () {
             {'data': 'name', 'sName': 'Vulnerability Name', 'aTargets': [ 2 ]},
             {'data': 'type', 'sName': 'Type', 'aTargets': [ 3 ]},
             {'data': 'description', 'sName': 'Description', 'aTargets': [ 4 ]},
-            {'data': 'severity', 'sName': 'Severity', 'aTargets': [ 5 ]},
-            {'data': 'scan_date', 'sName': 'Scan Date', 'aTargets': [ 6 ],
+            {'data': 'source', 'sName': 'Source', 'aTargets': [ 5 ]},
+            {
+                'data': 'severity',
+                'sName': 'Severity',
+                'aTargets': [6],
+                'render': function(data, type, row) {
+                    if (!data) {
+                        return '';
+                    }
+                    var severity = data.toLowerCase();
+                    var label = data.charAt(0).toUpperCase() + data.slice(1);
+                    var html = '<span class="severity-badge severity-' + severity + '">' + label + '</span>';
+                    return type === 'display' ? html : data;
+                }
+            },
+            {'data': 'scan_date', 'sName': 'Scan Date', 'aTargets': [ 7 ],
                 'render': function(data, type, row) {
                 if (!data) return '';
                 // Use moment.js for formatting if available
@@ -217,7 +233,7 @@ $(document).ready( function () {
                 return data;
                 }
             },
-            {'data': 'last_reported', 'sName': 'Last reported', 'aTargets': [ 7 ],
+            {'data': 'last_reported', 'sName': 'Last reported', 'aTargets': [ 8 ],
                 'render': function(data, type, row) {
                 if (!data) return '';
                 // Use moment.js for formatting if available
@@ -228,7 +244,7 @@ $(document).ready( function () {
                 return data;
                 }
             },
-            {'data': 'comment', 'sName': 'Comment', 'aTargets': [ 8 ]},
+            {'data': 'comment', 'sName': 'Comment', 'aTargets': [ 9 ]},
         ]
     });
 

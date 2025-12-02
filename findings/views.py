@@ -230,72 +230,18 @@ def view_asset(request, uuid):
     except Asset.DoesNotExist:
         messages.error(request, 'Unknown Asset: %s' % uuid)
         return redirect(reverse('findings:assets'))
+    dns_records = []
+    if a_obj.type == 'domain':
+        dns_records = DNSRecord.objects.filter(related_asset=a_obj).order_by('record_type', 'record_value')
+
     context = {
-        # 'projectid': request.session['current_project']['prj_id'],
-        'assetid': uuid,
         'asset': a_obj,
-        'info_findings': a_obj.finding_set.filter(
-            severity='info',
-            # reported=False,
-        ),
-        'critical_findings': a_obj.finding_set.filter(
-            severity='critical',
-            # reported=False,
-        ),
-        'high_findings': a_obj.finding_set.filter(
-            severity='high',
-            # reported=False,
-        ),
-        'medium_findings': a_obj.finding_set.filter(
-            severity='medium',
-            # reported=False,
-        ),
-        'low_findings': a_obj.finding_set.filter(
-            severity='low',
-            # reported=False,
-        )
+        'ports': a_obj.port_set.all().order_by('port'),
+        'screenshots': Screenshot.objects.filter(domain=a_obj).order_by('-date'),
+        'findings': a_obj.finding_set.all().order_by('-scan_date', '-id'),
+        'dns_records': dns_records,
     }
     return render(request, 'findings/view_asset.html', context)
-
-@login_required
-def view_asset_reported(request, uuid):
-    """view asset already reported findings
-    """
-    if not request.user.has_perm('project.view_asset'):
-        return HttpResponseForbidden("You do not have permission.")
-    
-    try:
-        a_obj = Asset.objects.get(uuid=uuid)
-    except Asset.DoesNotExist:
-        messages.error(request, 'Unknown Asset: %s' % uuid)
-        return redirect(reverse('findings:assets'))
-    context = {
-        'projectid': request.session['current_project']['prj_id'],
-        'assetid': uuid,
-        'asset': a_obj,
-        'info_findings': a_obj.finding_set.filter(
-            severity='info',
-            reported=True
-            ),
-        'critical_findings': a_obj.finding_set.filter(
-            severity='critical',
-            reported=True
-            ),
-        'high_findings': a_obj.finding_set.filter(
-            severity='high',
-            reported=True
-            ),
-        'medium_findings': a_obj.finding_set.filter(
-            severity='medium',
-            reported=True
-            ),
-        'low_findings': a_obj.finding_set.filter(
-            severity='low',
-            reported=True
-            )
-    }
-    return render(request, 'findings/view_asset_reported.html', context)
-    
 
 ### Nucleus stuffs
 @login_required
@@ -437,7 +383,7 @@ def all_findings(request):
     return render(request, 'findings/list_findings.html', context)
 
 @login_required
-def delete_finding(request, uuid, findingid, reported):
+def delete_finding(request, uuid, findingid):
     """delete a finding
     """
     if not request.user.has_perm('findings.delete_finding'):
@@ -448,10 +394,8 @@ def delete_finding(request, uuid, findingid, reported):
     except Asset.DoesNotExist:
         messages.error(request, 'Unknown Asset: %s' % uuid)
         return redirect(reverse('findings:assets'))
-    a_obj.finding_set.filter(id=findingid).delete() 
+    a_obj.finding_set.filter(id=findingid).delete()
     messages.info(request, 'finding deleted!')
-    if reported == 'true':
-        return redirect(reverse('findings:view_asset_reported', args=(uuid,)))
     return redirect(reverse('findings:view_asset', args=(uuid,)))
 
 @login_required
@@ -510,6 +454,18 @@ def scan_assets(request):
             except Exception as e:
                 print(f"Error running scan_playwright: {e}")
 
+        def scan_shepherdai():
+            try:
+                command = 'scan_shepherdai'
+                args = f'--projectid {project_id}'
+                if selected_uuids:
+                    args += f' --uuids {",".join(selected_uuids)}'
+                if scan_new_assets:
+                    args += ' --new-assets'
+                run_job(command, args, project_id, request.user)
+            except Exception as e:
+                print(f"Error running scan_shepherdai: {e}")
+
         def scan_nuclei():
             try:
                 command = 'scan_nuclei'
@@ -551,6 +507,13 @@ def scan_assets(request):
                 scan_playwright()
             threads.append(threading.Thread(target=chained_jobs))
             messages.info(request, 'Nmap scan followed by a Playwright scan have been triggered in the background. (check jobs)')
+        # If both scan_nmap and scan_shepherdai are selected, run them sequentially in a single thread
+        elif "scan_nmap" in request.POST and "scan_shepherdai" in request.POST:
+            def chained_jobs():
+                scan_nmap()
+                scan_shepherdai()
+            threads.append(threading.Thread(target=chained_jobs))
+            messages.info(request, 'Nmap scan followed by a Shepherd AI scan have been triggered in the background. (check jobs)')
         else:
             if "scan_nmap" in request.POST:
                 threads.append(threading.Thread(target=scan_nmap))
@@ -561,6 +524,9 @@ def scan_assets(request):
             if "scan_playwright" in request.POST:
                 threads.append(threading.Thread(target=scan_playwright))
                 messages.info(request, 'Playwright scan has been triggered in the background. (check jobs)')
+            if "scan_shepherdai" in request.POST:
+                threads.append(threading.Thread(target=scan_shepherdai))
+                messages.info(request, 'Shepherd AI scan has been triggered in the background. (check jobs)')
 
         # Nuclei scans can always be parallelized
         if "scan_nuclei" in request.POST:
@@ -585,7 +551,7 @@ def httpx_results(request):
         'projectid': request.session.get('current_project', {}).get('prj_id', None),
     }
 
-    return render(request, 'findings/list_httpx_results.html', context)
+    return render(request, 'findings/list_screenshots.html', context)
 
 @login_required
 def export_technologies_csv(request):
